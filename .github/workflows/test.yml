@@ -3,7 +3,7 @@ name: Build and test pkg
 on: [push, pull_request]
 
 env:
-  FLAGS: "-Wno-compare-reals -std=legacy"
+  FLAGS: "-std=legacy"
 
 jobs:
   linux-gcc-build:
