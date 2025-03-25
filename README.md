@@ -2,6 +2,8 @@
 
 Modernized version of DASKR, a differential-algebraic system solver with rootfinding.
 
+[![Test](https://github.com/HugoMVale/daskr/actions/workflows/test.yml/badge.svg)](https://github.com/HugoMVale/daskr/actions)
+[![codecov](https://codecov.io/gh/HugoMVale/daskr/graph/badge.svg?token=AgjzeQ1qFL)](https://codecov.io/gh/HugoMVale/daskr)
 [![Language](https://img.shields.io/badge/-Fortran-734f96?logo=fortran&logoColor=white)](https://github.com/topics/fortran)
 
 ## Description
@@ -32,7 +34,7 @@ The first version of the library, named DASSL, was originally released in 1982 [
 [3] Brown, Peter N., Alan C. Hindmarsh, and Linda R. Petzold. "Consistent initial condition calculation for differential-algebraic systems." SIAM Journal on Scientific Computing 19.5 (1998): 1495-1512.
 https://doi.org/10.1137/S1064827595289996
 
-[4] Original source code from [Netlib](https://www.netlib.org/odrpack/).
+[4] Original source code from [Netlib](https://www.netlib.org/ode/).
 
 
 ## Build instructions
