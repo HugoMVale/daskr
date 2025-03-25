@@ -1,0 +1,5 @@
+@debug
+option build --profile debug --flag "-std=legacy"
+
+@release
+option build --profile release --flag "-std=legacy"
