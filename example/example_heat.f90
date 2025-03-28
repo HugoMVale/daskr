@@ -98,12 +98,14 @@ contains
 end module heat_module
 
 program example_heat
-!! Example program for DDASKR.
+!! Example program for `daskr`:
 !! DAE system derived from the discretized heat equation on a square.
 !!
 !! This program solves a DAE system that arises from the heat equation,
-!!   du/dt = u   + u
-!!            xx    yy
+!! $$
+!! \frac{\partial u}{\partial t} = 
+!! \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2}
+!! $$   
 !! posed on the 2-D unit square with zero Dirichlet boundary conditions.
 !! An M+2 by M+2 mesh is set on the square, with uniform spacing 1/(M+1).
 !! The spatial deriviatives are represented by standard central finite
@@ -114,7 +116,7 @@ program example_heat
 !! The result is a DAE system G(t,U,U') = 0 of size NEQ = (M+2)*(M+2).
 !!
 !! Initial conditions are posed as u = 16x(1-x)y(1-y) at t = 0.
-!! The problem is solved by DDASKR on the time interval t .le. 10.24.
+!! The problem is solved by DDASKR on the time interval t <= 10.24.
 !!
 !! The root functions are R1(U) = max(u) - 0.1, R2(U) = max(u) - 0.01.
 !!
@@ -126,21 +128,21 @@ program example_heat
 !! iterations resulting from this approximation are offset by the lower
 !! storage and linear system solution costs for a tridiagonal matrix.
 !!
-!! The routines DBANJA and DBANPS that generate and solve the banded
+!! The routines BANJA and BANPS that generate and solve the banded
 !! preconditioner are provided in a separate file for general use.
 !!
 !! The output times are t = .01 * 2**n (n = 0,...,10).  The maximum of
 !! abs(u) over the mesh, and various performance statistics, are printed.
 !!
 !! For details and test results on this problem, see the reference:
+!!
 !!   Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold,
 !!   Using Krylov Methods in the Solution of Large-Scale Differential-
 !!   Algebraic Systems, SIAM J. Sci. Comput., 15 (1994), pp. 1467-1488.
-   ! DATE WRITTEN   020815   (YYMMDD)
-   ! ROUTINES CALLED: UINIT, DDASKR
 
    ! Here are necessary declarations. The dimension statements use a maximum value for the mesh
    ! parameter M, and assume ML = MU = 1.
+   use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: wp, one, zero
    use heat_module
    implicit none
@@ -148,7 +150,7 @@ program example_heat
    integer, parameter :: maxm = 10, maxm2 = maxm + 2, mxneq = maxm2*maxm2, &
                          lenrw = 107 + 18*mxneq, leniw = 40, &
                          lenwp = 4*mxneq + 2*((mxneq/3) + 1), leniwp = mxneq
-   integer :: i, idid, iout, lenpd, liw, liwp, lout, lrw, lwp, m, mband, ml, msave, mu, &
+   integer :: i, idid, iout, lenpd, liw, liwp, lrw, lwp, m, mband, ml, msave, mu, &
               ncfl, ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
    integer :: iwork(leniw + leniwp), info(20), jroot(2), ipar(4)
 
@@ -220,22 +222,20 @@ program example_heat
    atol = 1.0e-5_wp
 
    ! Here we generate a heading with important parameter values.
-   ! LOUT is the unit number of the output device.
-   lout = 6
-
-   write (lout, '(a, //)') &
+   ! stdout is the unit number of the output device.
+   write (stdout, '(a, //)') &
       '    DHEAT: Heat Equation Example Program for DDASKR'
-   write (lout, '(a, i3, a, i4, //)') &
+   write (stdout, '(a, i3, a, i4, //)') &
       '    M+2 by M+2 mesh, M =', m, ',  System size NEQ =', neq
-   write (lout, '(a, //)') &
+   write (stdout, '(a, //)') &
       '    Root functions are: R1 = max(u) - 0.1 and R2 = max(u) - 0.01'
-   write (lout, '(a, i3, a)') &
+   write (stdout, '(a, i3, a)') &
       '    Linear solver method flag INFO(12) =', info(12), '    (0 = direct, 1 = Krylov)'
-   write (lout, '(a, i3, a, i3, //)') &
+   write (stdout, '(a, i3, a, i3, //)') &
       '    Preconditioner is a banded approximation with ML =', ml, '  MU =', mu
-   write (lout, '(a, e10.1, a, e10.1, //)') &
+   write (stdout, '(a, e10.1, a, e10.1, //)') &
       '    Tolerances are RTOL =', rtol, '   ATOL =', atol
-   write (lout, "(5X, 't', 12X, 'UMAX', 8X, 'NQ', 8X, 'H', 8X, 'STEPS', 5X, 'NNI', 5X, 'NLI')")
+   write (stdout, "(5X, 't', 12X, 'UMAX', 8X, 'NQ', 8X, 'H', 8X, 'STEPS', 5X, 'NNI', 5X, 'NLI')")
 
    !-------------------------------------------------------------------------------------------
    ! Now we solve the problem.
@@ -253,7 +253,7 @@ program example_heat
    !
    ! If a root was found, we flag this, and return to the DDASKR call.
    !
-   ! If DDASKR failed in any way (IDID .lt. 0) we print a message and stop the integration.
+   ! If DDASKR failed in any way (IDID < 0) we print a message and stop the integration.
    !-------------------------------------------------------------------------------------------
 
    nout = 11
@@ -277,17 +277,17 @@ program example_heat
          nst = iwork(11)
          nni = iwork(19)
          nli = iwork(20)
-         write (lout, '(E15.5, E12.4, I5, E14.3, I7, I9, I8)') t, umax, nqu, hu, nst, nni, nli
+         write (stdout, '(E15.5, E12.4, I5, E14.3, I7, I9, I8)') t, umax, nqu, hu, nst, nni, nli
 
          if (idid == 5) then
-            write (6, '(20X,A,2I3)') '*****   Root found, JROOT =', jroot(1), jroot(2)
+            write (stdout, '(20X,A,2I3)') '*****   Root found, JROOT =', jroot(1), jroot(2)
          else
             exit
          end if
       end do
 
       if (idid < 0) then
-         write (lout, '(/,A,E12.4,/)') ' Final time reached =', t
+         write (stdout, '(/,A,E12.4,/)') ' Final time reached =', t
          exit
       end if
 
@@ -311,27 +311,27 @@ program example_heat
    ncfl = iwork(16)
    nrte = iwork(36)
 
-   write (lout, '(//, a)') &
+   write (stdout, '(//, a)') &
       '    Final statistics for this run:'
-   write (lout, '(a, i5, a, i4)') &
+   write (stdout, '(a, i5, a, i4)') &
       '    RWORK size =', lrw, '   IWORK size =', liw
-   write (lout, '(a, i5)') &
+   write (stdout, '(a, i5)') &
       '    Number of time steps ................ =', nst
-   write (lout, '(a, i5)') &
+   write (stdout, '(a, i5)') &
       '    Number of residual evaluations ...... =', nre
-   write (lout, '(a, i5)') &
+   write (stdout, '(a, i5)') &
       '    Number of root function evaluations . =', nrte
-   write (lout, '(a, i5)') &
+   write (stdout, '(a, i5)') &
       '    Number of preconditioner evaluations  =', npe
-   write (lout, '(a, i5)') &
+   write (stdout, '(a, i5)') &
       '    Number of preconditioner solves ..... =', nps
-   write (lout, '(a, i5)') &
+   write (stdout, '(a, i5)') &
       '    Number of nonlinear iterations ...... =', nni
-   write (lout, '(a, i5)') &
+   write (stdout, '(a, i5)') &
       '    Number of linear iterations ......... =', nli
-   write (lout, '(a, f8.4)') &
+   write (stdout, '(a, f8.4)') &
       '    Average Krylov subspace dimension ... =', avdim
-   write (lout, '(i5, a, i5, a)') &
+   write (stdout, '(i5, a, i5, a)') &
       ncfn, ' nonlinear conv. failures,', ncfl, ' linear conv. failures'
 
 end program example_heat
