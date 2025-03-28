@@ -14,7 +14,7 @@ tbd
 
 The first version of the library, named DASSL, was originally released in 1982 [1]. This was followed by the release of DASPK in 1994 [2]. The last official version, named DASKR, was released in 1998 [3]. 
 
-`daskr` is a modernization of the DASKR code [4], intented to make the library easier to use and maintain. The main changes include:
+`daskr` is a modernization of the DASKR code [4], intended to make the library easier to use and maintain. The main changes include:
 
 * [ ] Conversion from fixed-form (`.f`) to free-form (`.f90`).
 * [ ] Conversion from upper case to lower case.
