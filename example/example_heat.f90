@@ -263,7 +263,7 @@ program example_heat
    do iout = 1, nout
 
       do
-         call DASKR(resh, neq, t, u, uprime, tout, info, rtol, atol, &
+         call DDASKR(resh, neq, t, u, uprime, tout, info, rtol, atol, &
                      idid, rwork, lrw, iwork, liw, rpar, ipar, dbanja, dbanps, &
                      rtheat, nrt, jroot)
 
