@@ -8,7 +8,7 @@ contains
    pure subroutine uinit(u, uprime, rpar, ipar)
    !! This routine computes and loads the vector of initial values.
    !! The initial U values are given by the polynomial u = 16x(1-x)y(1-y).
-   !! The initial UPRIME values are set to zero. (DDASKR corrects these during the first time step.)
+   !! The initial UPRIME values are set to zero. (DASKR corrects these during the first time step.)
       real(wp), intent(out) :: u(:)
       real(wp), intent(out) :: uprime(:)
       real(wp), intent(in) :: rpar(2)
@@ -116,7 +116,7 @@ program example_heat
 !! The result is a DAE system G(t,U,U') = 0 of size NEQ = (M+2)*(M+2).
 !!
 !! Initial conditions are posed as u = 16x(1-x)y(1-y) at t = 0.
-!! The problem is solved by DDASKR on the time interval t <= 10.24.
+!! The problem is solved by DASKR on the time interval t <= 10.24.
 !!
 !! The root functions are R1(U) = max(u) - 0.1, R2(U) = max(u) - 0.01.
 !!
@@ -197,7 +197,7 @@ program example_heat
    call uinit(u, uprime, rpar, ipar)
 
    ! Here we set up the INFO array, which describes the various options in the way we want
-   ! DDASKR to solve the problem.
+   ! DASKR to solve the problem.
    ! In this case, we select the iterative preconditioned Krylov method, and we supply the band
    ! preconditioner routines DBANJA/DBANPS.
    !
@@ -224,7 +224,7 @@ program example_heat
    ! Here we generate a heading with important parameter values.
    ! stdout is the unit number of the output device.
    write (stdout, '(a, //)') &
-      '    DHEAT: Heat Equation Example Program for DDASKR'
+      '    DHEAT: Heat Equation Example Program for DASKR'
    write (stdout, '(a, i3, a, i4, //)') &
       '    M+2 by M+2 mesh, M =', m, ',  System size NEQ =', neq
    write (stdout, '(a, //)') &
@@ -240,10 +240,10 @@ program example_heat
    !-------------------------------------------------------------------------------------------
    ! Now we solve the problem.
    !
-   ! DDASKR will be called to compute 11 intermediate solutions from tout=0.01 to tout=10.24
+   ! DASKR will be called to compute 11 intermediate solutions from tout=0.01 to tout=10.24
    ! by powers of 2.
    !
-   ! We pass to DDASKR the names DBANJA and DBANPS for the JAC and PSOL routines to do the
+   ! We pass to DASKR the names DBANJA and DBANPS for the JAC and PSOL routines to do the
    ! preconditioning.
    !
    ! At each output time, we compute and print the max-norm of the solution (which should decay
@@ -251,9 +251,9 @@ program example_heat
    ! and step size, the number of time steps so far, and the numbers of nonlinear and
    ! linear iterations so far.
    !
-   ! If a root was found, we flag this, and return to the DDASKR call.
+   ! If a root was found, we flag this, and return to the DASKR call.
    !
-   ! If DDASKR failed in any way (IDID < 0) we print a message and stop the integration.
+   ! If DASKR failed in any way (IDID < 0) we print a message and stop the integration.
    !-------------------------------------------------------------------------------------------
 
    nout = 11
@@ -263,7 +263,7 @@ program example_heat
    do iout = 1, nout
 
       do
-         call ddaskr(resh, neq, t, u, uprime, tout, info, rtol, atol, &
+         call DASKR(resh, neq, t, u, uprime, tout, info, rtol, atol, &
                      idid, rwork, lrw, iwork, liw, rpar, ipar, dbanja, dbanps, &
                      rtheat, nrt, jroot)
 
