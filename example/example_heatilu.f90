@@ -31,7 +31,7 @@ contains
          end do
       end do
 
-      uprime(1:neq) = zero
+      uprime = zero
 
    end subroutine uinit
 
@@ -77,9 +77,9 @@ contains
       integer, intent(in) :: neq
       real(wp), intent(in) :: t
       real(wp), intent(in) :: u(neq)
-      real(wp), intent(in) :: up(*)
+      real(wp), intent(in) :: up(neq)
       integer, intent(in) :: nrt
-      real(wp), intent(out) :: rval(2)
+      real(wp), intent(out) :: rval(nrt)
       real(wp), intent(in) :: rpar(4)
       integer, intent(in) :: ipar(34)
 
