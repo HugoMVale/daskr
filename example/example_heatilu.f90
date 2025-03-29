@@ -14,10 +14,9 @@ contains
       real(wp), intent(in) :: rpar(4)
       integer, intent(in) :: ipar(34)
 
-      integer :: i, ioff, j, k, m, neq
+      integer :: i, ioff, j, k, m
       real(wp) :: dx, xj, yk
 
-      neq = ipar(33)
       m = ipar(34)
       dx = rpar(3)
 
