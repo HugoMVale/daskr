@@ -42,7 +42,7 @@ contains
       real(wp), intent(in) :: uprime(*)
       real(wp), intent(in) :: cj
       real(wp), intent(out) :: delta(*)
-      integer, intent(in) :: ires
+      integer, intent(inout) :: ires
       real(wp), intent(in) :: rpar(2)
       integer, intent(in) :: ipar(4)
 
