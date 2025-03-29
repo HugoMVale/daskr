@@ -41,7 +41,7 @@ jobs:
           fpm test --profile release --flag $FLAGS --verbose
       
       - name: Generate coverage report
-        if: ${{ matrix.gcc_v == '10' }}
+        if: ${{ matrix.gcc_v == '11' }}
         run: |
           gfortran --version
           rm -rf ./build/gfortran*
