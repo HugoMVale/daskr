@@ -4,6 +4,7 @@ license: mit
 summary: daskr is a differential-algebraic system solver with rootfinding
 src_dir: src
          example
+         test
 output_dir: _site
 page_dir: doc
 extra_mods: iso_fortran_env:https://gcc.gnu.org/onlinedocs/gfortran/ISO_005fFORTRAN_005fENV.html
