@@ -71,7 +71,7 @@ program test_krdem1
 !!``` 
 !! The solution is:
 !!```
-!!    y(t) = exp(-t**2 + 5*t - 4), yprime(1) = 3
+!!    y(t) = exp(-t**2 + 5*t - 4), y'(1) = 3
 !!```
 !! The two root functions are:
 !!```
@@ -120,7 +120,7 @@ program test_krdem1
    info(5) = 2 - jtype
    nrt = 2
    if (kprint >= 2) then
-      write (stdout, '(a, /)') 'DKRDEM-1: Demonstration Program for DDASKR'
+      write (stdout, '(a, /)') 'DKRDEM-1: Demonstration Program for DASKR'
       write (stdout, '(a)') 'Problem is  dY/dT = ((2*LOG(Y)+8)/T - 5)*Y,  Y(1) = 1'
       write (stdout, '(a)') 'Solution is  Y(T) = EXP(-T**2 + 5*T - 4)'
       write (stdout, '(a)') 'Root functions are:'
@@ -130,7 +130,7 @@ program test_krdem1
          'RTOL =', rtol(1), ' ATOL =', atol(1), ' JTYPE =', jtype
    end if
 
-   ! Call DDASKR in loop over TOUT values = 2, 3, 4, 5, 6.
+   ! Call DASKR in loop over TOUT values = 2, 3, 4, 5, 6.
    ero = zero
    do iout = 1, 5
       do
@@ -158,7 +158,7 @@ program test_krdem1
 
          ! If no root found, increment TOUT and loop back.
          ! If a root was found, write results and check root location.
-         ! Then return to DDASKR to continue the integration.
+         ! Then return to DASKR to continue the integration.
          if (idid /= 5) then
             tout = tout + one
             exit

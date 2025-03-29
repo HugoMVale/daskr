@@ -115,7 +115,7 @@ program example_heatilu
 !! The result is a DAE system G(t,U,U') = 0 of size NEQ = (M+2)*(M+2).
 !!
 !! Initial conditions are posed as u = 16x(1-x)y(1-y) at t = 0.
-!! The problem is solved by DDASKR on the time interval 0 <= t <= 10.24.
+!! The problem is solved by DASKR on the time interval 0 <= t <= 10.24.
 !!
 !! The root functions are R1(U) = max(u) - 0.1, R2(U) = max(u) - 0.01.
 !!
@@ -138,9 +138,7 @@ program example_heatilu
 !!   Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold,
 !!   Using Krylov Methods in the Solution of Large-Scale Differential-
 !!   Algebraic Systems, SIAM J. Sci. Comput., 15 (1994), pp. 1467-1488.
-
-! Here are necessary declarations.  The dimension statements use a
-! maximum value for the mesh parameter M.
+  
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: wp, one, zero
    use heatilu_module
@@ -229,7 +227,7 @@ program example_heatilu
 
    !-----------------------------------------------------------------------
    ! Here we set up the INFO array, which describes the various options
-   ! in the way we want DDASKR to solve the problem.
+   ! in the way we want DASKR to solve the problem.
    ! In this case, we select the iterative preconditioned Krylov method,
    ! and we supply the sparse preconditioner routines DJACILU/DPSOLILU.
    !
@@ -242,7 +240,7 @@ program example_heatilu
    ! Since we are using a preconditioner that involves approximate
    ! Jacobian elements requiring preprocessing, we have a JAC routine,
    ! namely subroutine DJACILU, and we must set INFO(15) = 1 to indicate
-   ! this to DDASKR.
+   ! this to DASKR.
    !
    ! No other entries of INFO need to be changed for this example.
    !-----------------------------------------------------------------------
@@ -250,14 +248,14 @@ program example_heatilu
    info(12) = 1
    info(15) = 1
 
-   ! Here we set tolerances for DDASKR to indicate how much accuracy we want in the solution, 
+   ! Here we set tolerances for DASKR to indicate how much accuracy we want in the solution, 
    ! in the sense of local error control.
    ! For this example, we ask for pure absolute error control with a tolerance of 1e-5.
    rtol = zero
    atol = 1.0e-5_wp
 
    ! Here we generate a heading with important parameter values.
-   write (stdout, '(5x, a, //)') 'HEATILU: Heat Equation Example Program for DDASKR'
+   write (stdout, '(5x, a, //)') 'HEATILU: Heat Equation Example Program for DASKR'
    write (stdout, '(5x, a, i3, a, i4)') 'M+2 by M+2 mesh, M =', m, ', System size NEQ =', neq
    write (stdout, '(5x, a)') 'Root functions are: R1 = max(u) - 0.1 and R2 = max(u) - 0.01'
    write (stdout, '(5x, a, i3, a)') 'Linear solver method flag INFO(12) =', info(12), ' (0 = direct, 1 = Krylov)'

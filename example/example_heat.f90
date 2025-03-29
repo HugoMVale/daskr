@@ -139,8 +139,6 @@ program example_heat
 !!   Using Krylov Methods in the Solution of Large-Scale Differential-
 !!   Algebraic Systems, SIAM J. Sci. Comput., 15 (1994), pp. 1467-1488.
 
-   ! Here are necessary declarations. The dimension statements use a maximum value for the mesh
-   ! parameter M, and assume ML = MU = 1.
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: wp, one, zero
    use heat_module
