@@ -73,7 +73,7 @@ contains
    end subroutine resh
 
    pure subroutine rtheat(neq, t, u, up, nrt, rval, rpar, ipar)
-        !! This routine finds the max of U, and sets RVAL(1) = max(u) - 0.1, RVAL(2) = max(u) - 0.01.
+   !! This routine finds the max of U, and sets RVAL(1) = max(u) - 0.1, RVAL(2) = max(u) - 0.01.
       integer, intent(in) :: neq
       real(wp), intent(in) :: t
       real(wp), intent(in) :: u(neq)
@@ -116,7 +116,7 @@ program example_heatilu
 !! The result is a DAE system G(t,U,U') = 0 of size NEQ = (M+2)*(M+2).
 !!
 !! Initial conditions are posed as u = 16x(1-x)y(1-y) at t = 0.
-!! The problem is solved by DDASKR on the time interval t .le. 10.24.
+!! The problem is solved by DDASKR on the time interval 0 <= t <= 10.24.
 !!
 !! The root functions are R1(U) = max(u) - 0.1, R2(U) = max(u) - 0.01.
 !!
@@ -149,7 +149,7 @@ program example_heatilu
 
    integer, parameter :: lenpfac = 5, lenplufac = 5, ipremeth = 1, lfililut = 5, &
                          ireorder = 1, isrnorm = 1, normtype = 2, jacout = 0, &
-                         jscalcol = 1, maxm = 10, maxm2 = maxm + 2, mxneq = maxm2*maxm2, &
+                         jscalcol = 1, maxm = 10, maxm2 = maxm + 2, mxneq = maxm2**2, &
                          lenwp = 2*lenpfac*mxneq + lenplufac*mxneq + isrnorm*mxneq &
                          + 2*(mxneq + 1), &
                          leniwp = 4*(mxneq + 1) + 3*lenpfac*mxneq + 2*lenplufac*mxneq &

@@ -108,14 +108,14 @@ program example_heat
 !! posed on the 2-D unit square with zero Dirichlet boundary conditions.
 !! An M+2 by M+2 mesh is set on the square, with uniform spacing 1/(M+1).
 !! The spatial deriviatives are represented by standard central finite
-!! difference approximations.  At each interior point of the mesh,
+!! difference approximations. At each interior point of the mesh,
 !! the discretized PDE becomes an ODE for the discrete value of u.
 !! At each point on the boundary, we pose the equation u = 0.  The
 !! discrete values of u form a vector U, ordered first by x, then by y.
 !! The result is a DAE system G(t,U,U') = 0 of size NEQ = (M+2)*(M+2).
 !!
 !! Initial conditions are posed as u = 16x(1-x)y(1-y) at t = 0.
-!! The problem is solved by DASKR on the time interval t <= 10.24.
+!! The problem is solved by DASKR on the time interval 0 <= t <= 10.24.
 !!
 !! The root functions are R1(U) = max(u) - 0.1, R2(U) = max(u) - 0.01.
 !!
