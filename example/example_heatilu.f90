@@ -145,14 +145,15 @@ program example_heatilu
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: wp, one, zero
    use heatilu_module
-   ! IMPLICIT DOUBLE PRECISION(A - H, O - Z)
    implicit none
 
    integer, parameter :: lenpfac = 5, lenplufac = 5, ipremeth = 1, lfililut = 5, &
                          ireorder = 1, isrnorm = 1, normtype = 2, jacout = 0, &
                          jscalcol = 1, maxm = 10, maxm2 = maxm + 2, mxneq = maxm2*maxm2, &
-                         lenwp = 2*lenpfac*mxneq + lenplufac*mxneq + isrnorm*mxneq + 2*(mxneq + 1), &
-                         leniwp = 4*(mxneq + 1) + 3*lenpfac*mxneq + 2*lenplufac*mxneq + ireorder*2*mxneq + (ipremeth - 1)*2*mxneq, &
+                         lenwp = 2*lenpfac*mxneq + lenplufac*mxneq + isrnorm*mxneq &
+                         + 2*(mxneq + 1), &
+                         leniwp = 4*(mxneq + 1) + 3*lenpfac*mxneq + 2*lenplufac*mxneq &
+                         + ireorder*2*mxneq + (ipremeth - 1)*2*mxneq, &
                          lenrw = 107 + 18*mxneq, leniw = 40
 
    real(wp), parameter :: permtol = 0.01_wp, tolilut = 0.001_wp
@@ -250,28 +251,20 @@ program example_heatilu
    info(12) = 1
    info(15) = 1
 
-   ! Here we set tolerances for DDASKR to indicate how much accuracy
-   ! we want in the solution, in the sense of local error control.
-   ! For this example, we ask for pure absolute error control with a
-   ! tolerance of 1.0D-5.
+   ! Here we set tolerances for DDASKR to indicate how much accuracy we want in the solution, 
+   ! in the sense of local error control.
+   ! For this example, we ask for pure absolute error control with a tolerance of 1e-5.
    rtol = zero
    atol = 1.0e-5_wp
 
    ! Here we generate a heading with important parameter values.
-   write (stdout, '(5x, a, //)') &
-      'HEATILU: Heat Equation Example Program for DDASKR'
-   write (stdout, '(5x, a, i3, a, i4)') &
-      'M+2 by M+2 mesh, M =', m, ', System size NEQ =', neq
-   write (stdout, '(5x, a)') &
-      'Root functions are: R1 = max(u) - 0.1 and R2 = max(u) - 0.01'
-   write (stdout, '(5x, a, i3, a)') &
-      'Linear solver method flag INFO(12) =', info(12), ' (0 = direct, 1 = Krylov)'
-   write (stdout, '(5x, a, i3, a, i3)') &
-      'Preconditioner is a sparse approximation with ML =', ml, ' MU =', mu
-   write (stdout, '(5x, a, i2, a)') &
-      'Incomplete factorization option =', ipremeth, ' (1 = ILUT, 2 = ILUTP)'
-   write (stdout, '(5x, a, e10.1, a, e10.1, //)') &
-      'Tolerances are RTOL =', rtol, ' ATOL =', atol
+   write (stdout, '(5x, a, //)') 'HEATILU: Heat Equation Example Program for DDASKR'
+   write (stdout, '(5x, a, i3, a, i4)') 'M+2 by M+2 mesh, M =', m, ', System size NEQ =', neq
+   write (stdout, '(5x, a)') 'Root functions are: R1 = max(u) - 0.1 and R2 = max(u) - 0.01'
+   write (stdout, '(5x, a, i3, a)') 'Linear solver method flag INFO(12) =', info(12), ' (0 = direct, 1 = Krylov)'
+   write (stdout, '(5x, a, i3, a, i3)') 'Preconditioner is a sparse approximation with ML =', ml, ' MU =', mu
+   write (stdout, '(5x, a, i2, a)') 'Incomplete factorization option =', ipremeth, ' (1 = ILUT, 2 = ILUTP)'
+   write (stdout, '(5x, a, e10.1, a, e10.1, //)') 'Tolerances are RTOL =', rtol, ' ATOL =', atol
    write (stdout, "(5x, 't', 12x, 'UMAX', 8x, 'NQ', 8x, 'H', 8x, 'STEPS', 5x, 'NNI', 5x, 'NLI')")
 
    !-------------------------------------------------------------------------------------------
@@ -331,8 +324,8 @@ program example_heatilu
    end do
 
    ! Here we display some final statistics for the problem.
-   ! The ratio of NLI to NNI is the average dimension of the Krylov
-   ! subspace involved in the Krylov linear iterative method.
+   ! The ratio of NLI to NNI is the average dimension of the Krylov subspace involved in the 
+   ! Krylov linear iterative method.
    nst = iwork(11)
    npe = iwork(13)
    nre = iwork(12) + npe*mband
@@ -346,31 +339,18 @@ program example_heatilu
    ncfl = iwork(16)
    nrte = iwork(36)
 
-   write (stdout, '(//, 5x, a)') &
-      'Final statistics for this run:'
-   write (stdout, '(5x, a, i5, a, i4)') &
-      'RWORK size =', lrw, ' IWORK size =', liw
-   write (stdout, '(5x, a, i5)') &
-      'Number of time steps ................ =', nst
-   write (stdout, '(5x, a, i5)') &
-      'Number of residual evaluations ...... =', nre
-   write (stdout, '(5x, a, i5)') &
-      'Number of res. evals. for precond.... =', ipar(30)
-   write (stdout, '(5x, a, i5)') &
-      'Number of root function evaluations . =', nrte
-   write (stdout, '(5x, a, i5)') &
-      'Number of preconditioner evaluations  =', npe
-   write (stdout, '(5x, a, i5)') &
-      'Number of preconditioner solves ..... =', nps
-   write (stdout, '(5x, a, i5)') &
-      'Number of nonlinear iterations ...... =', nni
-   write (stdout, '(5x, a, i5)') &
-      'Number of linear iterations ......... =', nli
-   write (stdout, '(5x, a, f8.4)') &
-      'Average Krylov subspace dimension =', avdim
-   write (stdout, '(x, i5, a, i5, a)') &
-      ncfn, ' nonlinear conv. failures,', ncfl, ' linear conv. failures'
-   write (stdout, '(5x, a, i7, 1x, i7)') &
-      'Minimum lengths for work arrays WP and IWP: ', lwpmin, liwpmin
+   write (stdout, '(//, 5x, a)') 'Final statistics for this run:'
+   write (stdout, '(5x, a, i5, a, i4)') 'RWORK size =', lrw, ' IWORK size =', liw
+   write (stdout, '(5x, a, i5)') 'Number of time steps ................ =', nst
+   write (stdout, '(5x, a, i5)') 'Number of residual evaluations ...... =', nre
+   write (stdout, '(5x, a, i5)') 'Number of res. evals. for precond.... =', ipar(30)
+   write (stdout, '(5x, a, i5)') 'Number of root function evaluations . =', nrte
+   write (stdout, '(5x, a, i5)') 'Number of preconditioner evaluations  =', npe
+   write (stdout, '(5x, a, i5)') 'Number of preconditioner solves ..... =', nps
+   write (stdout, '(5x, a, i5)') 'Number of nonlinear iterations ...... =', nni
+   write (stdout, '(5x, a, i5)') 'Number of linear iterations ......... =', nli
+   write (stdout, '(5x, a, f8.4)') 'Average Krylov subspace dimension =', avdim
+   write (stdout, '(x, i5, a, i5, a)') ncfn, ' nonlinear conv. failures,', ncfl, ' linear conv. failures'
+   write (stdout, '(5x, a, i7, 1x, i7)') 'Minimum lengths for work arrays WP and IWP: ', lwpmin, liwpmin
 
 end program example_heatilu
