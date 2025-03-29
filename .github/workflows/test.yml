@@ -38,7 +38,6 @@ jobs:
       - name: Build and test
         run: |
           gfortran --version
-          fpm test --profile debug --flag $FLAGS --verbose
           fpm test --profile release --flag $FLAGS --verbose
       
       - name: Generate coverage report
@@ -46,7 +45,7 @@ jobs:
         run: |
           gfortran --version
           rm -rf ./build/gfortran*
-          fpm test --profile debug --flag "$FLAGS --coverage"
+          fpm test --profile release --flag "$FLAGS --coverage"
           gcov ./build/gfortran*/daskr/src*.gcda -r ./src/ -b -w
           
     #   - name: Run examples
