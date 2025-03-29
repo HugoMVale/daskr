@@ -34,7 +34,7 @@ contains
 
    end subroutine uinit
 
-   pure subroutine resh(t, u, uprime, cj, delta, ires, rpar, ipar)
+   pure subroutine res(t, u, uprime, cj, delta, ires, rpar, ipar)
    !! This is the user-supplied RES subroutine for this example.
    !! It computes the residuals for the 2-D discretized heat equation, with zero boundary values.
       real(wp), intent(in) :: t
@@ -69,9 +69,9 @@ contains
          end do
       end do
 
-   end subroutine resh
+   end subroutine res
 
-   pure subroutine rtheat(neq, t, u, up, nrt, rval, rpar, ipar)
+   pure subroutine rt(neq, t, u, up, nrt, rval, rpar, ipar)
    !! This routine finds the max of U, and sets RVAL(1) = max(u) - 0.1, RVAL(2) = max(u) - 0.01.
       integer, intent(in) :: neq
       real(wp), intent(in) :: t
@@ -92,7 +92,7 @@ contains
       rval(1) = umax - 0.1_wp
       rval(2) = umax - 0.01_wp
 
-   end subroutine rtheat
+   end subroutine rt
 
 end module heat_module
 
@@ -261,9 +261,9 @@ program example_heat
    do iout = 1, nout
 
       do
-         call DDASKR(resh, neq, t, u, uprime, tout, info, rtol, atol, &
+         call DDASKR(res, neq, t, u, uprime, tout, info, rtol, atol, &
                      idid, rwork, lrw, iwork, liw, rpar, ipar, dbanja, dbanps, &
-                     rtheat, nrt, jroot)
+                     rt, nrt, jroot)
 
          umax = zero
          do i = 1, neq
