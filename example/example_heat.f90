@@ -14,10 +14,9 @@ contains
       real(wp), intent(in) :: rpar(2)
       integer, intent(in) :: ipar(4)
 
-      integer :: i, ioff, j, k, m, neq
+      integer :: i, ioff, j, k, m
       real(wp) :: dx, xj, yk
 
-      neq = ipar(3)
       m = ipar(4)
       dx = rpar(1)
 
@@ -31,7 +30,7 @@ contains
          end do
       end do
 
-      uprime(1:neq) = zero
+      uprime = zero
 
    end subroutine uinit
 
@@ -77,9 +76,9 @@ contains
       integer, intent(in) :: neq
       real(wp), intent(in) :: t
       real(wp), intent(in) :: u(neq)
-      real(wp), intent(in) :: up(*)
+      real(wp), intent(in) :: up(neq)
       integer, intent(in) :: nrt
-      real(wp), intent(out) :: rval(2)
+      real(wp), intent(out) :: rval(nrt)
       real(wp), intent(in) :: rpar(2)
       integer, intent(in) :: ipar(4)
 
@@ -147,12 +146,12 @@ program example_heat
    use heat_module
    implicit none
 
-   integer, parameter :: maxm = 10, maxm2 = maxm + 2, mxneq = maxm2*maxm2, &
+   integer, parameter :: maxm = 10, maxm2 = maxm + 2, mxneq = maxm2**2, &
                          lenrw = 107 + 18*mxneq, leniw = 40, leniwp = mxneq, &
                          lenwp = 4*mxneq + 2*((mxneq/3) + 1)
    integer :: i, idid, iout, lenpd, liw, liwp, lrw, lwp, m, mband, ml, msave, mu, &
               ncfl, ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
-   integer :: iwork(leniw + leniwp), info(20), jroot(2), ipar(4)
+   integer :: iwork(leniw + leniwp), info(20), ipar(4), jroot(2)
 
    real(wp) :: atol, avdim, coeff, dx, hu, rtol, t, tout, umax
    real(wp) :: u(mxneq), uprime(mxneq), rwork(lenrw + lenwp), rpar(2)
