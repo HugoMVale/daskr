@@ -27,7 +27,7 @@ contains
          do j = 0, m + 1
             xj = j*dx
             i = ioff + j + 1
-            u(i) = 16.0_wp*xj*(one - xj)*yk*(one - yk)
+            u(i) = 16*xj*(one - xj)*yk*(one - yk)
          end do
       end do
 
@@ -66,7 +66,7 @@ contains
             i = ioff + j + 1
             temx = u(i - 1) + u(i + 1)
             temy = u(i - m2) + u(i + m2)
-            delta(i) = uprime(i) - (temx + temy - 4.0_wp*u(i))*coeff
+            delta(i) = uprime(i) - (temx + temy - 4*u(i))*coeff
          end do
       end do
 
@@ -148,8 +148,8 @@ program example_heat
    implicit none
 
    integer, parameter :: maxm = 10, maxm2 = maxm + 2, mxneq = maxm2*maxm2, &
-                         lenrw = 107 + 18*mxneq, leniw = 40, &
-                         lenwp = 4*mxneq + 2*((mxneq/3) + 1), leniwp = mxneq
+                         lenrw = 107 + 18*mxneq, leniw = 40, leniwp = mxneq, &
+                         lenwp = 4*mxneq + 2*((mxneq/3) + 1)
    integer :: i, idid, iout, lenpd, liw, liwp, lrw, lwp, m, mband, ml, msave, mu, &
               ncfl, ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
    integer :: iwork(leniw + leniwp), info(20), jroot(2), ipar(4)
@@ -162,9 +162,9 @@ program example_heat
    ! Here set parameters for the problem being solved.  Use RPAR and IPAR to communicate these
    ! to the other routines.
    m = maxm
-   dx = one/(m + 1)
+   dx = one/(m + one)
    neq = (m + 2)*(m + 2)
-   coeff = one/(dx*dx)
+   coeff = one/dx**2
 
    ipar(3) = neq
    ipar(4) = m
@@ -223,19 +223,19 @@ program example_heat
 
    ! Here we generate a heading with important parameter values.
    ! stdout is the unit number of the output device.
-   write (stdout, '(a, //)') &
-      '    DHEAT: Heat Equation Example Program for DASKR'
-   write (stdout, '(a, i3, a, i4, //)') &
-      '    M+2 by M+2 mesh, M =', m, ',  System size NEQ =', neq
-   write (stdout, '(a, //)') &
-      '    Root functions are: R1 = max(u) - 0.1 and R2 = max(u) - 0.01'
-   write (stdout, '(a, i3, a)') &
-      '    Linear solver method flag INFO(12) =', info(12), '    (0 = direct, 1 = Krylov)'
-   write (stdout, '(a, i3, a, i3, //)') &
-      '    Preconditioner is a banded approximation with ML =', ml, '  MU =', mu
-   write (stdout, '(a, e10.1, a, e10.1, //)') &
-      '    Tolerances are RTOL =', rtol, '   ATOL =', atol
-   write (stdout, "(5X, 't', 12X, 'UMAX', 8X, 'NQ', 8X, 'H', 8X, 'STEPS', 5X, 'NNI', 5X, 'NLI')")
+   write (stdout, '(5x, a, //)') &
+      'DHEAT: Heat Equation Example Program for DASKR'
+   write (stdout, '(5x, a, i3, a, i4)') &
+      'M+2 by M+2 mesh, M =', m, ',  System size NEQ =', neq
+   write (stdout, '(5x, a)') &
+      'Root functions are: R1 = max(u) - 0.1 and R2 = max(u) - 0.01'
+   write (stdout, '(5x, a, i3, a)') &
+      'Linear solver method flag INFO(12) =', info(12), '    (0 = direct, 1 = Krylov)'
+   write (stdout, '(5x, a, i3, a, i3)') &
+      'Preconditioner is a banded approximation with ML =', ml, '  MU =', mu
+   write (stdout, '(5x, a, e10.1, a, e10.1, //)') &
+      'Tolerances are RTOL =', rtol, '   ATOL =', atol
+   write (stdout, "(5x, 't', 12x, 'UMAX', 8x, 'NQ', 8x, 'H', 8x, 'STEPS', 5x, 'NNI', 5x, 'NLI')")
 
    !-------------------------------------------------------------------------------------------
    ! Now we solve the problem.
@@ -255,11 +255,10 @@ program example_heat
    !
    ! If DASKR failed in any way (IDID < 0) we print a message and stop the integration.
    !-------------------------------------------------------------------------------------------
-
-   nout = 11
+   
    t = zero
-   tout = 1e-2_wp
-
+   tout = 0.01_wp
+   nout = 11
    do iout = 1, nout
 
       do
@@ -280,14 +279,14 @@ program example_heat
          write (stdout, '(E15.5, E12.4, I5, E14.3, I7, I9, I8)') t, umax, nqu, hu, nst, nni, nli
 
          if (idid == 5) then
-            write (stdout, '(20X,A,2I3)') '*****   Root found, JROOT =', jroot(1), jroot(2)
+            write (stdout, '(20X, A, 2I3)') '*****   Root found, JROOT =', jroot(1), jroot(2)
          else
             exit
          end if
       end do
 
       if (idid < 0) then
-         write (stdout, '(/,A,E12.4,/)') ' Final time reached =', t
+         write (stdout, '(/,A, E12.4,/)') ' Final time reached =', t
          exit
       end if
 
@@ -311,27 +310,27 @@ program example_heat
    ncfl = iwork(16)
    nrte = iwork(36)
 
-   write (stdout, '(//, a)') &
-      '    Final statistics for this run:'
-   write (stdout, '(a, i5, a, i4)') &
-      '    RWORK size =', lrw, '   IWORK size =', liw
-   write (stdout, '(a, i5)') &
-      '    Number of time steps ................ =', nst
-   write (stdout, '(a, i5)') &
-      '    Number of residual evaluations ...... =', nre
-   write (stdout, '(a, i5)') &
-      '    Number of root function evaluations . =', nrte
-   write (stdout, '(a, i5)') &
-      '    Number of preconditioner evaluations  =', npe
-   write (stdout, '(a, i5)') &
-      '    Number of preconditioner solves ..... =', nps
-   write (stdout, '(a, i5)') &
-      '    Number of nonlinear iterations ...... =', nni
-   write (stdout, '(a, i5)') &
-      '    Number of linear iterations ......... =', nli
-   write (stdout, '(a, f8.4)') &
-      '    Average Krylov subspace dimension ... =', avdim
-   write (stdout, '(i5, a, i5, a)') &
+   write (stdout, '(//, 5x, a)') &
+      'Final statistics for this run:'
+   write (stdout, '(5x, a, i5, a, i4)') &
+      'RWORK size =', lrw, '   IWORK size =', liw
+   write (stdout, '(5x, a, i5)') &
+      'Number of time steps ................ =', nst
+   write (stdout, '(5x, a, i5)') &
+      'Number of residual evaluations ...... =', nre
+   write (stdout, '(5x, a, i5)') &
+      'Number of root function evaluations . =', nrte
+   write (stdout, '(5x, a, i5)') &
+      'Number of preconditioner evaluations  =', npe
+   write (stdout, '(5x, a, i5)') &
+      'Number of preconditioner solves ..... =', nps
+   write (stdout, '(5x, a, i5)') &
+      'Number of nonlinear iterations ...... =', nni
+   write (stdout, '(5x, a, i5)') &
+      'Number of linear iterations ......... =', nli
+   write (stdout, '(5x, a, f8.4)') &
+      'Average Krylov subspace dimension ... =', avdim
+   write (stdout, '(x, i5, a, i5, a, //)') &
       ncfn, ' nonlinear conv. failures,', ncfl, ' linear conv. failures'
 
 end program example_heat
