@@ -62,7 +62,7 @@ contains
 
 end module krdem1_module
 
-program example_krdem1
+program test_krdem1
 !! Test program for `daskr`: nonstiff problem.
 !!
 !! The initial value problem is:
@@ -216,4 +216,4 @@ program example_krdem1
       error stop "Test failed."
    end if
 
-end program example_krdem1
+end program test_krdem1
