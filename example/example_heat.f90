@@ -1,5 +1,5 @@
 module heat_module
-   !! Auxiliary module for example_heat
+!! Auxiliary module for `example_heat`.
    use daskr_kinds, only: wp, zero, one
    implicit none
 
