@@ -24,8 +24,8 @@ contains
          return
       else
 
-         ! Call F1 to obtain F(T,Y)
-         call f1(t, y, delta)
+         ! Call F to obtain F(T,Y)
+         call f(t, y, delta)
 
          ! Form G = Y' - F(T,Y)
          delta = yprime - delta
@@ -34,7 +34,7 @@ contains
 
    end subroutine res
 
-   pure subroutine f1(t, y, ydot)
+   pure subroutine f(t, y, ydot)
    !! dy1/dt routine.
       real(wp), intent(in) :: t
       real(wp), intent(in) :: y(:)
@@ -42,7 +42,7 @@ contains
 
       ydot(1) = ((2*log(y(1)) + 8.0_wp)/t - 5.0_wp)*y(1)
 
-   end subroutine f1
+   end subroutine f
 
    pure subroutine rt(neq, t, y, yp, nrt, rval, rpar, ipar)
      !! Roots routine.
@@ -120,7 +120,7 @@ program test_krdem1
    info(5) = 2 - jtype
    nrt = 2
    if (kprint >= 2) then
-      write (stdout, '(a, /)') 'DKRDEM-1: Demonstration Program for DASKR'
+      write (stdout, '(a, /)') 'DKRDEM-1: Test Program for DASKR'
       write (stdout, '(a)') 'Problem is  dY/dT = ((2*LOG(Y)+8)/T - 5)*Y,  Y(1) = 1'
       write (stdout, '(a)') 'Solution is  Y(T) = EXP(-T**2 + 5*T - 4)'
       write (stdout, '(a)') 'Root functions are:'
