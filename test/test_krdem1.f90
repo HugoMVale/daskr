@@ -92,7 +92,7 @@ program test_krdem1
    integer :: info(20), iwork(liw), jroot(2)
    logical :: success
    real(wp) :: er, ero, errt, psdum, rpar, t, tout, yt
-   real(wp) :: atol(2), rtol(2), rwork(lrw), y(neq), yprime(neq)
+   real(wp) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
 
    ! Set all input parameters and print heading.
    info = 0
@@ -105,8 +105,8 @@ program test_krdem1
    y(1) = one
    t = one
    tout = two
-   rtol(1) = zero
-   atol(1) = 1e-6_wp
+   rtol = zero
+   atol = 1e-6_wp
 
    ! Set INFO(11) = 1 if DASKR is to compute the initial YPRIME, and generate an initial guess
    ! for YPRIME.  Otherwise, set INFO(11) = 0 and supply the correct initial value for YPRIME.
