@@ -86,7 +86,7 @@ program test_krdem2
 !! The initial value problem is:
 !!```
 !!    dy1/dt = y2
-!!    dy2/dt = 100*(1 - y1**2)*y2 - y1,
+!!    dy2/dt = 100*(1 - y1**2)*y2 - y1
 !!
 !!    y1(0) = 2,  y2(0) = 0,  0 <= t <= 200
 !!    y1'(0) = 0, y2'(0) = -2

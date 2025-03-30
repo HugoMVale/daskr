@@ -69,7 +69,8 @@ program test_krdem1
 !!
 !! The initial value problem is:
 !!```
-!!    dy/dt = ((2*log(y) + 8)/t - 5)*y,  y(1) = 1,  1 <= t <= 6
+!!    dy/dt = ((2*log(y) + 8)/t - 5)*y
+!!    y(1) = 1,  1 <= t <= 6
 !!``` 
 !! The solution is:
 !!```
@@ -77,7 +78,7 @@ program test_krdem1
 !!```
 !! The two root functions are:
 !!```
-!!    r1(t,y,y') = dy/dt  (with root at t = 2.5),
+!!    r1(t,y,y') = dy/dt            (with root at t = 2.5),
 !!    r2(t,y,y') = log(y) - 2.2491  (with roots at t = 2.47 and 2.53)
 !!```
 !!
