@@ -6,13 +6,13 @@ Modernized version of DASKR, a differential-algebraic system solver with rootfin
 [![codecov](https://codecov.io/gh/HugoMVale/daskr/graph/badge.svg?token=AgjzeQ1qFL)](https://codecov.io/gh/HugoMVale/daskr)
 [![Language](https://img.shields.io/badge/-Fortran-734f96?logo=fortran&logoColor=white)](https://github.com/topics/fortran)
 
-## Description
+## Status
 
-tbd
+This is a work in progress. First, I'm modernizing the examples and converting some to unit tests. Then, I'll begin work on the library code itself.
 
 ## History
 
-The first version of the library, named DASSL, was originally released in 1982 [1]. This was followed by the release of DASPK in 1994 [2]. The last official version, named DASKR, was released in 1998 [3]. 
+The first version of the library, named DASSL, was originally released in 1982 [1]. This was followed by the release of DASPK in 1994 [2]. The last official version, named DASKR, was released in 1998 [3].
 
 `daskr` is a modernization of the DASKR code [4], intended to make the library easier to use and maintain. The main changes include:
 
