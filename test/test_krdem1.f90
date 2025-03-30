@@ -119,7 +119,7 @@ program test_krdem1
    jtype = 2
    info(5) = 2 - jtype
    if (kprint >= 2) then
-      write (lun, '(a, /)') 'DKRDEM-1: Test Program for DASKR'
+      write (lun, '(/, a, /)') 'DKRDEM-1: Test Program for DASKR'
       write (lun, '(a)') 'Problem is  dY/dT = ((2*LOG(Y)+8)/T - 5)*Y,  Y(1) = 1'
       write (lun, '(a)') 'Solution is  Y(T) = EXP(-T**2 + 5*T - 4)'
       write (lun, '(a)') 'Root functions are:'
@@ -173,13 +173,19 @@ program test_krdem1
                write (lun, '(4x, a, e12.4, /)') 'Error in t location of root is', errt
             end if
 
-            if ((abs(errt) >= 1e-3_wp) .and. (kprint >= 2)) then
+            if (abs(errt) >= 1e-3_wp) then
                nerr = nerr + 1
-               write (lun, '(/, a, /)') 'WARNING: Root error exceeds 1e-3'
+               if (kprint >= 2) then
+                  write (lun, '(/, a, /)') 'WARNING: Root error exceeds 1e-3'
+               end if
             end if
+
          end if
+      
       end do
+      
       if (idid < 0) exit
+   
    end do
 
    ! Problem complete. Print final statistics.
@@ -191,7 +197,7 @@ program test_krdem1
    nrea = nre
    if (jtype == 2) nre = nre + neq*nje
 
-   if (kprint > 2) then
+   if (kprint >= 2) then
       write (lun, '(/, a)') "Final statistics for this run:"
       write (lun, '(a, i5)') "number of steps =", nst
       write (lun, '(a, i5)') "number of Gs    =", nre
@@ -201,14 +207,14 @@ program test_krdem1
       write (lun, '(a, e10.2)') "error overrun   =", ero
    end if
 
-   if (kprint >= 2) then
-      write (lun, '(/, 80("-"), /, a, i3)') 'Number of errors encountered =', nerr
+   if (kprint >= 1) then
+      write (lun, '(/, a, i3)') 'Number of errors encountered =', nerr
    end if
    
    if (nerr == 0) then
-      stop "Test passed."
+      stop ">>> Test passed. <<<"
    else
-      error stop "Test failed."
+      error stop ">>> Test failed. <<<"
    end if
 
 end program test_krdem1
