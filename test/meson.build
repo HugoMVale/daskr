@@ -1,5 +1,6 @@
 tests = [
-  #
+  'krdem1',
+  'krdem2'
 ]
 
 foreach t : tests
