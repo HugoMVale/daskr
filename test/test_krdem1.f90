@@ -2,12 +2,14 @@ module krdem1_module
 !! Auxiliary module for `example_krdem1`.
    use daskr_kinds, only: wp, zero, one
    implicit none
+   
+   ! @note: not so happy with this, but it is required for the time being
+   integer, parameter :: neq = 1, nrt = 2
 
 contains
 
    pure subroutine res(t, y, yprime, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
-      integer, parameter :: neq = 1 ! @todo: pass neq some other way
       real(wp), intent(in):: t
       real(wp), intent(in):: y(neq)
       real(wp), intent(in):: yprime(neq)
@@ -84,11 +86,11 @@ program test_krdem1
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: wp, zero, one, two
-   use krdem1_module, only: res, rt
+   use krdem1_module, only: res, rt, neq, nrt
    implicit none
 
-   integer, parameter :: neq = 1, lrw = 100, liw = 100
-   integer :: idid, iout, ipar, jdum, jtype, kprint, lun, nerr, nre, nrea, nrte, nje, nrt, nst
+   integer, parameter :: lrw = 76, liw = 41
+   integer :: idid, iout, ipar, jdum, jtype, kprint, lun, nerr, nre, nrea, nrte, nje, nst
    integer :: info(20), iwork(liw), jroot(2)
    real(wp) :: er, ero, errt, psdum, rpar, t, tout, yt
    real(wp) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
@@ -116,15 +118,14 @@ program test_krdem1
    ! JTYPE = 2 ==> Jacobian is dense and computed internally
    jtype = 2
    info(5) = 2 - jtype
-   nrt = 2
    if (kprint >= 2) then
-      write (stdout, '(a, /)') 'DKRDEM-1: Test Program for DASKR'
-      write (stdout, '(a)') 'Problem is  dY/dT = ((2*LOG(Y)+8)/T - 5)*Y,  Y(1) = 1'
-      write (stdout, '(a)') 'Solution is  Y(T) = EXP(-T**2 + 5*T - 4)'
-      write (stdout, '(a)') 'Root functions are:'
-      write (stdout, '(a)') 'R1 = dY/dT  (root at T = 2.5)'
-      write (stdout, '(a)') 'R2 = LOG(Y) - 2.2491  (roots at T = 2.47 and T = 2.53)'
-      write (stdout, '(a, e10.1, a, e10.1, a, i3, /)') &
+      write (lun, '(a, /)') 'DKRDEM-1: Test Program for DASKR'
+      write (lun, '(a)') 'Problem is  dY/dT = ((2*LOG(Y)+8)/T - 5)*Y,  Y(1) = 1'
+      write (lun, '(a)') 'Solution is  Y(T) = EXP(-T**2 + 5*T - 4)'
+      write (lun, '(a)') 'Root functions are:'
+      write (lun, '(a)') 'R1 = dY/dT  (root at T = 2.5)'
+      write (lun, '(a)') 'R2 = LOG(Y) - 2.2491  (roots at T = 2.47 and T = 2.53)'
+      write (lun, '(a, e10.1, a, e10.1, a, i3, /)') &
          'RTOL =', rtol(1), ' ATOL =', atol(1), ' JTYPE =', jtype
    end if
 
