@@ -255,14 +255,14 @@ program example_heatilu
    atol = 1.0e-5_wp
 
    ! Here we generate a heading with important parameter values.
-   write (stdout, '(5x, a, //)') 'HEATILU: Heat Equation Example Program for DASKR'
-   write (stdout, '(5x, a, i3, a, i4)') 'M+2 by M+2 mesh, M =', m, ', System size NEQ =', neq
-   write (stdout, '(5x, a)') 'Root functions are: R1 = max(u) - 0.1 and R2 = max(u) - 0.01'
-   write (stdout, '(5x, a, i3, a)') 'Linear solver method flag INFO(12) =', info(12), ' (0 = direct, 1 = Krylov)'
-   write (stdout, '(5x, a, i3, a, i3)') 'Preconditioner is a sparse approximation with ML =', ml, ' MU =', mu
-   write (stdout, '(5x, a, i2, a)') 'Incomplete factorization option =', ipremeth, ' (1 = ILUT, 2 = ILUTP)'
-   write (stdout, '(5x, a, e10.1, a, e10.1, //)') 'Tolerances are RTOL =', rtol, ' ATOL =', atol
-   write (stdout, "(5x, 't', 12x, 'UMAX', 8x, 'NQ', 8x, 'H', 8x, 'STEPS', 5x, 'NNI', 5x, 'NLI')")
+   write (stdout, '(a, /)') 'HEATILU: Heat Equation Example Program for DASKR'
+   write (stdout, '(a, i3, a, i4)') 'M+2 by M+2 mesh, M =', m, ', System size NEQ =', neq
+   write (stdout, '(a)') 'Root functions are: R1 = max(u) - 0.1 and R2 = max(u) - 0.01'
+   write (stdout, '(a, i3, a)') 'Linear solver method flag INFO(12) =', info(12), ' (0 = direct, 1 = Krylov)'
+   write (stdout, '(a, i3, a, i3)') 'Preconditioner is a sparse approximation with ML =', ml, ' MU =', mu
+   write (stdout, '(a, i2, a)') 'Incomplete factorization option =', ipremeth, ' (1 = ILUT, 2 = ILUTP)'
+   write (stdout, '(a, e10.1, a, e10.1, /)') 'Tolerances are RTOL =', rtol, ' ATOL =', atol
+   write (stdout, "('t', 12x, 'UMAX', 9x, 'NQ', 5x, 'H', 10x, 'STEPS', 5x, 'NNI', 5x, 'NLI')")
 
    !-------------------------------------------------------------------------------------------
    ! Now we solve the problem.
@@ -302,17 +302,17 @@ program example_heatilu
          nst = iwork(11)
          nni = iwork(19)
          nli = iwork(20)
-         write (stdout, '(E15.5, E12.4, I5, E14.3, I7, I9, I8)') t, umax, nqu, hu, nst, nni, nli
+         write (stdout, '(e11.5, e12.4, i5, e14.3, i7, i8, i8)') t, umax, nqu, hu, nst, nni, nli
 
          if (idid == 5) then
-            write (stdout, '(20X, A, 2I3)') '*****   Root found, JROOT =', jroot(1), jroot(2)
+            write (stdout, '(15x, a, 2i3)') '*****   Root found, JROOT =', jroot(1:2)
          else
             exit
          end if
       end do
 
       if (idid < 0) then
-         write (stdout, '(/, A, E12.4, /)') ' Final time reached =', t
+         write (stdout, '(/, a, e12.4, /)') ' Final time reached =', t
          exit
       end if
 
@@ -336,18 +336,18 @@ program example_heatilu
    ncfl = iwork(16)
    nrte = iwork(36)
 
-   write (stdout, '(//, 5x, a)') 'Final statistics for this run:'
-   write (stdout, '(5x, a, i5, a, i4)') 'RWORK size =', lrw, ' IWORK size =', liw
-   write (stdout, '(5x, a, i5)') 'Number of time steps ................ =', nst
-   write (stdout, '(5x, a, i5)') 'Number of residual evaluations ...... =', nre
-   write (stdout, '(5x, a, i5)') 'Number of res. evals. for precond.... =', ipar(30)
-   write (stdout, '(5x, a, i5)') 'Number of root function evaluations . =', nrte
-   write (stdout, '(5x, a, i5)') 'Number of preconditioner evaluations  =', npe
-   write (stdout, '(5x, a, i5)') 'Number of preconditioner solves ..... =', nps
-   write (stdout, '(5x, a, i5)') 'Number of nonlinear iterations ...... =', nni
-   write (stdout, '(5x, a, i5)') 'Number of linear iterations ......... =', nli
-   write (stdout, '(5x, a, f8.4)') 'Average Krylov subspace dimension =', avdim
-   write (stdout, '(x, i5, a, i5, a)') ncfn, ' nonlinear conv. failures,', ncfl, ' linear conv. failures'
-   write (stdout, '(5x, a, i7, 1x, i7)') 'Minimum lengths for work arrays WP and IWP: ', lwpmin, liwpmin
+   write (stdout, '(/, a)') 'Final statistics for this run:'
+   write (stdout, '(a, i5, a, i5)') 'RWORK size =', lrw, ' IWORK size =', liw
+   write (stdout, '(a, i5)') 'Number of time steps ................ =', nst
+   write (stdout, '(a, i5)') 'Number of residual evaluations ...... =', nre
+   write (stdout, '(a, i5)') 'Number of res. evals. for precond.... =', ipar(30)
+   write (stdout, '(a, i5)') 'Number of root function evaluations . =', nrte
+   write (stdout, '(a, i5)') 'Number of preconditioner evaluations  =', npe
+   write (stdout, '(a, i5)') 'Number of preconditioner solves ..... =', nps
+   write (stdout, '(a, i5)') 'Number of nonlinear iterations ...... =', nni
+   write (stdout, '(a, i5)') 'Number of linear iterations ......... =', nli
+   write (stdout, '(a, f8.4)') 'Average Krylov subspace dimension =', avdim
+   write (stdout, '(i5, x, a, i5, x, a)') ncfn, 'nonlinear conv. failures,', ncfl, 'linear conv. failures'
+   write (stdout, '(a, i7, 1x, i7)') 'Minimum lengths for work arrays WP and IWP: ', lwpmin, liwpmin
 
 end program example_heatilu
