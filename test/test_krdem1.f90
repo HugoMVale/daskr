@@ -150,9 +150,11 @@ program test_krdem1
 
          er = abs(er)/atol(1)
          ero = max(ero, er)
-         if ((er >= 1e3_wp) .and. (kprint >= 2)) then
+         if (er >= 1e3_wp) then
             nerr = nerr + 1
-            write (lun, '(/, a, /)') 'WARNING: Error exceeds 1e3*tolerance'
+            if (kprint >= 2) then
+               write (lun, '(/, a, /)') 'WARNING: Error exceeds 1e3*tolerance'
+            end if
          end if
 
          ! If no root found, increment TOUT and loop back.
