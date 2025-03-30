@@ -1,5 +1,5 @@
 module krdem1_module
-!! Auxiliary module for `example_krdem1`.
+!! Auxiliary module for `test_krdem1`.
    use daskr_kinds, only: wp, zero, one
    implicit none
    
