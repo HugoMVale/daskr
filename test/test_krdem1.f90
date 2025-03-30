@@ -90,13 +90,11 @@ program test_krdem1
    integer, parameter :: neq = 1, lrw = 100, liw = 100
    integer :: idid, iout, ipar, jdum, jtype, kprint, lun, nerr, nre, nrea, nrte, nje, nrt, nst
    integer :: info(20), iwork(liw), jroot(2)
-   logical :: success
    real(wp) :: er, ero, errt, psdum, rpar, t, tout, yt
    real(wp) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
 
    ! Set all input parameters and print heading.
    info = 0
-   success = .true.
    lun = stdout
    kprint = 3
    nerr = 0
@@ -151,7 +149,6 @@ program test_krdem1
          er = abs(er)/atol(1)
          ero = max(ero, er)
          if ((er >= 1e3_wp) .and. (kprint >= 2)) then
-            success = .false.
             nerr = nerr + 1
             write (lun, '(/, a, /)') 'WARNING: Error exceeds 1e3*tolerance'
          end if
@@ -176,7 +173,6 @@ program test_krdem1
             end if
 
             if ((abs(errt) >= 1e-3_wp) .and. (kprint >= 2)) then
-               success = .false.
                nerr = nerr + 1
                write (lun, '(/, a, /)') 'WARNING: Root error exceeds 1e-3'
             end if
@@ -207,10 +203,8 @@ program test_krdem1
    if (kprint >= 2) then
       write (lun, '(/, 80("-"), /, a, i3)') 'Number of errors encountered =', nerr
    end if
-
-   if (nerr > 0) success = .false.
    
-   if (success) then
+   if (nerr == 0) then
       stop "Test passed."
    else
       error stop "Test failed."
