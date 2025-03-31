@@ -26,10 +26,7 @@ contains
          return
       else
 
-         ! Call F to obtain F(T,Y)
          call f(t, y, delta)
-
-         ! Form G = Y' - F(T,Y)
          delta = yprime - delta
 
       end if
@@ -96,22 +93,21 @@ program test_krdem1
    real(wp) :: er, ero, errt, psdum, rpar, t, tout, yt
    real(wp) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
 
-   ! Set all input parameters and print heading.
-   info = 0
+  ! Set report options
    lun = stdout
    kprint = 3
+   
+   ! Initialize variables and set tolerance parameters.
    nerr = 0
    idid = 0
-
-   y(1) = one
-   t = one
-   tout = two
+   info = 0
    rtol = zero
    atol = 1e-6_wp
 
    ! Set INFO(11) = 1 if DASKR is to compute the initial YPRIME, and generate an initial guess
    ! for YPRIME.  Otherwise, set INFO(11) = 0 and supply the correct initial value for YPRIME.
    info(11) = 0
+   y(1) = one
    yprime(1) = 3.0_wp
 
    ! Note: JTYPE indicates the Jacobian type:
@@ -131,6 +127,8 @@ program test_krdem1
    end if
 
    ! Call DASKR in loop over TOUT values = 2, 3, 4, 5, 6.
+   t = one
+   tout = two
    ero = zero
    do iout = 1, 5
       do

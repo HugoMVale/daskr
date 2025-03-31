@@ -18,10 +18,7 @@ contains
       real(wp), intent(in):: rpar
       integer, intent(in) :: ipar
 
-      ! Call F(T,Y)
       call f(t, y, delta)
-
-      ! Form G = Y' - F(T,Y)
       delta = yprime - delta
 
    end subroutine res
@@ -111,14 +108,15 @@ program test_krdem2
    real(wp) :: errt, psdum, rpar, t, tout, tzero
    real(wp) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
 
+   ! Set report options
    lun = stdout
    kprint = 3
-   nerr = 0
-   idid = 0
 
-   ! Set tolerance parameters and print heading.
+   ! Initialize variables and set tolerance parameters.
    ! Note that INFO(2) is set to 1, indicating that RTOL and ATOL are arrays. Each entry of
    ! RTOL and ATOL must then be defined.
+   nerr = 0
+   idid = 0
    info = 0
    info(2) = 1
    rtol(:) = 1e-6_wp
