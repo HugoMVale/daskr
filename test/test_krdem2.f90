@@ -37,7 +37,7 @@ contains
 
    end subroutine f
 
-   subroutine jac(t, y, yprime, pd, cj, rpar, ipar)
+   pure subroutine jac(t, y, yprime, pd, cj, rpar, ipar)
    !! Jacobian routine.
       real(wp), intent(in) :: t
       real(wp), intent(in) :: y(neq)
