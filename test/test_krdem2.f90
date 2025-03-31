@@ -23,14 +23,14 @@ contains
 
    end subroutine res
 
-   pure subroutine f(t, y, ydot)
+   pure subroutine f(t, y, yprime)
    !! dy/dt routine.
       real(wp), intent(in) :: t
       real(wp), intent(in) :: y(:)
-      real(wp), intent(out) :: ydot(:)
+      real(wp), intent(out) :: yprime(:)
 
-      ydot(1) = y(2)
-      ydot(2) = 100*(one - y(1)**2)*y(2) - y(1)
+      yprime(1) = y(2)
+      yprime(2) = 100*(one - y(1)**2)*y(2) - y(1)
 
    end subroutine f
 
@@ -60,12 +60,12 @@ contains
 
    end subroutine jac
 
-   pure subroutine rt(neq, t, y, yp, nrt, rval, rpar, ipar)
+   pure subroutine rt(neq, t, y, yprime, nrt, rval, rpar, ipar)
      !! Roots routine.
       integer, intent(in) :: neq
       real(wp), intent(in) :: t
       real(wp), intent(in) :: y(neq)
-      real(wp), intent(in) :: yp(neq)
+      real(wp), intent(in) :: yprime(neq)
       integer, intent(in) :: nrt
       real(wp), intent(out) :: rval(nrt)
       real(wp), intent(in) :: rpar

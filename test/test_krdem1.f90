@@ -33,28 +33,28 @@ contains
 
    end subroutine res
 
-   pure subroutine f(t, y, ydot)
+   pure subroutine f(t, y, yprime)
    !! dy1/dt routine.
       real(wp), intent(in) :: t
       real(wp), intent(in) :: y(:)
-      real(wp), intent(out) :: ydot(:)
+      real(wp), intent(out) :: yprime(:)
 
-      ydot(1) = ((2*log(y(1)) + 8.0_wp)/t - 5.0_wp)*y(1)
+      yprime(1) = ((2*log(y(1)) + 8.0_wp)/t - 5.0_wp)*y(1)
 
    end subroutine f
 
-   pure subroutine rt(neq, t, y, yp, nrt, rval, rpar, ipar)
+   pure subroutine rt(neq, t, y, yprime, nrt, rval, rpar, ipar)
      !! Roots routine.
       integer, intent(in) :: neq
       real(wp), intent(in) :: t
       real(wp), intent(in) :: y(neq)
-      real(wp), intent(in) :: yp(neq)
+      real(wp), intent(in) :: yprime(neq)
       integer, intent(in) :: nrt
       real(wp), intent(out) :: rval(nrt)
       real(wp), intent(in) :: rpar
       integer, intent(in) :: ipar
 
-      rval(1) = yp(1)
+      rval(1) = yprime(1)
       rval(2) = log(y(1)) - 2.2491_wp
 
    end subroutine rt
