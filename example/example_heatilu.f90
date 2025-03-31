@@ -82,13 +82,9 @@ contains
       real(wp), intent(in) :: rpar(4)
       integer, intent(in) :: ipar(34)
 
-      integer :: i
       real(wp) :: umax
 
-      umax = zero
-      do i = 1, neq
-         umax = max(umax, u(i))
-      end do
+      umax = maxval(u)
       rval(1) = umax - 0.1_wp
       rval(2) = umax - 0.01_wp
 
@@ -292,10 +288,7 @@ program example_heatilu
                      idid, rwork, lrw, iwork, liw, rpar, ipar, djacilu, dpsolilu, &
                      rt, nrt, jroot)
 
-         umax = zero
-         do i = 1, neq
-            umax = max(umax, abs(u(i)))
-         end do
+         umax = maxval(abs(u))
 
          hu = rwork(7)
          nqu = iwork(8)
