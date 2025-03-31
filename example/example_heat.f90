@@ -71,12 +71,12 @@ contains
 
    end subroutine res
 
-   pure subroutine rt(neq, t, u, up, nrt, rval, rpar, ipar)
+   pure subroutine rt(neq, t, u, uprime, nrt, rval, rpar, ipar)
    !! This routine finds the max of U, and sets RVAL(1) = max(u) - 0.1, RVAL(2) = max(u) - 0.01.
       integer, intent(in) :: neq
       real(wp), intent(in) :: t
       real(wp), intent(in) :: u(neq)
-      real(wp), intent(in) :: up(neq)
+      real(wp), intent(in) :: uprime(neq)
       integer, intent(in) :: nrt
       real(wp), intent(out) :: rval(nrt)
       real(wp), intent(in) :: rpar(2)
@@ -143,7 +143,7 @@ program example_heat
    integer, parameter :: maxm = 10, maxm2 = maxm + 2, mxneq = maxm2**2, &
                          lenrw = 107 + 18*mxneq, leniw = 40, leniwp = mxneq, &
                          lenwp = 4*mxneq + 2*((mxneq/3) + 1)
-   integer :: i, idid, iout, lenpd, liw, liwp, lrw, lwp, m, mband, ml, msave, mu, &
+   integer :: idid, iout, lenpd, liw, liwp, lrw, lwp, m, mband, ml, msave, mu, &
               ncfl, ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
    integer :: iwork(leniw + leniwp), info(20), ipar(4), jroot(2)
 

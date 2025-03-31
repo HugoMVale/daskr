@@ -71,12 +71,12 @@ contains
 
    end subroutine res
 
-   pure subroutine rt(neq, t, u, up, nrt, rval, rpar, ipar)
+   pure subroutine rt(neq, t, u, uprime, nrt, rval, rpar, ipar)
    !! This routine finds the max of U, and sets RVAL(1) = max(u) - 0.1, RVAL(2) = max(u) - 0.01.
       integer, intent(in) :: neq
       real(wp), intent(in) :: t
       real(wp), intent(in) :: u(neq)
-      real(wp), intent(in) :: up(neq)
+      real(wp), intent(in) :: uprime(neq)
       integer, intent(in) :: nrt
       real(wp), intent(out) :: rval(nrt)
       real(wp), intent(in) :: rpar(4)
@@ -151,7 +151,7 @@ program example_heatilu
 
    real(wp), parameter :: permtol = 0.01_wp, tolilut = 0.001_wp
 
-   integer :: i, idid, ierr, iout, liw, liwpmin, lrw, lwpmin, m, mband, ml, mu, ncfl, ncfn, &
+   integer :: idid, ierr, iout, liw, liwpmin, lrw, lwpmin, m, mband, ml, mu, ncfl, ncfn, &
               neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
    integer :: info(20), iwork(leniw + leniwp), ipar(34), jroot(2)
 
@@ -342,5 +342,8 @@ program example_heatilu
    write (stdout, '(a, f8.4)') 'Average Krylov subspace dimension =', avdim
    write (stdout, '(i5, x, a, i5, x, a)') ncfn, 'nonlinear conv. failures,', ncfl, 'linear conv. failures'
    write (stdout, '(a, i7, 1x, i7)') 'Minimum lengths for work arrays WP and IWP: ', lwpmin, liwpmin
+
+   ! Open matrix output file if JACOUT==1
+   if (jacout == 1) close(unit=1)
 
 end program example_heatilu
