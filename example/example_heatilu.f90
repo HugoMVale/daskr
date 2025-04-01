@@ -1,6 +1,6 @@
 module heatilu_module
 !! Auxiliary module for `example_heatilu`.
-   use daskr_kinds, only: wp, zero, one
+   use daskr_kinds, only: rk, zero, one
    implicit none
 
 contains
@@ -9,13 +9,13 @@ contains
    !! This routine computes and loads the vector of initial values.
    !! The initial U values are given by the polynomial u = 16x(1-x)y(1-y).
    !! The initial UPRIME values are set to zero. (DASKR corrects these during the first time step.)
-      real(wp), intent(out) :: u(:)
-      real(wp), intent(out) :: uprime(:)
-      real(wp), intent(in) :: rpar(4)
+      real(rk), intent(out) :: u(:)
+      real(rk), intent(out) :: uprime(:)
+      real(rk), intent(in) :: rpar(4)
       integer, intent(in) :: ipar(34)
 
       integer :: i, ioff, j, k, m
-      real(wp) :: dx, xj, yk
+      real(rk) :: dx, xj, yk
 
       m = ipar(34)
       dx = rpar(3)
@@ -37,17 +37,17 @@ contains
    pure subroutine res(t, u, uprime, cj, delta, ires, rpar, ipar)
    !! This is the user-supplied RES subroutine for this example.
    !! It computes the residuals for the 2-D discretized heat equation, with zero boundary values.
-      real(wp), intent(in) :: t
-      real(wp), intent(in) :: u(*)
-      real(wp), intent(in) :: uprime(*)
-      real(wp), intent(in) :: cj
-      real(wp), intent(out) :: delta(*)
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: u(*)
+      real(rk), intent(in) :: uprime(*)
+      real(rk), intent(in) :: cj
+      real(rk), intent(out) :: delta(*)
       integer, intent(inout) :: ires
-      real(wp), intent(in) :: rpar(4)
+      real(rk), intent(in) :: rpar(4)
       integer, intent(in) :: ipar(34)
 
       integer :: i, ioff, j, k, m, m2, neq
-      real(wp) :: coeff, temx, temy
+      real(rk) :: coeff, temx, temy
 
       ! Set problem constants using IPAR and RPAR.
       neq = ipar(33)
@@ -74,19 +74,19 @@ contains
    pure subroutine rt(neq, t, u, uprime, nrt, rval, rpar, ipar)
    !! This routine finds the max of U, and sets RVAL(1) = max(u) - 0.1, RVAL(2) = max(u) - 0.01.
       integer, intent(in) :: neq
-      real(wp), intent(in) :: t
-      real(wp), intent(in) :: u(neq)
-      real(wp), intent(in) :: uprime(neq)
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: u(neq)
+      real(rk), intent(in) :: uprime(neq)
       integer, intent(in) :: nrt
-      real(wp), intent(out) :: rval(nrt)
-      real(wp), intent(in) :: rpar(4)
+      real(rk), intent(out) :: rval(nrt)
+      real(rk), intent(in) :: rpar(4)
       integer, intent(in) :: ipar(34)
 
-      real(wp) :: umax
+      real(rk) :: umax
 
       umax = maxval(u)
-      rval(1) = umax - 0.1_wp
-      rval(2) = umax - 0.01_wp
+      rval(1) = umax - 0.1_rk
+      rval(2) = umax - 0.01_rk
 
    end subroutine rt
 
@@ -136,7 +136,7 @@ program example_heatilu
 !!   Algebraic Systems, SIAM J. Sci. Comput., 15 (1994), pp. 1467-1488.
   
    use iso_fortran_env, only: stdout => output_unit
-   use daskr_kinds, only: wp, one, zero
+   use daskr_kinds, only: rk, one, zero
    use heatilu_module
    implicit none
 
@@ -149,14 +149,14 @@ program example_heatilu
                          + ireorder*2*mxneq + (ipremeth - 1)*2*mxneq, &
                          lenrw = 107 + 18*mxneq, leniw = 40
 
-   real(wp), parameter :: permtol = 0.01_wp, tolilut = 0.001_wp
+   real(rk), parameter :: permtol = 0.01_rk, tolilut = 0.001_rk
 
    integer :: idid, ierr, iout, liw, liwpmin, lrw, lwpmin, m, mband, ml, mu, ncfl, ncfn, &
               neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
    integer :: info(20), iwork(leniw + leniwp), ipar(34), jroot(2)
 
-   real(wp) :: atol, avdim, coeff, dx, hu, rtol, t, tout, umax
-   real(wp) :: rpar(4), rwork(lenrw + lenwp), u(mxneq), uprime(mxneq)
+   real(rk) :: atol, avdim, coeff, dx, hu, rtol, t, tout, umax
+   real(rk) :: rpar(4), rwork(lenrw + lenwp), u(mxneq), uprime(mxneq)
 
    external :: djacilu, dpsolilu
 
@@ -248,7 +248,7 @@ program example_heatilu
    ! in the sense of local error control.
    ! For this example, we ask for pure absolute error control with a tolerance of 1e-5.
    rtol = zero
-   atol = 1.0e-5_wp
+   atol = 1.0e-5_rk
 
    ! Here we generate a heading with important parameter values.
    write (stdout, '(a, /)') 'HEATILU: Heat Equation Example Program for DASKR'
@@ -280,7 +280,7 @@ program example_heatilu
    !-------------------------------------------------------------------------------------------
 
    t = zero
-   tout = 0.01_wp
+   tout = 0.01_rk
    nout = 11
    do iout = 1, nout
       do

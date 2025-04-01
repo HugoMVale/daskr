@@ -1,6 +1,6 @@
 module krdem2_module
 !! Auxiliary module for `test_krdem2`.
-   use daskr_kinds, only: wp, zero, one
+   use daskr_kinds, only: rk, zero, one
    implicit none
 
    integer, parameter :: neq = 2, nrt = 1, nrowpd = 2
@@ -9,13 +9,13 @@ contains
 
    pure subroutine res(t, y, yprime, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
-      real(wp), intent(in):: t
-      real(wp), intent(in):: y(neq)
-      real(wp), intent(in):: yprime(neq)
-      real(wp), intent(in):: cj
-      real(wp), intent(out):: delta(neq)
+      real(rk), intent(in):: t
+      real(rk), intent(in):: y(neq)
+      real(rk), intent(in):: yprime(neq)
+      real(rk), intent(in):: cj
+      real(rk), intent(out):: delta(neq)
       integer, intent(inout) :: ires
-      real(wp), intent(in):: rpar
+      real(rk), intent(in):: rpar
       integer, intent(in) :: ipar
 
       call f(t, y, delta)
@@ -25,9 +25,9 @@ contains
 
    pure subroutine f(t, y, yprime)
    !! dy/dt routine.
-      real(wp), intent(in) :: t
-      real(wp), intent(in) :: y(:)
-      real(wp), intent(out) :: yprime(:)
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: y(:)
+      real(rk), intent(out) :: yprime(:)
 
       yprime(1) = y(2)
       yprime(2) = 100*(one - y(1)**2)*y(2) - y(1)
@@ -36,12 +36,12 @@ contains
 
    pure subroutine jac(t, y, yprime, pd, cj, rpar, ipar)
    !! Jacobian routine.
-      real(wp), intent(in) :: t
-      real(wp), intent(in) :: y(neq)
-      real(wp), intent(in) :: yprime(neq)
-      real(wp), intent(out) :: pd(nrowpd, neq)
-      real(wp), intent(in) :: cj
-      real(wp), intent(in):: rpar
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: y(neq)
+      real(rk), intent(in) :: yprime(neq)
+      real(rk), intent(out) :: pd(nrowpd, neq)
+      real(rk), intent(in) :: cj
+      real(rk), intent(in):: rpar
       integer, intent(in) :: ipar
 
       ! First define the Jacobian matrix for the right-hand side of the ODE:
@@ -63,12 +63,12 @@ contains
    pure subroutine rt(neq, t, y, yprime, nrt, rval, rpar, ipar)
      !! Roots routine.
       integer, intent(in) :: neq
-      real(wp), intent(in) :: t
-      real(wp), intent(in) :: y(neq)
-      real(wp), intent(in) :: yprime(neq)
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: y(neq)
+      real(rk), intent(in) :: yprime(neq)
       integer, intent(in) :: nrt
-      real(wp), intent(out) :: rval(nrt)
-      real(wp), intent(in) :: rpar
+      real(rk), intent(out) :: rval(nrt)
+      real(rk), intent(in) :: rpar
       integer, intent(in) :: ipar
 
       rval(1) = y(1)
@@ -98,15 +98,15 @@ program test_krdem2
 !! To run the demonstration problem with full printing, set `kprint=3`.
 
    use iso_fortran_env, only: stdout => output_unit
-   use daskr_kinds, only: wp, zero, one, two
+   use daskr_kinds, only: rk, zero, one, two
    use krdem2_module, only: res, rt, jac, neq, nrt
    implicit none
 
    integer, parameter :: lrw = 100, liw = 100
    integer :: idid, iout, ipar, jtype, kprint, lun, nerr, nre, nrea, nrte, nje, nst, kroot
    integer :: info(20), iwork(liw), jroot(nrt)
-   real(wp) :: errt, psdum, rpar, t, tout, tzero
-   real(wp) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
+   real(rk) :: errt, psdum, rpar, t, tout, tzero
+   real(rk) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
 
    ! Set report options
    lun = stdout
@@ -119,9 +119,9 @@ program test_krdem2
    idid = 0
    info = 0
    info(2) = 1
-   rtol(:) = 1e-6_wp
-   atol(1) = 1e-6_wp
-   atol(2) = 1e-4_wp
+   rtol(:) = 1e-6_rk
+   atol(1) = 1e-6_rk
+   atol(2) = 1e-4_rk
 
    if (kprint >= 2) then
       write (lun, '(/, a, /)') 'DKRDEM-2: Test Program for DASKR'
@@ -149,7 +149,7 @@ program test_krdem2
       y(2) = zero
       yprime(1) = zero
       yprime(2) = -two
-      tout = 20.0_wp
+      tout = 20.0_rk
 
       if (kprint > 2) then
          write (lun, '(/, 70("."), /, a, i2, /)') "Solution with JTYPE =", jtype
@@ -174,7 +174,7 @@ program test_krdem2
             ! If a root was found, write results and check root location.
             ! Then return to DDASKR to continue the integration.
             if (idid /= 5) then
-               tout = tout + 20.0_wp
+               tout = tout + 20.0_rk
                exit
             else
 
@@ -182,8 +182,8 @@ program test_krdem2
                   write (lun, '(/, a, e15.7, 2x, a, i3)') "Root found at t =", t, "JROOT =", jroot(1)
                end if
 
-               kroot = int(t/81.2_wp + 0.5_wp)
-               tzero = 81.17237787055_wp + float(kroot - 1)*81.41853556212_wp
+               kroot = int(t/81.2_rk + 0.5_rk)
+               tzero = 81.17237787055_rk + float(kroot - 1)*81.41853556212_rk
                errt = t - tzero
                if (kprint > 2) then
                   write (lun, '(a, e12.4, /)') "Error in t location of root is", errt

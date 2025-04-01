@@ -1,6 +1,6 @@
 module krdem1_module
 !! Auxiliary module for `test_krdem1`.
-   use daskr_kinds, only: wp, zero, one
+   use daskr_kinds, only: rk, zero, one
    implicit none
    
    ! @note: not so happy with this, but it is required for the time being
@@ -10,13 +10,13 @@ contains
 
    pure subroutine res(t, y, yprime, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
-      real(wp), intent(in):: t
-      real(wp), intent(in):: y(neq)
-      real(wp), intent(in):: yprime(neq)
-      real(wp), intent(in):: cj
-      real(wp), intent(out):: delta(neq)
+      real(rk), intent(in):: t
+      real(rk), intent(in):: y(neq)
+      real(rk), intent(in):: yprime(neq)
+      real(rk), intent(in):: cj
+      real(rk), intent(out):: delta(neq)
       integer, intent(inout) :: ires
-      real(wp), intent(in):: rpar
+      real(rk), intent(in):: rpar
       integer, intent(in) :: ipar
 
       ! Check Y to make sure that it is valid input.
@@ -35,27 +35,27 @@ contains
 
    pure subroutine f(t, y, yprime)
    !! dy1/dt routine.
-      real(wp), intent(in) :: t
-      real(wp), intent(in) :: y(:)
-      real(wp), intent(out) :: yprime(:)
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: y(:)
+      real(rk), intent(out) :: yprime(:)
 
-      yprime(1) = ((2*log(y(1)) + 8.0_wp)/t - 5.0_wp)*y(1)
+      yprime(1) = ((2*log(y(1)) + 8.0_rk)/t - 5.0_rk)*y(1)
 
    end subroutine f
 
    pure subroutine rt(neq, t, y, yprime, nrt, rval, rpar, ipar)
      !! Roots routine.
       integer, intent(in) :: neq
-      real(wp), intent(in) :: t
-      real(wp), intent(in) :: y(neq)
-      real(wp), intent(in) :: yprime(neq)
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: y(neq)
+      real(rk), intent(in) :: yprime(neq)
       integer, intent(in) :: nrt
-      real(wp), intent(out) :: rval(nrt)
-      real(wp), intent(in) :: rpar
+      real(rk), intent(out) :: rval(nrt)
+      real(rk), intent(in) :: rpar
       integer, intent(in) :: ipar
 
       rval(1) = yprime(1)
-      rval(2) = log(y(1)) - 2.2491_wp
+      rval(2) = log(y(1)) - 2.2491_rk
 
    end subroutine rt
 
@@ -83,15 +83,15 @@ program test_krdem1
 !! To run the demonstration problem with full printing, set `kprint=3`.
 
    use iso_fortran_env, only: stdout => output_unit
-   use daskr_kinds, only: wp, zero, one, two
+   use daskr_kinds, only: rk, zero, one, two
    use krdem1_module, only: res, rt, neq, nrt
    implicit none
 
    integer, parameter :: lrw = 76, liw = 41
    integer :: idid, iout, ipar, jdum, jtype, kprint, lun, nerr, nre, nrea, nrte, nje, nst
    integer :: info(20), iwork(liw), jroot(2)
-   real(wp) :: er, ero, errt, psdum, rpar, t, tout, yt
-   real(wp) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
+   real(rk) :: er, ero, errt, psdum, rpar, t, tout, yt
+   real(rk) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
 
   ! Set report options
    lun = stdout
@@ -102,13 +102,13 @@ program test_krdem1
    idid = 0
    info = 0
    rtol = zero
-   atol = 1e-6_wp
+   atol = 1e-6_rk
 
    ! Set INFO(11) = 1 if DASKR is to compute the initial YPRIME, and generate an initial guess
    ! for YPRIME.  Otherwise, set INFO(11) = 0 and supply the correct initial value for YPRIME.
    info(11) = 0
    y(1) = one
-   yprime(1) = 3.0_wp
+   yprime(1) = 3.0_rk
 
    ! Note: JTYPE indicates the Jacobian type:
    ! JTYPE = 1 ==> Jacobian is dense and user-supplied
@@ -136,7 +136,7 @@ program test_krdem1
                      rwork, lrw, iwork, liw, rpar, ipar, jdum, psdum, rt, nrt, jroot)
 
          ! Print Y and error in Y, and print warning if error too large.
-         yt = exp(-t**2 + 5*t - 4.0_wp)
+         yt = exp(-t**2 + 5*t - 4.0_rk)
          er = y(1) - yt
 
          if (kprint > 2) then
@@ -148,7 +148,7 @@ program test_krdem1
 
          er = abs(er)/atol(1)
          ero = max(ero, er)
-         if (er >= 1e3_wp) then
+         if (er >= 1e3_rk) then
             nerr = nerr + 1
             if (kprint >= 2) then
                write (lun, '(/, a, /)') 'WARNING: Error exceeds 1e3*tolerance'
@@ -167,14 +167,14 @@ program test_krdem1
                   "Root found at t =", t, " JROOT =", jroot(1:2)
             end if
 
-            if (jroot(1) /= 0) errt = t - 2.5_wp
-            if (jroot(2) /= 0 .and. t <= 2.5_wp) errt = t - 2.47_wp
-            if (jroot(2) /= 0 .and. t > 2.5_wp) errt = t - 2.53_wp
+            if (jroot(1) /= 0) errt = t - 2.5_rk
+            if (jroot(2) /= 0 .and. t <= 2.5_rk) errt = t - 2.47_rk
+            if (jroot(2) /= 0 .and. t > 2.5_rk) errt = t - 2.53_rk
             if (kprint > 2) then
                write (lun, '(4x, a, e12.4, /)') 'Error in t location of root is', errt
             end if
 
-            if (abs(errt) >= 1e-3_wp) then
+            if (abs(errt) >= 1e-3_rk) then
                nerr = nerr + 1
                if (kprint >= 2) then
                   write (lun, '(/, a, /)') 'WARNING: Root error exceeds 1e-3'
