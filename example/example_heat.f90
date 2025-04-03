@@ -1,5 +1,9 @@
+!----------------------------------------------------------------------------------------------
+! Adapted from original Fortran code in `original/examples/dheat.f`
+!----------------------------------------------------------------------------------------------
+
 module heat_module
-!! Auxiliary module for `example_heat`.
+!! Auxiliary module for [[example_heat]].
    use daskr_kinds, only: rk, zero, one
    implicit none
 
@@ -7,7 +11,7 @@ contains
 
    pure subroutine uinit(u, uprime, rpar, ipar)
    !! This routine computes and loads the vector of initial values.
-   !! The initial U values are given by the polynomial u = 16x(1-x)y(1-y).
+   !! The initial U values are given by the polynomial `u = 16x(1-x)y(1-y)`.
    !! The initial UPRIME values are set to zero. (DASKR corrects these during the first time step.)
       real(rk), intent(out) :: u(:)
       real(rk), intent(out) :: uprime(:)
@@ -35,7 +39,7 @@ contains
    end subroutine uinit
 
    pure subroutine res(t, u, uprime, cj, delta, ires, rpar, ipar)
-   !! This is the user-supplied RES subroutine for this example.
+   !! User-supplied residuals subroutine.
    !! It computes the residuals for the 2-D discretized heat equation, with zero boundary values.
       real(rk), intent(in) :: t
       real(rk), intent(in) :: u(*)
@@ -72,7 +76,7 @@ contains
    end subroutine res
 
    pure subroutine rt(neq, t, u, uprime, nrt, rval, rpar, ipar)
-   !! This routine finds the max of U, and sets RVAL(1) = max(u) - 0.1, RVAL(2) = max(u) - 0.01.
+   !! Roots routine.
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: u(neq)
@@ -93,7 +97,7 @@ contains
 end module heat_module
 
 program example_heat
-!! Example program for `daskr`:
+!! Example program for [[daskr]]:
 !! DAE system derived from the discretized heat equation on a square.
 !!
 !! This program solves a DAE system that arises from the heat equation,
@@ -101,39 +105,44 @@ program example_heat
 !! \frac{\partial u}{\partial t} = 
 !! \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2}
 !! $$   
-!! posed on the 2-D unit square with zero Dirichlet boundary conditions.
-!! An M+2 by M+2 mesh is set on the square, with uniform spacing 1/(M+1).
-!! The spatial deriviatives are represented by standard central finite
-!! difference approximations. At each interior point of the mesh,
-!! the discretized PDE becomes an ODE for the discrete value of u.
-!! At each point on the boundary, we pose the equation u = 0.  The
-!! discrete values of u form a vector U, ordered first by x, then by y.
-!! The result is a DAE system G(t,U,U') = 0 of size NEQ = (M+2)*(M+2).
+!! posed on the 2D unit square with zero Dirichlet boundary conditions. An \((M+2)\times(M+2)\) 
+!! mesh is set on the square, with uniform spacing \( 1/(M+1) \). The spatial deriviatives are 
+!! represented by standard central finite difference approximations. At each interior point of
+!! the mesh, the discretized PDE becomes an ODE for the discrete value of \(u\). At each point 
+!! on the boundary, we pose the equation \(u=0\). The discrete values of \(u\) form a vector 
+!! \(U\), ordered first by \(x\), then by \(y\). The result is a DAE system \(G(t,U,U') = 0\) 
+!! of size \(\mathrm{NEQ} = (M+2)^2\).
+!! The initial conditions are posed as:
 !!
-!! Initial conditions are posed as u = 16x(1-x)y(1-y) at t = 0.
-!! The problem is solved by DASKR on the time interval 0 <= t <= 10.24.
+!! $$ u = 16x(1-x)y(1-y) $$
+!!   
+!! The problem is solved by [[daskr]] on the time interval \(0 \le t \le 10.24\).
 !!
-!! The root functions are R1(U) = max(u) - 0.1, R2(U) = max(u) - 0.01.
+!! The root functions are:
+!!   
+!! $$\begin{aligned}
+!! r_1(U) &= \max(u) - 0.1 \\
+!! r_2(U) &= \max(u) - 0.01
+!! \end{aligned}$$
 !!
-!! The Krylov linear system solution method, with preconditioning, is
-!! selected.  The preconditioner is a band matrix with half-bandwidths
-!! equal to 1, i.e. a tridiagonal matrix.  (The true half-bandwidths
-!! are equal to M+2.)  This corresponds to ignoring the y-direction
-!! coupling in the ODEs, for purposes of preconditioning.  The extra
-!! iterations resulting from this approximation are offset by the lower
-!! storage and linear system solution costs for a tridiagonal matrix.
+!! The Krylov linear system solution method, with preconditioning, is selected. The 
+!! preconditioner is a band matrix with half-bandwidths equal to 1, i.e. a tridiagonal matrix.
+!! (The true half-bandwidths are equal to \(M+2\)). This corresponds to ignoring the y-direction
+!! coupling in the ODEs, for purposes of preconditioning. The extra iterations resulting from
+!! this approximation are offset by the lower storage and linear system solution costs for a
+!! tridiagonal matrix.
 !!
-!! The routines BANJA and BANPS that generate and solve the banded
-!! preconditioner are provided in a separate file for general use.
+!! The routines [[DBANJA]] and [[DBANPS]] that generate and solve the banded preconditioner are
+!! provided in a separate file for general use.
 !!
-!! The output times are t = .01 * 2**n (n = 0,...,10).  The maximum of
-!! abs(u) over the mesh, and various performance statistics, are printed.
+!! The output times are \( t = 0.01 \times 2^n, (n = 0,..., 10) \). The maximum of \(|u|\) over
+!! the mesh and various performance statistics are printed.
 !!
 !! For details and test results on this problem, see the reference:
 !!
-!!   Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold,
-!!   Using Krylov Methods in the Solution of Large-Scale Differential-
-!!   Algebraic Systems, SIAM J. Sci. Comput., 15 (1994), pp. 1467-1488.
+!! * Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Using Krylov Methods in the
+!!   Solution of Large-Scale Differential-Algebraic Systems", SIAM J. Sci. Comput., 15 (1994),
+!!   pp. 1467-1488.
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
@@ -210,7 +219,7 @@ program example_heat
 
    ! Here we set tolerances for DASKR to indicate how much accuracy we want in the solution,
    ! in the sense of local error control.
-   ! For this example, we ask for pure absolute error control with a tolerance of 1.0D-5.
+   ! For this example, we ask for pure absolute error control with a tolerance of 1e-5.
    rtol = zero
    atol = 1.0e-5_rk
 
@@ -273,6 +282,7 @@ program example_heat
          else
             exit
          end if
+      
       end do
 
       if (idid < 0) then

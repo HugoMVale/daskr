@@ -82,7 +82,7 @@ contains
 end module krdem2_module
 
 program test_krdem2
-!! Test program for `daskr`: intermittently stiff problem.
+!! Test program for [[daskr]]: intermittently stiff problem.
 !!
 !! The initial value problem is:
 !!
@@ -112,7 +112,7 @@ program test_krdem2
    use krdem2_module, only: res, rt, jac, neq, nrt
    implicit none
 
-   integer, parameter :: lrw = 100, liw = 100
+   integer, parameter :: lrw = 100, liw = 100 ! @note: to be replaced by formula or alloc
    integer :: idid, iout, ipar, jtype, kprint, lun, nerr, nre, nrea, nrte, nje, nst, kroot
    integer :: info(20), iwork(liw), jroot(nrt)
    real(rk) :: errt, psdum, rpar, t, tout, tzero

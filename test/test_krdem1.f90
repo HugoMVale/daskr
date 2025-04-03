@@ -94,7 +94,7 @@ program test_krdem1
    use krdem1_module, only: res, rt, neq, nrt
    implicit none
 
-   integer, parameter :: lrw = 76, liw = 41
+   integer, parameter :: lrw = 76, liw = 41 ! @note: to be replaced by formula or alloc
    integer :: idid, iout, ipar, jdum, jtype, kprint, lun, nerr, nre, nrea, nrte, nje, nst
    integer :: info(20), iwork(liw), jroot(2)
    real(rk) :: er, ero, errt, psdum, rpar, t, tout, yt
