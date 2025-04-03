@@ -1,5 +1,9 @@
+!----------------------------------------------------------------------------------------------
+! Adapted from original Fortran code in `original/examples/dkrdem.f`
+!----------------------------------------------------------------------------------------------
+
 module krdem1_module
-!! Auxiliary module for `test_krdem1`.
+!! Auxiliary module for [[test_krdem1]].
    use daskr_kinds, only: rk, zero, one
    implicit none
    
@@ -62,22 +66,25 @@ contains
 end module krdem1_module
 
 program test_krdem1
-!! Test program for `daskr`: nonstiff problem.
+!! Test program for [[daskr]]: nonstiff problem.
 !!
 !! The initial value problem is:
-!!```
-!!    dy/dt = ((2*log(y) + 8)/t - 5)*y
-!!    y(1) = 1,  1 <= t <= 6
-!!``` 
+!!
+!! $$\begin{aligned}
+!!  y'(t) &= \left(\frac{2 \ln(y) + 8}{t} - 5\right)y \\
+!!  y(1)  &= 1, \quad 1 \le t \le 6
+!! \end{aligned}$$
+!! 
 !! The solution is:
-!!```
-!!    y(t) = exp(-t**2 + 5*t - 4), y'(1) = 3
-!!```
+!!
+!! $$ y(t) = \exp(-t^2 + 5t - 4), \quad y'(1) = 3 $$
+!!
 !! The two root functions are:
-!!```
-!!    r1(t,y,y') = dy/dt            (with root at t = 2.5),
-!!    r2(t,y,y') = log(y) - 2.2491  (with roots at t = 2.47 and 2.53)
-!!```
+!!   
+!! $$\begin{aligned}
+!! r_1(t,y,y') &= y'              \quad &&(\text{with root at } t = 2.5), \\
+!! r_2(t,y,y') &= \ln(y) - 2.2491 \quad &&(\text{with roots at } t = 2.47 \text{ and } 2.53)
+!! \end{aligned}$$
 !!
 !! If the errors are too large, or other difficulty occurs, a warning message is printed.
 !! To run the demonstration problem with full printing, set `kprint=3`.

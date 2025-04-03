@@ -1,5 +1,9 @@
+!----------------------------------------------------------------------------------------------
+! Adapted from original Fortran code in `original/examples/dkrdem.f`
+!----------------------------------------------------------------------------------------------
+
 module krdem2_module
-!! Auxiliary module for `test_krdem2`.
+!! Auxiliary module for [[test_krdem2]].
    use daskr_kinds, only: rk, zero, one
    implicit none
 
@@ -81,18 +85,24 @@ program test_krdem2
 !! Test program for `daskr`: intermittently stiff problem.
 !!
 !! The initial value problem is:
-!!```
-!!    dy1/dt = y2
-!!    dy2/dt = 100*(1 - y1**2)*y2 - y1
 !!
-!!    y1(0) = 2,  y2(0) = 0,  0 <= t <= 200
-!!    y1'(0) = 0, y2'(0) = -2
-!!```
+!! $$\begin{aligned}
+!! y_1'(t) &= y_2 \\
+!! y_2'(t) &= 100(1 - y_1^2)y_2 - y_1
+!! \end{aligned}$$
+!! 
+!! with initial conditions:
+!!      
+!! $$\begin{aligned}
+!! y_1(0)  &= 2, \quad y_2(0)  = 0, \quad 0 \le t \le 200 \\
+!! y_1'(0) &= 0, \quad y_2'(0) = -2
+!! \end{aligned}$$
+!!
 !! The root function is:
-!!```
-!!    r1(t, y, y') = y1
-!!```
-!! The analytical solution is not known, but the zeros of `y1` are known to 15 figures.
+!!
+!! $$ r_1(t, y, y') = y_1 $$
+!!
+!! The analytical solution is not known, but the zeros of \(y_1\) are known to 15 figures.
 !!
 !! If the errors are too large, or other difficulty occurs, a warning message is printed.
 !! To run the demonstration problem with full printing, set `kprint=3`.
@@ -183,7 +193,7 @@ program test_krdem2
                end if
 
                kroot = int(t/81.2_rk + 0.5_rk)
-               tzero = 81.17237787055_rk + float(kroot - 1)*81.41853556212_rk
+               tzero = 81.17237787055_rk + (kroot - 1)*81.41853556212_rk
                errt = t - tzero
                if (kprint > 2) then
                   write (lun, '(a, e12.4, /)') "Error in t location of root is", errt
