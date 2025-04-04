@@ -29,10 +29,8 @@ contains
          ires = -1
          return
       else
-
          call f(t, y, delta)
          delta = yprime - delta
-
       end if
 
    end subroutine res
@@ -139,8 +137,8 @@ program test_krdem1
    ero = zero
    do iout = 1, 5
       do
-         call ddaskr(res, neq, t, y, yprime, tout, info, rtol, atol, idid, &
-                     rwork, lrw, iwork, liw, rpar, ipar, jdum, psdum, rt, nrt, jroot)
+         call daskr(res, neq, t, y, yprime, tout, info, rtol, atol, idid, &
+                    rwork, lrw, iwork, liw, rpar, ipar, jdum, psdum, rt, nrt, jroot)
 
          ! Print Y and error in Y, and print warning if error too large.
          yt = exp(-t**2 + 5*t - 4.0_rk)

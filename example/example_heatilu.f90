@@ -105,7 +105,7 @@ program example_heatilu
 !! \frac{\partial u}{\partial t} = 
 !! \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2}
 !! $$   
-!! posed on the 2D unit square with zero Dirichlet boundary conditions. An \((M+2)\times(M+2)\) 
+!! posed on the 2D unit square with zero Dirichlet boundary conditions. An \( (M+2)^2 \)
 !! mesh is set on the square, with uniform spacing \( 1/(M+1) \). The spatial deriviatives are 
 !! represented by standard central finite difference approximations. At each interior point of
 !! the mesh, the discretized PDE becomes an ODE for the discrete value of \(u\). At each point 
@@ -293,9 +293,8 @@ program example_heatilu
    nout = 11
    do iout = 1, nout
       do
-         call ddaskr(res, neq, t, u, uprime, tout, info, rtol, atol, &
-                     idid, rwork, lrw, iwork, liw, rpar, ipar, djacilu, dpsolilu, &
-                     rt, nrt, jroot)
+         call daskr(res, neq, t, u, uprime, tout, info, rtol, atol, idid, &
+                    rwork, lrw, iwork, liw, rpar, ipar, djacilu, dpsolilu, rt, nrt, jroot)
 
          umax = maxval(abs(u))
 

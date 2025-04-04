@@ -169,8 +169,8 @@ program test_krdem2
       do iout = 1, 10
 
          do
-            call ddaskr(res, neq, t, y, yprime, tout, info, rtol, atol, idid, &
-                        rwork, lrw, iwork, liw, rpar, ipar, jac, psdum, rt, nrt, jroot)
+            call daskr(res, neq, t, y, yprime, tout, info, rtol, atol, idid, &
+                       rwork, lrw, iwork, liw, rpar, ipar, jac, psdum, rt, nrt, jroot)
 
             ! Print Y1 and Y2.
             if (kprint > 2) then
