@@ -98,24 +98,25 @@ end module heatilu_module
 
 program example_heatilu
 !! Example program for [[daskr]]:
-!! DAE system derived from the discretized heat equation on a square.
+!! DAE system derived from the discretized heat equation on a square; solution  using the 
+!! Krylov option with sparse incomplete LU preconditioner.
 !!
 !! This program solves a DAE system that arises from the heat equation,
-!! $$
-!! \frac{\partial u}{\partial t} = 
-!! \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2}
-!! $$   
-!! posed on the 2D unit square with zero Dirichlet boundary conditions. An \( (M+2)^2 \)
-!! mesh is set on the square, with uniform spacing \( 1/(M+1) \). The spatial deriviatives are 
-!! represented by standard central finite difference approximations. At each interior point of
-!! the mesh, the discretized PDE becomes an ODE for the discrete value of \(u\). At each point 
-!! on the boundary, we pose the equation \(u=0\). The discrete values of \(u\) form a vector 
-!! \(U\), ordered first by \(x\), then by \(y\). The result is a DAE system \(G(t,U,U') = 0\) 
-!! of size \(\mathrm{NEQ} = (M+2)^2\).
+!! 
+!! $$ \frac{\partial u}{\partial t} = 
+!! \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2} $$
+!!    
+!! posed on the 2D unit square \(0 \le x,y \le y\) with zero Dirichlet boundary conditions. 
+!! An \((M+2)^2\) mesh is set on the square, with uniform spacing \(\Delta x = \Delta y = 1/(M+1)\).
+!! The spatial deriviatives are represented by standard central finite difference approximations.
+!! At each interior point of the mesh, the discretized PDE becomes an ODE for the discrete value
+!! of \(u\). At each point on the boundary, we pose the equation \(u = 0\). The discrete values 
+!! of \(u\) form a vector \(U\), ordered first by \(x\), then by \(y\). The result is a DAE 
+!! system \(G(t,U,U') = 0\) of size \(\mathrm{NEQ} = (M+2)^2\).
 !!   
 !! The initial conditions are posed as:
 !!
-!! $$ u(0,x,y) = 16x(1-x)y(1-y) $$
+!! $$ u(x,y,0) = 16x(1-x)y(1-y) $$
 !!   
 !! The problem is solved by [[daskr]] on the time interval \(0 \le t \le 10.24\).
 !!
@@ -136,7 +137,7 @@ program example_heatilu
 !! The routines [[DJACILU]] and [[DPSOLILU]] that generate and solve the banded preconditioner are
 !! provided in a separate file for general use.
 !!
-!! The output times are \( t = 0.01 \times 2^n, (n = 0,..., 10) \). The maximum of \(|u|\) over
+!! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
 !! the mesh and various performance statistics are printed.
 !!
 !! For details and test results on this problem, see the reference:
@@ -147,7 +148,6 @@ program example_heatilu
 !! 
 !! @note
 !! [[example_heat]] solves the same problem, but without using incomplete LU factorization.
-
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
@@ -195,7 +195,7 @@ program example_heatilu
    nrt = 2
 
    ! Here set the lengths of the preconditioner work arrays WP and IWP, load them into IWORK,
-   !and set the total lengths of WORK and IWORK.
+   ! and set the total lengths of WORK and IWORK.
    iwork(27) = lenwp
    iwork(28) = leniwp
    lrw = lenrw + lenwp
@@ -235,25 +235,20 @@ program example_heatilu
    ! Call subroutine UINIT to initialize U and UPRIME.
    call uinit(u, uprime, rpar, ipar)
 
-   !-----------------------------------------------------------------------
-   ! Here we set up the INFO array, which describes the various options
-   ! in the way we want DASKR to solve the problem.
-   ! In this case, we select the iterative preconditioned Krylov method,
-   ! and we supply the sparse preconditioner routines DJACILU/DPSOLILU.
+   ! Here we set up the INFO array, which describes the various options in the way we want 
+   ! DASKR to solve the problem. In this case, we select the iterative preconditioned Krylov 
+   ! method, and we supply the sparse preconditioner routines DJACILU/DPSOLILU.
    !
-   ! We first initialize the entire INFO array to zero, then set select
-   ! entries to nonzero values for desired solution options.
+   ! We first initialize the entire INFO array to zero, then set select entries to nonzero 
+   ! values for desired solution options.
    !
-   ! To select the Krylov iterative method for the linear systems,
-   ! we set INFO(12) = 1.
+   ! To select the Krylov iterative method for the linear systems, we set INFO(12) = 1.
    !
-   ! Since we are using a preconditioner that involves approximate
-   ! Jacobian elements requiring preprocessing, we have a JAC routine,
-   ! namely subroutine DJACILU, and we must set INFO(15) = 1 to indicate
-   ! this to DASKR.
+   ! Since we are using a preconditioner that involves approximate Jacobian elements requiring 
+   ! preprocessing, we have a JAC routine, namely subroutine DJACILU, and we must set INFO(15) = 1
+   ! to indicate this to DASKR.
    !
    ! No other entries of INFO need to be changed for this example.
-   !-----------------------------------------------------------------------
    info = 0
    info(12) = 1
    info(15) = 1
@@ -357,7 +352,7 @@ program example_heatilu
    write (stdout, '(i5, x, a, i5, x, a)') ncfn, 'nonlinear conv. failures,', ncfl, 'linear conv. failures'
    write (stdout, '(a, i7, 1x, i7)') 'Minimum lengths for work arrays WP and IWP: ', lwpmin, liwpmin
 
-   ! Open matrix output file if JACOUT==1
+   ! Close matrix output file if JACOUT==1
    if (jacout == 1) close(unit=1)
 
 end program example_heatilu

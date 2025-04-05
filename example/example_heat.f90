@@ -98,24 +98,25 @@ end module heat_module
 
 program example_heat
 !! Example program for [[daskr]]:
-!! DAE system derived from the discretized heat equation on a square.
+!! DAE system derived from the discretized heat equation on a square; solution  using the 
+!! Krylov option with banded preconditioner.
 !!
 !! This program solves a DAE system that arises from the heat equation,
-!! $$
-!! \frac{\partial u}{\partial t} = 
-!! \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2}
-!! $$   
-!! posed on the 2D unit square with zero Dirichlet boundary conditions. An \( (M+2)^2 \) 
-!! mesh is set on the square, with uniform spacing \( 1/(M+1) \). The spatial deriviatives are 
-!! represented by standard central finite difference approximations. At each interior point of
-!! the mesh, the discretized PDE becomes an ODE for the discrete value of \(u\). At each point 
-!! on the boundary, we pose the equation \(u=0\). The discrete values of \(u\) form a vector 
-!! \(U\), ordered first by \(x\), then by \(y\). The result is a DAE system \(G(t,U,U') = 0\) 
-!! of size \(\mathrm{NEQ} = (M+2)^2\).
+!! 
+!! $$ \frac{\partial u}{\partial t} = 
+!! \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2} $$
+!!       
+!! posed on the 2D unit square \(0 \le x,y \le y\) with zero Dirichlet boundary conditions. 
+!! An \((M+2)^2\) mesh is set on the square, with uniform spacing \(\Delta x = \Delta y = 1/(M+1)\).
+!! The spatial deriviatives are represented by standard central finite difference approximations.
+!! At each interior point of the mesh, the discretized PDE becomes an ODE for the discrete value
+!! of \(u\). At each point on the boundary, we pose the equation \(u = 0\). The discrete values 
+!! of \(u\) form a vector \(U\), ordered first by \(x\), then by \(y\). The result is a DAE 
+!! system \(G(t,U,U') = 0\) of size \(\mathrm{NEQ} = (M+2)^2\).
 !!   
 !! The initial conditions are posed as:
 !!
-!! $$ u(0,x,y) = 16x(1-x)y(1-y) $$
+!! $$ u(x,y,0) = 16x(1-x)y(1-y) $$
 !!   
 !! The problem is solved by [[daskr]] on the time interval \(0 \le t \le 10.24\).
 !!
@@ -136,7 +137,7 @@ program example_heat
 !! The routines [[DBANJA]] and [[DBANPS]] that generate and solve the banded preconditioner are
 !! provided in a separate file for general use.
 !!
-!! The output times are \( t = 0.01 \times 2^n, (n = 0,..., 10) \). The maximum of \(|u|\) over
+!! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
 !! the mesh and various performance statistics are printed.
 !!
 !! For details and test results on this problem, see the reference:
@@ -146,8 +147,7 @@ program example_heat
 !!   pp. 1467-1488.
 !! 
 !! @note
-!! [[example_heatilu]] solves the same problem, but using incomplete LU factorization.
-  
+!! [[example_heatilu]] solves the same problem, but using sparse incomplete LU factorization.
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
@@ -204,17 +204,16 @@ program example_heat
    call uinit(u, uprime, rpar, ipar)
 
    ! Here we set up the INFO array, which describes the various options in the way we want
-   ! DASKR to solve the problem.
-   ! In this case, we select the iterative preconditioned Krylov method, and we supply the band
-   ! preconditioner routines DBANJA/DBANPS.
+   ! DASKR to solve the problem. In this case, we select the iterative preconditioned Krylov 
+   ! method, and we supply the band preconditioner routines DBANJA/DBANPS.
    !
    ! We first initialize the entire INFO array to zero, then set select entries to nonzero
    ! values for desired solution options.
    !
-   ! To select the Krylov iterative method for the linear systems, we set INFO(12)=1.
+   ! To select the Krylov iterative method for the linear systems, we set INFO(12) = 1.
    !
    ! Since we are using a preconditioner that involves approximate Jacobian elements requiring
-   ! preprocessing, we have a JAC routine, namely subroutine DBANJA, and we must set INFO(15)=1
+   ! preprocessing, we have a JAC routine, namely subroutine DBANJA, and we must set INFO(15) = 1
    ! to indicate this to DASKR.
    !
    ! No other entries of INFO need to be changed for this example.
@@ -299,8 +298,8 @@ program example_heat
    end do
 
    ! Here we display some final statistics for the problem.
-   ! The ratio of NLI to NNI is the average dimension of the Krylov
-   ! subspace involved in the Krylov linear iterative method.
+   ! The ratio NLI/NNI is the average dimension of the Krylov subspace involved in the Krylov 
+   ! linear iterative method.
    nst = iwork(11)
    npe = iwork(13)
    nre = iwork(12) + npe*mband
