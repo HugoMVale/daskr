@@ -166,7 +166,7 @@ program example_heat
 
    external :: dbanja, dbanps
 
-   ! Here set parameters for the problem being solved.  Use RPAR and IPAR to communicate these
+   ! Here set parameters for the problem being solved. Use RPAR and IPAR to communicate these
    ! to the other routines.
    m = maxm
    dx = one/(m + one)
