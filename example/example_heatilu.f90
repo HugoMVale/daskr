@@ -112,17 +112,18 @@ program example_heatilu
 !! on the boundary, we pose the equation \(u=0\). The discrete values of \(u\) form a vector 
 !! \(U\), ordered first by \(x\), then by \(y\). The result is a DAE system \(G(t,U,U') = 0\) 
 !! of size \(\mathrm{NEQ} = (M+2)^2\).
+!!   
 !! The initial conditions are posed as:
 !!
-!! $$ u = 16x(1-x)y(1-y) $$
+!! $$ u(0,x,y) = 16x(1-x)y(1-y) $$
 !!   
 !! The problem is solved by [[daskr]] on the time interval \(0 \le t \le 10.24\).
 !!
 !! The root functions are:
 !!   
 !! $$\begin{aligned}
-!! r_1(U) &= \max(u) - 0.1 \\
-!! r_2(U) &= \max(u) - 0.01
+!! r_1(u) &= \max(u) - 0.1 \\
+!! r_2(u) &= \max(u) - 0.01
 !! \end{aligned}$$
 !!
 !! The Krylov linear system solution method, with preconditioning, is selected. The 
@@ -143,7 +144,11 @@ program example_heatilu
 !! * Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Using Krylov Methods in the
 !!   Solution of Large-Scale Differential-Algebraic Systems", SIAM J. Sci. Comput., 15 (1994),
 !!   pp. 1467-1488.
-  
+!! 
+!! @note
+!! [[example_heat]] solves the same problem, but without using incomplete LU factorization.
+
+
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
    use heatilu_module
