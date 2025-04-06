@@ -11,6 +11,17 @@ module krdem2_module
 
 contains
 
+   pure subroutine f(t, y, yprime)
+   !! dy/dt routine.
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: y(:)
+      real(rk), intent(out) :: yprime(:)
+
+      yprime(1) = y(2)
+      yprime(2) = 100*(one - y(1)**2)*y(2) - y(1)
+
+   end subroutine f
+
    pure subroutine res(t, y, yprime, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
       real(rk), intent(in):: t
@@ -27,17 +38,6 @@ contains
 
    end subroutine res
 
-   pure subroutine f(t, y, yprime)
-   !! dy/dt routine.
-      real(rk), intent(in) :: t
-      real(rk), intent(in) :: y(:)
-      real(rk), intent(out) :: yprime(:)
-
-      yprime(1) = y(2)
-      yprime(2) = 100*(one - y(1)**2)*y(2) - y(1)
-
-   end subroutine f
-
    pure subroutine jac(t, y, yprime, pd, cj, rpar, ipar)
    !! Jacobian routine.
       real(rk), intent(in) :: t
@@ -49,14 +49,14 @@ contains
       integer, intent(in) :: ipar
 
       ! First define the Jacobian matrix for the right-hand side of the ODE:
-      ! Y' = F(T,Y) , i.e. dF/dY.
+      ! Y' = F(T,Y), i.e. dF/dY.
       pd(1, 1) = zero
       pd(1, 2) = one
       pd(2, 1) = -200*y(1)*y(2) - one
       pd(2, 2) = 100*(one - y(1)**2)
 
       ! Next update the Jacobian with the right-hand side to form the DAE Jacobian:
-      ! CJ*dR/dY' + dR/dY = CJ*I - dF/dY.
+      ! cj*dG/dY' + dG/dY = cj*I - dF/dY.
       pd(1, 1) = cj - pd(1, 1)
       pd(1, 2) = -pd(1, 2)
       pd(2, 1) = -pd(2, 1)
@@ -113,13 +113,13 @@ program test_krdem2
    implicit none
 
    integer, parameter :: lrw = 100, liw = 100 ! @note: to be replaced by formula or alloc
-   integer :: idid, iout, ipar, jtype, kprint, lun, nerr, nre, nrea, nrte, nje, nst, kroot
+   integer :: idid, iout, ipar, jtype, kprint, lout, nerr, nre, nrea, nrte, nje, nst, kroot
    integer :: info(20), iwork(liw), jroot(nrt)
    real(rk) :: errt, psdum, rpar, t, tout, tzero
    real(rk) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
 
    ! Set report options
-   lun = stdout
+   lout = stdout
    kprint = 3
 
    ! Initialize variables and set tolerance parameters.
@@ -134,12 +134,12 @@ program test_krdem2
    atol(2) = 1e-4_rk
 
    if (kprint >= 2) then
-      write (lun, '(/, a, /)') 'DKRDEM-2: Test Program for DASKR'
-      write (lun, '(a)') 'Van Der Pol oscillator'
-      write (lun, '(a)') 'Problem is dY1/dT = Y2,  dY2/dT = 100*(1-Y1**2)*Y2 - Y1'
-      write (lun, '(a)') '            Y1(0) = 2,    Y2(0) = 0'
-      write (lun, '(a)') 'Root function is  R(T,Y,YP) = Y1'
-      write (lun, '(a, e10.1, a, 2(e10.1))') 'RTOL =', rtol(1), ' ATOL =', atol(1:2)
+      write (lout, '(/, a, /)') 'DKRDEM-2: Test Program for DASKR'
+      write (lout, '(a)') 'Van Der Pol oscillator'
+      write (lout, '(a)') 'Problem is dY1/dT = Y2,  dY2/dT = 100*(1-Y1**2)*Y2 - Y1'
+      write (lout, '(a)') '            Y1(0) = 2,    Y2(0) = 0'
+      write (lout, '(a)') 'Root function is  R(T,Y,YP) = Y1'
+      write (lout, '(a, e10.1, a, 2(e10.1))') 'RTOL =', rtol(1), ' ATOL =', atol(1:2)
    end if
 
    ! Note: JTYPE indicates the Jacobian type:
@@ -162,7 +162,7 @@ program test_krdem2
       tout = 20.0_rk
 
       if (kprint > 2) then
-         write (lun, '(/, 70("."), /, a, i2, /)') "Solution with JTYPE =", jtype
+         write (lout, '(/, 70("."), /, a, i2, /)') 'Solution with JTYPE =', jtype
       end if
 
       ! Call DDASKR in loop over TOUT values = 20, 40, ..., 200.
@@ -174,8 +174,8 @@ program test_krdem2
 
             ! Print Y1 and Y2.
             if (kprint > 2) then
-               write (lun, '(a, e15.7, 5x, a, e15.7, 5x, a, e15.7)') &
-                  "At t =", t, "y1 =", y(1), "y2 =", y(2)
+               write (lout, '(a, e15.7, 5x, a, e15.7, 5x, a, e15.7)') &
+                  'At t =', t, 'y1 =', y(1), 'y2 =', y(2)
             end if
 
             if (idid < 0) exit
@@ -189,20 +189,21 @@ program test_krdem2
             else
 
                if (kprint > 2) then
-                  write (lun, '(/, a, e15.7, 2x, a, i3)') "Root found at t =", t, "JROOT =", jroot(1)
+                  write (lout, '(/, a, e15.7, 2x, a, i3)') &
+                     'Root found at t =', t, 'JROOT =', jroot(1)
                end if
 
                kroot = int(t/81.2_rk + 0.5_rk)
                tzero = 81.17237787055_rk + (kroot - 1)*81.41853556212_rk
                errt = t - tzero
                if (kprint > 2) then
-                  write (lun, '(a, e12.4, /)') "Error in t location of root is", errt
+                  write (lout, '(a, e12.4, /)') 'Error in t location of root is', errt
                end if
 
                if (errt >= one) then
                   nerr = nerr + 1
                   if (kprint >= 2) then
-                     write (lun, '(/, a, /)') 'WARNING: Root error exceeds 1.0'
+                     write (lout, '(/, a, /)') 'WARNING: Root error exceeds 1.0'
                   end if
                end if
 
@@ -224,24 +225,24 @@ program test_krdem2
       if (jtype == 2) nre = nre + neq*nje
 
       if (kprint >= 2) then
-         write (lun, '(/, a)') 'Final statistics for this run:'
-         write (lun, '(a, i5)') 'number of steps =', nst
-         write (lun, '(a, i5)') 'number of Gs    =', nre
-         write (lun, '(a, i5)') '(excluding Js)  =', nrea
-         write (lun, '(a, i5)') 'number of Js    =', nje
-         write (lun, '(a, i5)') 'number of Rs    =', nrte
+         write (lout, '(/, a)') 'Final statistics for this run:'
+         write (lout, '(a, i5)') 'number of steps =', nst
+         write (lout, '(a, i5)') 'number of Gs    =', nre
+         write (lout, '(a, i5)') '(excluding Js)  =', nrea
+         write (lout, '(a, i5)') 'number of Js    =', nje
+         write (lout, '(a, i5)') 'number of Rs    =', nrte
       end if
 
    end do
 
    if (kprint >= 1) then
-      write (lun, '(/, a, i3)') 'Number of errors encountered =', nerr
+      write (lout, '(/, a, i3)') 'Number of errors encountered =', nerr
    end if
 
    if (nerr == 0) then
-      stop ">>> Test passed. <<<"
+      stop '>>> Test passed. <<<'
    else
-      error stop ">>> Test failed. <<<"
+      error stop '>>> Test failed. <<<'
    end if
 
 end program test_krdem2

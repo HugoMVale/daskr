@@ -12,6 +12,16 @@ module krdem1_module
 
 contains
 
+   pure subroutine f(t, y, yprime)
+   !! dy1/dt routine.
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: y(:)
+      real(rk), intent(out) :: yprime(:)
+
+      yprime(1) = ((2*log(y(1)) + 8.0_rk)/t - 5.0_rk)*y(1)
+
+   end subroutine f
+
    pure subroutine res(t, y, yprime, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
       real(rk), intent(in):: t
@@ -34,16 +44,6 @@ contains
       end if
 
    end subroutine res
-
-   pure subroutine f(t, y, yprime)
-   !! dy1/dt routine.
-      real(rk), intent(in) :: t
-      real(rk), intent(in) :: y(:)
-      real(rk), intent(out) :: yprime(:)
-
-      yprime(1) = ((2*log(y(1)) + 8.0_rk)/t - 5.0_rk)*y(1)
-
-   end subroutine f
 
    pure subroutine rt(neq, t, y, yprime, nrt, rval, rpar, ipar)
      !! Roots routine.
@@ -93,13 +93,13 @@ program test_krdem1
    implicit none
 
    integer, parameter :: lrw = 76, liw = 41 ! @note: to be replaced by formula or alloc
-   integer :: idid, iout, ipar, jdum, jtype, kprint, lun, nerr, nre, nrea, nrte, nje, nst
+   integer :: idid, iout, ipar, jdum, jtype, kprint, lout, nerr, nre, nrea, nrte, nje, nst
    integer :: info(20), iwork(liw), jroot(2)
    real(rk) :: er, ero, errt, psdum, rpar, t, tout, yt
    real(rk) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
 
   ! Set report options
-   lun = stdout
+   lout = stdout
    kprint = 3
    
    ! Initialize variables and set tolerance parameters.
@@ -121,13 +121,13 @@ program test_krdem1
    jtype = 2
    info(5) = 2 - jtype
    if (kprint >= 2) then
-      write (lun, '(/, a, /)') 'DKRDEM-1: Test Program for DASKR'
-      write (lun, '(a)') 'Problem is  dY/dT = ((2*LOG(Y)+8)/T - 5)*Y,  Y(1) = 1'
-      write (lun, '(a)') 'Solution is  Y(T) = EXP(-T**2 + 5*T - 4)'
-      write (lun, '(a)') 'Root functions are:'
-      write (lun, '(a)') 'R1 = dY/dT  (root at T = 2.5)'
-      write (lun, '(a)') 'R2 = LOG(Y) - 2.2491  (roots at T = 2.47 and T = 2.53)'
-      write (lun, '(a, e10.1, a, e10.1, a, i3, /)') &
+      write (lout, '(/, a, /)') 'DKRDEM-1: Test Program for DASKR'
+      write (lout, '(a)') 'Problem is  dY/dT = ((2*LOG(Y)+8)/T - 5)*Y,  Y(1) = 1'
+      write (lout, '(a)') 'Solution is  Y(T) = EXP(-T**2 + 5*T - 4)'
+      write (lout, '(a)') 'Root functions are:'
+      write (lout, '(a)') 'R1 = dY/dT  (root at T = 2.5)'
+      write (lout, '(a)') 'R2 = LOG(Y) - 2.2491  (roots at T = 2.47 and T = 2.53)'
+      write (lout, '(a, e10.1, a, e10.1, a, i3, /)') &
          'RTOL =', rtol(1), ' ATOL =', atol(1), ' JTYPE =', jtype
    end if
 
@@ -145,7 +145,7 @@ program test_krdem1
          er = y(1) - yt
 
          if (kprint > 2) then
-            write (lun, '(a, e15.7, 5x, a, e15.7, 5x, a, e12.4)') &
+            write (lout, '(a, e15.7, 5x, a, e15.7, 5x, a, e12.4)') &
                'At t =', t, ' y =', y(1), ' error =', er
          end if
 
@@ -156,7 +156,7 @@ program test_krdem1
          if (er >= 1e3_rk) then
             nerr = nerr + 1
             if (kprint >= 2) then
-               write (lun, '(/, a, /)') 'WARNING: Error exceeds 1e3*tolerance'
+               write (lout, '(/, a, /)') 'WARNING: Error exceeds 1e3*tolerance'
             end if
          end if
 
@@ -168,21 +168,21 @@ program test_krdem1
             exit
          else
             if (kprint > 2) then
-               write (lun, '(/, 4x, a, e15.7, 5x, a, 2i5)') &
-                  "Root found at t =", t, " JROOT =", jroot(1:2)
+               write (lout, '(/, 4x, a, e15.7, 5x, a, 2i5)') &
+                  'Root found at t =', t, ' JROOT =', jroot(1:2)
             end if
 
             if (jroot(1) /= 0) errt = t - 2.5_rk
             if (jroot(2) /= 0 .and. t <= 2.5_rk) errt = t - 2.47_rk
             if (jroot(2) /= 0 .and. t > 2.5_rk) errt = t - 2.53_rk
             if (kprint > 2) then
-               write (lun, '(4x, a, e12.4, /)') 'Error in t location of root is', errt
+               write (lout, '(4x, a, e12.4, /)') 'Error in t location of root is', errt
             end if
 
             if (abs(errt) >= 1e-3_rk) then
                nerr = nerr + 1
                if (kprint >= 2) then
-                  write (lun, '(/, a, /)') 'WARNING: Root error exceeds 1e-3'
+                  write (lout, '(/, a, /)') 'WARNING: Root error exceeds 1e-3'
                end if
             end if
 
@@ -204,23 +204,23 @@ program test_krdem1
    if (jtype == 2) nre = nre + neq*nje
 
    if (kprint >= 2) then
-      write (lun, '(/, a)') "Final statistics for this run:"
-      write (lun, '(a, i5)') "number of steps =", nst
-      write (lun, '(a, i5)') "number of Gs    =", nre
-      write (lun, '(a, i5)') "(excluding Js)  =", nrea
-      write (lun, '(a, i5)') "number of Js    =", nje
-      write (lun, '(a, i5)') "number of Rs    =", nrte
-      write (lun, '(a, e10.2)') "error overrun   =", ero
+      write (lout, '(/, a)') 'Final statistics for this run:'
+      write (lout, '(a, i5)') 'number of steps =', nst
+      write (lout, '(a, i5)') 'number of Gs    =', nre
+      write (lout, '(a, i5)') '(excluding Js)  =', nrea
+      write (lout, '(a, i5)') 'number of Js    =', nje
+      write (lout, '(a, i5)') 'number of Rs    =', nrte
+      write (lout, '(a, e10.2)') 'error overrun   =', ero
    end if
 
    if (kprint >= 1) then
-      write (lun, '(/, a, i3)') 'Number of errors encountered =', nerr
+      write (lout, '(/, a, i3)') 'Number of errors encountered =', nerr
    end if
    
    if (nerr == 0) then
-      stop ">>> Test passed. <<<"
+      stop '>>> Test passed. <<<'
    else
-      error stop ">>> Test failed. <<<"
+      error stop '>>> Test failed. <<<'
    end if
 
 end program test_krdem1

@@ -11,8 +11,9 @@ contains
 
    pure subroutine uinit(u, uprime, rpar, ipar)
    !! This routine computes and loads the vector of initial values.
-   !! The initial U values are given by the polynomial `u = 16x(1-x)y(1-y)`.
-   !! The initial UPRIME values are set to zero. (DASKR corrects these during the first time step.)
+   !! The initial `u` values are given by the polynomial `u = 16x(1-x)y(1-y)`.
+   !! The initial `uprime` values are set to zero. ([[daskr]] corrects these during the first 
+   !! time step.)
       real(rk), intent(out) :: u(:)
       real(rk), intent(out) :: uprime(:)
       real(rk), intent(in) :: rpar(4)
@@ -40,7 +41,7 @@ contains
 
    pure subroutine res(t, u, uprime, cj, delta, ires, rpar, ipar)
    !! User-supplied residuals subroutine.
-   !! It computes the residuals for the 2-D discretized heat equation, with zero boundary values.
+   !! It computes the residuals for the 2D discretized heat equation, with zero boundary values.
       real(rk), intent(in) :: t
       real(rk), intent(in) :: u(*)
       real(rk), intent(in) :: uprime(*)
@@ -165,8 +166,8 @@ program example_heatilu
 
    real(rk), parameter :: permtol = 0.01_rk, tolilut = 0.001_rk
 
-   integer :: idid, ierr, iout, liw, liwpmin, lrw, lwpmin, m, mband, ml, mu, ncfl, ncfn, &
-              neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
+   integer :: idid, ierr, iout, liw, liwpmin, lrw, lout, lwpmin, m, mband, ml, mu, ncfl, & 
+              ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
    integer :: info(20), iwork(leniw + leniwp), ipar(34), jroot(2)
 
    real(rk) :: atol, avdim, coeff, dx, hu, rtol, t, tout, umax
@@ -177,7 +178,7 @@ program example_heatilu
    ! Open matrix output file if JACOUT==1
    if (jacout == 1) then
       ipar(29) = 1
-      open (unit=1, file='Heat_Test_Matrix.dat', status='unknown')
+      open (newunit=lout, file='Heat_Test_Matrix.dat', status='unknown')
    end if
 
    ! Here set parameters for the problem being solved. Use RPAR and IPAR to communicate these
@@ -267,7 +268,7 @@ program example_heatilu
    write (stdout, '(a, i3, a, i3)') 'Preconditioner is a sparse approximation with ML =', ml, ' MU =', mu
    write (stdout, '(a, i2, a)') 'Incomplete factorization option =', ipremeth, ' (1 = ILUT, 2 = ILUTP)'
    write (stdout, '(a, e10.1, a, e10.1, /)') 'Tolerances are RTOL =', rtol, ' ATOL =', atol
-   write (stdout, "('t', 12x, 'UMAX', 9x, 'NQ', 5x, 'H', 10x, 'STEPS', 5x, 'NNI', 5x, 'NLI')")
+   write (stdout, '("t", 12x, "UMAX", 9x, "NQ", 5x, "H", 10x, "STEPS", 5x, "NNI", 5x, "NLI")')
 
    !-------------------------------------------------------------------------------------------
    ! Now we solve the problem.
@@ -353,6 +354,6 @@ program example_heatilu
    write (stdout, '(a, i7, 1x, i7)') 'Minimum lengths for work arrays WP and IWP: ', lwpmin, liwpmin
 
    ! Close matrix output file if JACOUT==1
-   if (jacout == 1) close(unit=1)
+   if (jacout == 1) close(unit=lout)
 
 end program example_heatilu
