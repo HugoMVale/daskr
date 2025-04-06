@@ -24,7 +24,14 @@ where $G$, $y$, and $y'$ are $N$-dimensional vectors. The linear systems which a
 
 ## History
 
-The first version of the library, named DASSL [1], solved the linear systems arising at each time step using direct methods. DASPK [2,3] extended the capabilities of DASSL to include iterative methods, which can be significantly more efficient for large-scale problems. Additionally, DASPK added the ability to initialize $y'_0$ in case it is not known. Lastly, DASKR [4] included the ability to find the roots of a given set of functions while integrating the DAE system.
+The first version of the library, named DASSL [1], solved the linear systems arising from the implicit time integration methods at each time step using direct methods. DASPK [2,3] extended the capabilities of DASSL to include iterative methods, which can be significantly more efficient, especially for large-scale problems. Furthermore, DASPK added the ability to initialize $y'_0$ in case it is not known. Lastly, DASKR [4] included the ability to find the roots of a given set of functions while integrating the DAE system.
+
+| Version | Date written  | Last update | Direct solver | Iterative solver | Root finding |    Standard   |
+|:-------:|:-------------:|:-----------:|:-------------:|:----------------:|:------------:|:-------------:|
+|  daskr  |      2025     |      --     |       ☑       |         ☑       |       ☑      | Fortran 2018  |
+|  DASKR  |      2002     |     2011    |       ☑       |         ☑       |       ☑      |   FORTRAN 77  |
+|  DASPK  |      1989     |     2000    |       ☑       |         ☑       |       ☐      |   FORTRAN 77  |
+|  DASSL  |      1983     |     2000    |       ☑       |         ☐       |       ☐      |   FORTRAN 77  |
 
 `daskr` is a modernization of the DASKR code [4], intended to make the library easier to use and maintain. The main changes include:
 
@@ -36,13 +43,6 @@ The first version of the library, named DASSL [1], solved the linear systems ari
 * [ ] Addition of explicit interfaces to BLAS routines.
 * [ ] Implementation of a C API.
 * [ ] Automatic code documentation with FORD.
-
-| Version | Date written  | Last update | Direct solver | Iterative solver | Root finding |    Standard   |
-|:-------:|:-------------:|:-----------:|:-------------:|:----------------:|:------------:|:-------------:|
-|  daskr  |      2025     |      --     |       ☑       |         ☑       |       ☑      | Fortran 2018  |
-|  DASKR  |      2002     |     2011    |       ☑       |         ☑       |       ☑      |   FORTRAN 77  |
-|  DASPK  |      1989     |     2000    |       ☑       |         ☑       |       ☐      |   FORTRAN 77  |
-|  DASSL  |      1983     |     2000    |       ☑       |         ☐       |       ☐      |   FORTRAN 77  |
 
 **References**
 
