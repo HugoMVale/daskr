@@ -12,7 +12,7 @@ module web_par
 
    real(rk) :: aa, ee, gg, bb, dprey, dpred
    real(rk) :: acoef(ns, ns), alpha, ax, ay, bcoef(ns), beta, cox(ns), coy(ns), diff(ns), dx, dy
-   
+
 contains
 
    impure subroutine setpar()
@@ -552,7 +552,7 @@ contains
 
    pure subroutine c1_average(c, c1ave)
    !! This routine computes the spatial average value of \(c_1\).
-      use web_par
+      use web_par, only: mx, my, ns, mxns
       real(rk), intent(in) :: c(*)
       real(rk), intent(out) :: c1ave
 
