@@ -2,59 +2,38 @@
 ! Adapted from original Fortran code in `original/examples/dweb.f`
 !----------------------------------------------------------------------------------------------
 
-module ppar1
-   !! 1st common set of parameters for [[example_web]].
-   use daskr_kinds, only: rk
-   implicit none
-
-   real(rk) :: aa, ee, gg, bb, dprey, dpred
-
-end module ppar1
-
-module ppar2
-   !! 2nd common set of parameters for [[example_web]].
+module web_par
+   !! Common set of parameters for [[example_web]].
    use daskr_kinds, only: rk, one
    implicit none
 
-   integer, parameter :: maxs = 2
+   integer, parameter :: np = 1, ns = 2*np, mx = 40, my = mx, mxns = mx*ns
    real(rk), parameter :: pi = 4*atan(one)
 
-   integer :: np, ns, mx, my, mxns
-   real(rk) :: ax, ay, acoef(maxs, maxs), bcoef(maxs), dx, dy, alph, beta, fpi, diff(maxs), &
-               cox(maxs), coy(maxs)
-
-end module ppar2
-
-module web_module
-   !! Auxiliary module for [[example_web]].
-   use daskr_kinds, only: rk, zero, one
-   implicit none
-
+   real(rk) :: aa, ee, gg, bb, dprey, dpred
+   real(rk) :: acoef(ns, ns), alpha, ax, ay, bcoef(ns), beta, cox(ns), coy(ns), diff(ns), dx, dy
+   
 contains
 
    impure subroutine setpar()
    !! This routine sets the basic problem parameters which are passed to the various routines
-   !! via the modules [[ppar1]] and [[ppar2]].
-      use ppar1
-      use ppar2
-
+   !! via the module [[web_par]].
       integer :: i, j
 
       ax = one
       ay = one
-      np = 1
-      mx = 20
-      my = 20
+
       aa = one
       ee = 1e4_rk
       gg = 0.5e-6_rk
       bb = one
       dprey = one
       dpred = 0.05_rk
-      alph = 5e1_rk
-      beta = 1e2_rk
-      ns = 2*np
-      fpi = 4*pi
+      alpha = 5e1_rk
+      beta = 3e2_rk
+
+      dx = ax/(mx - 1)
+      dy = ay/(my - 1)
 
       do j = 1, np
          do i = 1, np
@@ -68,8 +47,22 @@ contains
          diff(j) = dprey
          diff(np + j) = dpred
       end do
-      
+
+      do i = 1, ns
+         cox(i) = diff(i)/dx**2
+         coy(i) = diff(i)/dy**2
+      end do
+
    end subroutine setpar
+
+end module web_par
+
+module web_m
+   !! Auxiliary module for [[example_web]].
+   use daskr_kinds, only: rk, zero, one
+   implicit none
+
+contains
 
    pure subroutine setid(mx, my, ns, nsd, lid, iwork)
    !! This routine sets the ID array in `iwork`, indicating which components are differential
@@ -99,12 +92,12 @@ contains
 
    end subroutine setid
 
-   pure subroutine cinit(c, cprime, predic, rpar)
+   pure subroutine cinit(c, cprime, pred_ic, rpar)
    !! This routine computes and loads the vectors of initial values.
-      use ppar2
+      use web_par, only: ax, ay, alpha, beta, dx, dy, ns, np, mx, my, mxns, pi
       real(rk), intent(out) :: c(*)
       real(rk), intent(out) :: cprime(*)
-      real(rk), intent(in)  :: predic
+      real(rk), intent(in)  :: pred_ic
       real(rk), intent(inout) :: rpar(*)
 
       integer :: i, ioff, iyoff, jx, jy, npp1
@@ -120,12 +113,12 @@ contains
             x = (jx - 1)*dx
             argx = 16*x*x*(ax - x)*(ax - x)
             ioff = iyoff + ns*(jx - 1)
-            fac = one + alph*x*y + beta*sin(fpi*x)*sin(fpi*y)
+            fac = one + alpha*x*y + beta*sin(4*pi*x)*sin(4*pi*y)
             do i = 1, np
                c(ioff + i) = 10.0_rk + i*argx*argy
             end do
             do i = npp1, ns
-               c(ioff + i) = predic
+               c(ioff + i) = pred_ic
             end do
          end do
       end do
@@ -164,8 +157,8 @@ contains
             do jy = 1, my
                do jx = 1, mx
                   write (lout, '(1x, a16)', advance='no') &
-                  "c("//to_string(i)//","//to_string(jx)//","//to_string(jy)//")"
-               end do   
+                     "c("//to_string(i)//","//to_string(jx)//","//to_string(jy)//")"
+               end do
             end do
          end do
          write (lout, *) ''
@@ -177,7 +170,7 @@ contains
          do jy = 1, my
             do jx = 1, mx
                write (lout, '(1x, es16.5e3)', advance="no") c(i, jx, jy)
-            end do   
+            end do
          end do
       end do
       write (lout, *) ''
@@ -187,7 +180,7 @@ contains
    pure subroutine res(t, c, cprime, cj, delta, ires, rpar, ipar)
    !! This routine computes the residuals vector, using subroutine [[f]] for the right-hand
    !! sides.
-      use ppar2
+      use web_par, only: ns, np, mx, my, mxns
       real(rk), intent(in) :: t
       real(rk), intent(in) :: c(*)
       real(rk), intent(in) :: cprime(*)
@@ -222,7 +215,7 @@ contains
    !! This routine computes the right-hand sides of all the equations and returns them in the
    !! array `cprime`. The interaction rates are computed by calls to [[rates]], and these are
    !! saved in `rpar` for later use in preconditioning.
-      use ppar2
+      use web_par, only: cox, coy, ns, mx, my, mxns
       real(rk), intent(in) :: t
       real(rk), intent(in) :: c(*)
       real(rk), intent(out) :: cprime(*)
@@ -262,9 +255,9 @@ contains
    end subroutine f
 
    pure subroutine rates(t, jx, jy, c, rate)
-   !! This routine computes one block of the rate term of the system \(v\), namely block 
+   !! This routine computes one block of the rate term of the system \(v\), namely block
    !! `(jx, jy)`, for use in preconditioning.
-      use ppar2
+      use web_par, only: alpha, beta, acoef, bcoef, dx, dy, pi, ns
       real(rk), intent(in) :: t
       integer, intent(in) :: jx
       integer, intent(in) :: jy
@@ -276,7 +269,7 @@ contains
 
       y = (jy - 1)*dy
       x = (jx - 1)*dx
-      fac = one + alph*x*y + beta*sin(fpi*x)*sin(fpi*y)
+      fac = one + alpha*x*y + beta*sin(4*pi*x)*sin(4*pi*y)
 
       rate(1:ns) = zero
       do i = 1, ns
@@ -299,10 +292,10 @@ contains
    !! * If `jbg==1`, we call [[DRBGJA]], and use block-grouping.
    !!
    !! Array `rpar`, containing the current \(v\) vector, is passed to [[DRBDJA]] and [[DRBGJA]]
-   !! as argument `R0`, consistent with the loading of `rpar` in [[f]]. The procedure	name 
-   !! [[rates]] is passed as the name of the routine which computes the individual blocks of 
+   !! as argument `R0`, consistent with the loading of `rpar` in [[f]]. The procedure        name
+   !! [[rates]] is passed as the name of the routine which computes the individual blocks of
    !! \(v\).
-      procedure() :: res_
+      external :: res_
       integer, intent(in) :: ires
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
@@ -333,10 +326,10 @@ contains
 
    subroutine psolrs(neq, t, cc, ccprime, savr, wk, cj, wt, wp, iwp, b, eplin, ier, rpar, ipar)
    !! This routine applies the inverse of a product preconditioner matrix to the vector in the
-   !! array `b`. Depending on the flag `jpre`, this involves a call to [[gs]], for the inverse 
-   !! of the spatial factor, and/or a call to [[DRBDPS]] or [[DRBGPS]] for the inverse of the 
-   !! reaction-based factor (`cj*I_d - dR/dy`). The latter factor uses block-grouping (with a 
-   !! call to [[DRBGPS]]) if `jbg == 1`, and does not (with a call to [[DRBDPS]]) if `jbg == 0`. 
+   !! array `b`. Depending on the flag `jpre`, this involves a call to [[gs]], for the inverse
+   !! of the spatial factor, and/or a call to [[DRBDPS]] or [[DRBGPS]] for the inverse of the
+   !! reaction-based factor (`cj*I_d - dR/dy`). The latter factor uses block-grouping (with a
+   !! call to [[DRBGPS]]) if `jbg == 1`, and does not (with a call to [[DRBDPS]]) if `jbg == 0`.
    !! the flag `jbg` is passed as `ipar(2)`. The array `b` is overwritten with the solution.
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
@@ -378,10 +371,10 @@ contains
    pure subroutine gs(n, hl0, z, x)
    !! This routine provides the inverse of the spatial factor for a product preconditoner in an
    !! ns-species reaction-diffusion problem. It performs `itmax` Gauss-Seidel iterations to
-   !! compute an approximation to \(A_S^{-1} z\), where \(A_S = I - h_{l0} J_ d \), and \(J_d\) 
-   !! represents the diffusion contributions to the Jacobian. The solution vector is returned 
+   !! compute an approximation to \(A_S^{-1} z\), where \(A_S = I - h_{l0} J_ d \), and \(J_d\)
+   !! represents the diffusion contributions to the Jacobian. The solution vector is returned
    !! in `z`.
-      use ppar2
+      use web_par, only: cox, coy, ns, mx, my, mxns
       integer, intent(in) :: n
       real(rk), intent(in) :: hl0
       real(rk), intent(inout) :: z(*)
@@ -389,7 +382,7 @@ contains
 
       integer, parameter :: itmax = 5
       integer :: i, ic, ici, iter, iyoff, jx, jy
-      real(rk) :: elamda, beta1(maxs), gamma1(maxs), beta2(maxs), gamma2(maxs), dinv(maxs)
+      real(rk) :: elamda, beta1(ns), gamma1(ns), beta2(ns), gamma2(ns), dinv(ns)
 
       ! Write matrix as A = D - L - U.
       ! Load local arrays BETA, BETA2, GAMMA1, GAMMA2, and DINV.
@@ -404,7 +397,7 @@ contains
 
       ! Zero X in all its components, since X is added to Z at the end.
       x(1:n) = zero
-      
+
       ! Load array X with (D-inverse)*Z for first iteration.
       do jy = 1, my
          iyoff = mxns*(jy - 1)
@@ -422,7 +415,7 @@ contains
 
          ! Calculate (D-inverse)*U*X
          if (iter > 1) then
-            
+
             jy = 1
             jx = 1
             ic = ns*(jx - 1)
@@ -552,14 +545,14 @@ contains
          do i = 1, n
             z(i) = z(i) + x(i)
          end do
-   
+
       end do
 
    end subroutine gs
 
    pure subroutine c1_average(c, c1ave)
    !! This routine computes the spatial average value of \(c_1\).
-      use ppar2
+      use web_par
       real(rk), intent(in) :: c(*)
       real(rk), intent(out) :: c1ave
 
@@ -602,12 +595,12 @@ contains
       character(len=:), allocatable :: string
       character(len=128) :: buffer
 
-      write(buffer, *) value
+      write (buffer, *) value
       string = trim(adjustl(buffer))
-         
+
    end function
 
-end module web_module
+end module web_m
 
 program example_web
 !! Example program for [[daskr]]:
@@ -617,20 +610,20 @@ program example_web
 !! The PDE system is a food web population model, with predator-prey interaction and diffusion
 !! on the unit square in two dimensions.  The dependent variable vector is
 !!
-!! $$ c = [c_1, c_2 , ..., c_s] $$   
+!! $$ c = [c_1, c_2 , ..., c_s] $$
 !!
 !! and the PDEs are as follows:
 !!
 !! $$\begin{aligned}
-!! \frac{\partial c_i}{\partial t} &= d_i \left( \frac{\partial^2 c_i}{\partial x^2} 
+!! \frac{\partial c_i}{\partial t} &= d_i \left( \frac{\partial^2 c_i}{\partial x^2}
 !!           + \frac{\partial^2 c_i}{\partial y^2} \right) + v_i \quad i=1,...,s/2 \\
-!!                               0 &= d_i \left( \frac{\partial^2 c_i}{\partial x^2} 
-!!           + \frac{\partial^2 c_i}{\partial y^2} \right) + v_i \quad i=s/2+1,...,s  
-!! \end{aligned}$$         
+!!                               0 &= d_i \left( \frac{\partial^2 c_i}{\partial x^2}
+!!           + \frac{\partial^2 c_i}{\partial y^2} \right) + v_i \quad i=s/2+1,...,s
+!! \end{aligned}$$
 !!
 !! where the rate of formation of species \(i\) is given by:
 !!
-!! $$ v_i(x,y,c) = c_i \left( b_i + \sum_{j=1}^s a_{ij} c_j \right) $$         
+!! $$ v_i(x,y,c) = c_i \left( b_i + \sum_{j=1}^s a_{ij} c_j \right) $$
 !!
 !! The number of species is \(s = 2 p\), with the first \(p\) being prey and the last \(p\)
 !! being predators. The coefficients \(a_{ij}\), \(b_i\), \(d_i\) are:
@@ -640,17 +633,17 @@ program example_web
 !!   a_{ij} &= -g  \quad (i \le p,\; j > p) \\
 !!   a_{ij} &=  e  \quad (i > p,\; j \le p)
 !! \end{aligned}$$
-!!    
+!!
 !! $$\begin{aligned}
 !!   b_i    &=  b (1 + \alpha x y + \beta \sin(4 \pi x) \sin(4 \pi y)) \quad (i \le p) \\
 !!   b_i    &= -b (1 + \alpha x y + \beta \sin(4 \pi x) \sin(4 \pi y)) \quad (i > p)
 !! \end{aligned}$$
-!!   
+!!
 !! $$\begin{aligned}
 !!   d_i    &= d_{prey} \quad (i \le p) \\
 !!   d_i    &= d_{pred} \quad (i > p)
 !! \end{aligned}$$
-!!    
+!!
 !! The various scalar parameters are set in subroutine [[setpar]].
 !!
 !! The boundary conditions are of Neumann type (zero normal derivative) everywhere. A polynomial
@@ -658,34 +651,34 @@ program example_web
 !! differencing on a \( M_x \times M_y\) mesh.
 !!
 !! The root function is:
-!!   
+!!
 !! $$ r(t,c,c') = \iint c_1 dx dy - 20 $$
 !!
 !! The DAE system is solved by [[daskr]] with three different method options:
 !!
 !! 1. Direct band method for the linear systems (internal Jacobian),
-!! 2. Preconditioned Krylov method for the linear systems, without block-grouping in the 
+!! 2. Preconditioned Krylov method for the linear systems, without block-grouping in the
 !!    reaction-based factor, and
-!! 3. Preconditioned Krylov method for the linear systems, with block-grouping in the 
+!! 3. Preconditioned Krylov method for the linear systems, with block-grouping in the
 !!    reaction-based factor.
 !!
 !! In the Krylov cases, the preconditioner is the product of two factors:
-!!   
-!! * The spatial factor uses a fixed number of Gauss-Seidel iterations based on the diffusion 
+!!
+!! * The spatial factor uses a fixed number of Gauss-Seidel iterations based on the diffusion
 !!   terms only.
-!! * The reaction-based factor is a block-diagonal matrix based on the partial derivatives of 
+!! * The reaction-based factor is a block-diagonal matrix based on the partial derivatives of
 !!   the interaction terms `R` only.
 !!
-!! With block-grouping, only a subset of the \((s \times s)\) blocks are computed. An integer 
+!! With block-grouping, only a subset of the \((s \times s)\) blocks are computed. An integer
 !! flag, `jpre`, is set in the main program to specify whether the preconditioner is to use only
 !! one of the two factors or both, and in which order.
 !!
 !! The reaction-based preconditioner factor is set up and solved in seven subroutines:
-!!   
+!!
 !! * [[DMSET2]], [[DRBDJA]], [[DRBDPS]] in the case of no block-grouping, and
 !! * [[DGSET2]], [[GSET1]], [[DRBGJA]], [[DRBGPS]]  in the case of block-grouping.
 !!
-!! These routines are provided separately for general use on problems arising from 
+!! These routines are provided separately for general use on problems arising from
 !! reaction-transport systems.
 !!
 !! Two output files are written: one with the problem description and performance statistics on
@@ -693,7 +686,7 @@ program example_web
 !! in the case of the direct method.
 !!
 !! References:
-!!   
+!!
 !! * Peter N. Brown and Alan C. Hindmarsh, "Reduced Storage Matrix Methods in Stiff ODE
 !!   Systems", J. Appl. Math. & Comp., 31 (1989), pp. 40-91.
 !! * Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Using Krylov Methods in the
@@ -704,16 +697,16 @@ program example_web
 !!   SIAM J. Sci. Comput., 19 (1998), pp. 1495 - 1512.
 
    use daskr_kinds, only: rk, zero, one
-   use web_module
-   use ppar1
-   use ppar2
+   use web_par, only: aa, alpha, bb, beta, dpred, dprey, ee, gg, mx, my, mxns, np, ns, setpar
+   use web_m
+   implicit none
 
-   integer, parameter :: maxm = 20, maxn = 800, lrw = 63 + (3*maxs*maxm + 11)*maxn + maxm, &
-                         liw = 40 + 2*maxn
-   integer :: i, idid, info(20), iout, ipar(2), iwork(liw), jbg, jpre, jroot, leniw, &
-              lenrw, ldout, lcout, meth, ncfl, ncfn, neq, ng, nli, nlidif, nni, nnidif, nout, &
+   integer, parameter :: neq = ns*mx*my, maxm = max(mx, my)
+   integer, parameter :: lrw = 63 + (3*ns*maxm + 11)*neq + maxm, liw = 40 + 2*neq
+   integer :: idid, info(20), iout, ipar(2), iwork(liw), jbg, jpre, jroot, leniw, &
+              lenrw, ldout, lcout, meth, ncfl, ncfn, ng, nli, nlidif, nni, nnidif, nout, &
               npe, nps, nqu, nre, nrt, nrte, nst, nxg, nyg
-   real(rk) :: atol, avlin, c1ave, cc(maxn), ccprime(maxn), hu, predic, rpar(maxn), rtol, &
+   real(rk) :: atol, avlin, c1ave, cc(neq), ccprime(neq), hu, pred_ic, rpar(neq), rtol, &
                rwork(lrw), t, tout
 
    ! Dimension solution arrays and work arrays.
@@ -731,30 +724,16 @@ program example_web
    !       The length required for IWORK is
    !       40 + NEQ + LENIWP = 40 + NEQ + NS*NGRP .
    !
-   ! The dimensions for the various arrays are set below using parameters
+   ! The dimensions for the various arrays are set using parameters
    !       MAXN    which must be >= NEQ = NS*MX*MY,
-   !       MAXS    which must be >= NS,
    !       MAXM    which must be >= MAX(MX,MY).
 
    ! Open output files.
-   open (newunit=ldout, file='./example/example_web_d.out', &
-      status="unknown", action="write", position="rewind")
-   open (newunit=lcout, file='./example/example_web_c.out',  &
-      status="unknown", action="write", position="rewind")
-   
-      ! Call SETPAR to set basic problem parameters.
+   open (newunit=ldout, file='./example/example_web_d.out', action="write", position="rewind")
+   open (newunit=lcout, file='./example/example_web_c.out', action="write", position="rewind")
+
+   ! Call SETPAR to set basic problem parameters.
    call setpar
-
-   ! Set remaining problem parameters.
-   neq = ns*mx*my
-   mxns = mx*ns
-   dx = ax/(mx - 1)
-   dy = ay/(my - 1)
-
-   do i = 1, ns
-      cox(i) = diff(i)/dx**2
-      coy(i) = diff(i)/dy**2
-   end do
 
    ! Set NRT = number of root functions.
    nrt = 1
@@ -769,13 +748,13 @@ program example_web
    write (ldout, '(a, e12.4, a, e12.4)') &
       'Diffusion coefficients: dprey =', dprey, '  dpred =', dpred
    write (ldout, '(a, e12.4, a, e12.4)') &
-      'Rate parameters alpha =', alph, ' and beta =', beta
+      'Rate parameters alphaa =', alpha, ' and beta =', beta
    write (ldout, '(a, 2i4, 5x, a, i7)') &
       'Mesh dimensions (MX,MY) =', mx, my, ' Total system size is NEQ =', neq
    write (ldout, '(a)') 'Root function is R(Y) = average(c1) - 20'
 
    ! Here set the flat initial guess for the predators.
-   predic = 1e5_rk
+   pred_ic = 1e5_rk
 
    ! Set remaining method parameters for DDASKR.
    ! These include the INFO array and tolerances.
@@ -787,8 +766,8 @@ program example_web
    ! Here set INFO(14) = 1 to get the computed initial values.
    info(14) = 1
 
-   ! Here set INFO(15) = 1 to signal that a preconditioner setup routine
-   ! is to be called in the Krylov case.
+   ! Here set INFO(15) = 1 to signal that a preconditioner setup routine is to be called in the
+   ! Krylov case.
    info(15) = 1
 
    ! Here set INFO(16) = 1 to get alternative error test (on the differential variables only).
@@ -803,7 +782,7 @@ program example_web
    write (ldout, '(a, i2, a)') &
       'Internal I.C. calculation flag INFO(11) =', info(11), '  (0 = off, 1 = on)'
    write (ldout, '(a, e10.2)') &
-      'Predator I.C. guess =', predic
+      'Predator I.C. guess =', pred_ic
    write (ldout, '(a, i2, a)') &
       'Alternate error test flag INFO(16) =', info(16), '  (0 = off, 1 = on)'
 
@@ -878,7 +857,7 @@ program example_web
       ! Set the initial T and TOUT, and call CINIT to set initial values.
       t = zero
       tout = 1.0e-8_rk
-      call cinit(cc, ccprime, predic, rpar)
+      call cinit(cc, ccprime, pred_ic, rpar)
 
       nli = 0
       nni = 0
@@ -974,7 +953,7 @@ program example_web
 
    end do
 
-   close(unit=ldout)
-   close(unit=lcout)
+   close (unit=ldout)
+   close (unit=lcout)
 
 end program example_web
