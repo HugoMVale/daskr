@@ -2,7 +2,7 @@
 ! Adapted from original Fortran code in `original/examples/dkrdem.f`
 !----------------------------------------------------------------------------------------------
 
-module krdem2_module
+module krdem2_m
 !! Auxiliary module for [[test_krdem2]].
    use daskr_kinds, only: rk, zero, one
    implicit none
@@ -79,7 +79,7 @@ contains
 
    end subroutine rt
 
-end module krdem2_module
+end module krdem2_m
 
 program test_krdem2
 !! Test program for [[daskr]]: intermittently stiff problem.
@@ -109,7 +109,7 @@ program test_krdem2
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, zero, one, two
-   use krdem2_module, only: res, rt, jac, neq, nrt
+   use krdem2_m, only: res, rt, jac, neq, nrt
    implicit none
 
    integer, parameter :: lrw = 100, liw = 100 ! @note: to be replaced by formula or alloc

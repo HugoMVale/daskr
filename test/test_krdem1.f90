@@ -2,7 +2,7 @@
 ! Adapted from original Fortran code in `original/examples/dkrdem.f`
 !----------------------------------------------------------------------------------------------
 
-module krdem1_module
+module krdem1_m
 !! Auxiliary module for [[test_krdem1]].
    use daskr_kinds, only: rk, zero, one
    implicit none
@@ -61,7 +61,7 @@ contains
 
    end subroutine rt
 
-end module krdem1_module
+end module krdem1_m
 
 program test_krdem1
 !! Test program for [[daskr]]: nonstiff problem.
@@ -89,7 +89,7 @@ program test_krdem1
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, zero, one, two
-   use krdem1_module, only: res, rt, neq, nrt
+   use krdem1_m, only: res, rt, neq, nrt
    implicit none
 
    integer, parameter :: lrw = 76, liw = 41 ! @note: to be replaced by formula or alloc

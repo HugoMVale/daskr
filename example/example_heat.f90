@@ -2,7 +2,7 @@
 ! Adapted from original Fortran code in `original/examples/dheat.f`
 !----------------------------------------------------------------------------------------------
 
-module heat_module
+module heat_m
 !! Auxiliary module for [[example_heat]].
    use daskr_kinds, only: rk, zero, one
    implicit none
@@ -95,7 +95,7 @@ contains
 
    end subroutine rt
 
-end module heat_module
+end module heat_m
 
 program example_heat
 !! Example program for [[daskr]]:
@@ -152,7 +152,7 @@ program example_heat
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
-   use heat_module
+   use heat_m
    implicit none
 
    integer, parameter :: maxm = 10, maxm2 = maxm + 2, mxneq = maxm2**2, &

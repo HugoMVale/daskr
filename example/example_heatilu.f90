@@ -2,7 +2,7 @@
 ! Adapted from original Fortran code in `original/examples/dheatilu.f`
 !----------------------------------------------------------------------------------------------
 
-module heatilu_module
+module heatilu_m
 !! Auxiliary module for [[example_heatilu]].
    use daskr_kinds, only: rk, zero, one
    implicit none
@@ -95,7 +95,7 @@ contains
 
    end subroutine rt
 
-end module heatilu_module
+end module heatilu_m
 
 program example_heatilu
 !! Example program for [[daskr]]:
@@ -152,7 +152,7 @@ program example_heatilu
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
-   use heatilu_module
+   use heatilu_m
    implicit none
 
    integer, parameter :: lenpfac = 5, lenplufac = 5, ipremeth = 1, lfililut = 5, &
