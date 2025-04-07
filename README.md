@@ -6,6 +6,10 @@ Modernized version of DASKR, a differential-algebraic system solver with rootfin
 [![codecov](https://codecov.io/gh/HugoMVale/daskr/graph/badge.svg?token=AgjzeQ1qFL)](https://codecov.io/gh/HugoMVale/daskr)
 [![Language](https://img.shields.io/badge/-Fortran-734f96?logo=fortran&logoColor=white)](https://github.com/topics/fortran)
 
+<p align="center">
+  <img src="./example/example_heat_c.gif" width="500" alt="Solution of food web problem">
+</p>
+
 ## Status
 
 This is a work in progress. First, I'm modernizing the examples and converting some to unit tests. Then, I'll begin work on the library code itself.
