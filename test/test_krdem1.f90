@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------------------------------
 
 module krdem1_m
-!! Auxiliary module for [[test_krdem1]].
+!! Procedures for [[test_krdem1]].
    use daskr_kinds, only: rk, zero, one
    implicit none
    

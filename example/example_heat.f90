@@ -3,21 +3,23 @@
 !----------------------------------------------------------------------------------------------
 
 module heat_m
-!! Auxiliary module for [[example_heat]].
+!! Procedures for [[example_heat]].
    use daskr_kinds, only: rk, zero, one
    implicit none
+
+   integer, parameter :: lipar = 4, lrpar = 2, nrt = 2
 
 contains
 
    pure subroutine uinit(u, uprime, rpar, ipar)
    !! This routine computes and loads the vector of initial values.
    !! The initial `u` values are given by the polynomial `u = 16x(1-x)y(1-y)`.
-   !! The initial `uprime` values are set to zero. ([[daskr]] corrects these during the first 
-   !! time step.)
+   !! The initial `uprime` values are set to zero ([[daskr]] corrects these during the first 
+   !! time step).
       real(rk), intent(out) :: u(:)
       real(rk), intent(out) :: uprime(:)
-      real(rk), intent(in) :: rpar(2)
-      integer, intent(in) :: ipar(4)
+      real(rk), intent(in) :: rpar(:)
+      integer, intent(in) :: ipar(:)
 
       integer :: i, ioff, j, k, m
       real(rk) :: dx, xj, yk
@@ -48,8 +50,8 @@ contains
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
       integer, intent(inout) :: ires
-      real(rk), intent(in) :: rpar(2)
-      integer, intent(in) :: ipar(4)
+      real(rk), intent(in) :: rpar(*)
+      integer, intent(in) :: ipar(*)
 
       integer :: i, ioff, j, k, m, m2, neq
       real(rk) :: coeff, temx, temy
@@ -84,8 +86,8 @@ contains
       real(rk), intent(in) :: uprime(neq)
       integer, intent(in) :: nrt
       real(rk), intent(out) :: rval(nrt)
-      real(rk), intent(in) :: rpar(2)
-      integer, intent(in) :: ipar(4)
+      real(rk), intent(in) :: rpar(*)
+      integer, intent(in) :: ipar(*)
 
       real(rk) :: umax
 
@@ -135,7 +137,7 @@ program example_heat
 !! this approximation are offset by the lower storage and linear system solution costs for a
 !! tridiagonal matrix.
 !!
-!! The routines [[DBANJA]] and [[DBANPS]] that generate and solve the banded preconditioner are
+!! The routines [[banja]] and [[banps]] that generate and solve the banded preconditioner are
 !! provided in a separate file for general use.
 !!
 !! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
@@ -152,6 +154,7 @@ program example_heat
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
+   use daskr_banpre, only: banja, banps
    use heat_m
    implicit none
 
@@ -159,16 +162,14 @@ program example_heat
                          lenrw = 107 + 18*mxneq, leniw = 40, leniwp = mxneq, &
                          lenwp = 4*mxneq + 2*((mxneq/3) + 1)
    integer :: idid, iout, lenpd, liw, liwp, lrw, lwp, m, mband, ml, msave, mu, &
-              ncfl, ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
-   integer :: iwork(leniw + leniwp), info(20), ipar(4), jroot(2)
+              ncfl, ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrte, nst
+   integer :: iwork(leniw + leniwp), info(20), ipar(lipar), jroot(nrt)
 
    real(rk) :: atol, avdim, coeff, dx, hu, rtol, t, tout, umax
-   real(rk) :: u(mxneq), uprime(mxneq), rwork(lenrw + lenwp), rpar(2)
+   real(rk) :: u(mxneq), uprime(mxneq), rwork(lenrw + lenwp), rpar(lrpar)
 
-   external :: dbanja, dbanps
-
-   ! Here set parameters for the problem being solved. Use RPAR and IPAR to communicate these
-   ! to the other routines.
+   ! Set parameters for the problem being solved. Use RPAR and IPAR to communicate these to
+   ! the other routines.
    m = maxm
    dx = one/(m + one)
    neq = (m + 2)*(m + 2)
@@ -179,18 +180,14 @@ program example_heat
    rpar(1) = dx
    rpar(2) = coeff
 
-   ! Here set NRT = number of root functions
-   nrt = 2
-
-   ! Here set the half-bandwidths and load them into IPAR for use by the preconditioner
-   ! routines.
+   ! Set the half-bandwidths and load them into IPAR for use by the preconditioner routines.
    ml = 1
    mu = 1
    ipar(1) = ml
    ipar(2) = mu
 
-   ! Here set the lengths of the preconditioner work arrays WP and IWP, load them into IWORK,
-   ! and set the total lengths of WORK and IWORK.
+   ! Set the lengths of the preconditioner work arrays WP and IWP, load them into IWORK, and 
+   ! set the total lengths of WORK and IWORK.
    lenpd = (2*ml + mu + 1)*neq
    mband = ml + mu + 1
    msave = (neq/mband) + 1
@@ -204,9 +201,9 @@ program example_heat
    ! Call subroutine UINIT to initialize U and UPRIME.
    call uinit(u, uprime, rpar, ipar)
 
-   ! Here we set up the INFO array, which describes the various options in the way we want
-   ! DASKR to solve the problem. In this case, we select the iterative preconditioned Krylov 
-   ! method, and we supply the band preconditioner routines DBANJA/DBANPS.
+   ! Set up the INFO array, which describes the various options in the way we want DASKR to
+   ! solve the problem. In this case, we select the iterative preconditioned Krylov method,
+   ! and we supply the band preconditioner routines BANJA/BANPS.
    !
    ! We first initialize the entire INFO array to zero, then set select entries to nonzero
    ! values for desired solution options.
@@ -222,14 +219,13 @@ program example_heat
    info(12) = 1
    info(15) = 1
 
-   ! Here we set tolerances for DASKR to indicate how much accuracy we want in the solution,
-   ! in the sense of local error control.
+   ! Set tolerances for DASKR to indicate how much accuracy we want in the solution, in the
+   ! sense of local error control.
    ! For this example, we ask for pure absolute error control with a tolerance of 1e-5.
    rtol = zero
    atol = 1.0e-5_rk
 
-   ! Here we generate a heading with important parameter values.
-   ! stdout is the unit number of the output device.
+   ! Generate a heading with important parameter values.
    write (stdout, '(a, /)') &
       'DHEAT: Heat Equation Example Program for DASKR'
    write (stdout, '(a, i3, a, i4)') &
@@ -245,12 +241,12 @@ program example_heat
    write (stdout, '("t", 12x, "UMAX", 9x, "NQ", 6x, "H", 8x, "STEPS", 5x, "NNI", 5x, "NLI")')
 
    !-------------------------------------------------------------------------------------------
-   ! Now we solve the problem.
+   ! Solve the problem.
    !
    ! DASKR will be called to compute 11 intermediate solutions from tout=0.01 to tout=10.24
    ! by powers of 2.
    !
-   ! We pass to DASKR the names DBANJA and DBANPS for the JAC and PSOL routines to do the
+   ! We pass to DASKR the names BANJA and BANPS for the JAC and PSOL routines to do the
    ! preconditioning.
    !
    ! At each output time, we compute and print the max-norm of the solution (which should decay
@@ -270,7 +266,7 @@ program example_heat
 
       do
          call daskr(res, neq, t, u, uprime, tout, info, rtol, atol, idid, &
-                    rwork, lrw, iwork, liw, rpar, ipar, dbanja, dbanps, rt, nrt, jroot)
+                    rwork, lrw, iwork, liw, rpar, ipar, banja, banps, rt, nrt, jroot)
 
          umax = maxval(abs(u))
          
@@ -298,7 +294,7 @@ program example_heat
 
    end do
 
-   ! Here we display some final statistics for the problem.
+   ! Display some final statistics for the problem.
    ! The ratio NLI/NNI is the average dimension of the Krylov subspace involved in the Krylov 
    ! linear iterative method.
    nst = iwork(11)

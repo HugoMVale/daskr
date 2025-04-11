@@ -58,7 +58,7 @@ contains
 end module web_par
 
 module web_m
-   !! Auxiliary module for [[example_web]].
+   !! Procedures for [[example_web]].
    use daskr_kinds, only: rk, zero, one
    implicit none
 
@@ -95,10 +95,10 @@ contains
    pure subroutine cinit(c, cprime, pred_ic, rpar)
    !! This routine computes and loads the vectors of initial values.
       use web_par, only: ax, ay, alpha, beta, dx, dy, ns, np, mx, my, mxns, pi
-      real(rk), intent(out) :: c(*)
-      real(rk), intent(out) :: cprime(*)
+      real(rk), intent(out) :: c(:)
+      real(rk), intent(out) :: cprime(:)
       real(rk), intent(in)  :: pred_ic
-      real(rk), intent(inout) :: rpar(*)
+      real(rk), intent(inout) :: rpar(:)
 
       integer :: i, ioff, iyoff, jx, jy, npp1
       real(rk) :: argx, argy, fac, t, x, y
@@ -357,18 +357,18 @@ contains
 
       jbg = ipar(2)
 
-      if (jpre == 2 .or. jpre == 3) call gs(neq, hl0, b, wk)
+      if (jpre == 2 .or. jpre == 3) call gauss_seidel(neq, hl0, b, wk)
 
       if (jpre /= 2) then
          if (jbg == 0) call drbdps(b, wp, iwp)
          if (jbg == 1) call drbgps(b, wp, iwp)
       end if
 
-      if (jpre == 4) call gs(neq, hl0, b, wk)
+      if (jpre == 4) call gauss_seidel(neq, hl0, b, wk)
 
    end subroutine psolrs
 
-   pure subroutine gs(n, hl0, z, x)
+   pure subroutine gauss_seidel(n, hl0, z, x)
    !! This routine provides the inverse of the spatial factor for a product preconditoner in an
    !! ns-species reaction-diffusion problem. It performs `itmax` Gauss-Seidel iterations to
    !! compute an approximation to \(A_S^{-1} z\), where \(A_S = I - h_{l0} J_ d \), and \(J_d\)
@@ -548,7 +548,7 @@ contains
 
       end do
 
-   end subroutine gs
+   end subroutine gauss_seidel
 
    pure subroutine c1_average(c, c1ave)
    !! This routine computes the spatial average value of \(c_1\).
@@ -608,7 +608,7 @@ program example_web
 !!
 !! This program solves a DAE system that arises from a system of partial differential equations.
 !! The PDE system is a food web population model, with predator-prey interaction and diffusion
-!! on the unit square in two dimensions.  The dependent variable vector is
+!! on the unit square in two dimensions. The dependent variable vector is
 !!
 !! $$ c = [c_1, c_2 , ..., c_s] $$
 !!
@@ -753,27 +753,27 @@ program example_web
       'Mesh dimensions (MX,MY) =', mx, my, ' Total system size is NEQ =', neq
    write (ldout, '(a)') 'Root function is R(Y) = average(c1) - 20'
 
-   ! Here set the flat initial guess for the predators.
+   ! Set the flat initial guess for the predators.
    pred_ic = 1e5_rk
 
    ! Set remaining method parameters for DDASKR.
    ! These include the INFO array and tolerances.
    info = 0
 
-   ! Here set INFO(11) = 1, indicating I.C. calculation requested.
+   ! Set INFO(11) = 1, indicating I.C. calculation requested.
    info(11) = 1
 
-   ! Here set INFO(14) = 1 to get the computed initial values.
+   ! Set INFO(14) = 1 to get the computed initial values.
    info(14) = 1
 
-   ! Here set INFO(15) = 1 to signal that a preconditioner setup routine is to be called in the
+   ! Set INFO(15) = 1 to signal that a preconditioner setup routine is to be called in the
    ! Krylov case.
    info(15) = 1
 
-   ! Here set INFO(16) = 1 to get alternative error test (on the differential variables only).
+   ! Set INFO(16) = 1 to get alternative error test (on the differential variables only).
    info(16) = 1
 
-   ! Here set the tolerances.
+   ! Set the tolerances.
    rtol = 1e-5_rk
    atol = rtol
 
@@ -836,9 +836,9 @@ program example_web
          write (ldout, '(a)') &
             '(1 = reaction factor A_R, 2 = spatial factor A_S, 3 = A_S*A_R, 4 = A_R*A_S)'
 
-         ! Here call DMSET2 if JBG = 0, or DGSET2 if JBG = 1, to set the 2-D
-         ! mesh parameters and block-grouping data, and the IWORK segment ID
-         ! indicating the differential and algebraic components.
+         ! Call DMSET2 if JBG = 0, or DGSET2 if JBG = 1, to set the 2D mesh parameters and 
+         ! block-grouping data, and the IWORK segment ID indicating the differential and 
+         ! algebraic components.
          if (jbg == 0) then
             call dmset2(mx, my, ns, np, 40, iwork)
             write (ldout, '(a)') 'No block-grouping in reaction factor'
@@ -870,7 +870,7 @@ program example_web
       ! performance data.
       ! The first call, with IOUT = 0, is to calculate initial values only.
       ! After the first call, reset INFO(11) = 0 and the initial TOUT.
-      ! If a root was found, we flag this, and return to the DDASKR call.
+      ! If a root was found, we flag this, and return to the DASKR call.
       do iout = 0, nout
 
          do

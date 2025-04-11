@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------------------------------
 
 module krdem2_m
-!! Auxiliary module for [[test_krdem2]].
+!! Procedures for [[test_krdem2]].
    use daskr_kinds, only: rk, zero, one
    implicit none
 
@@ -105,7 +105,7 @@ program test_krdem2
 !! The analytical solution is not known, but the zeros of \(y_1\) are known to 15 figures.
 !!
 !! If the errors are too large, or other difficulty occurs, a warning message is printed.
-!! To run the demonstration problem with full printing, set `kprint=3`.
+!! To run the demonstration problem with full printing, set `kprint = 3`.
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, zero, one, two

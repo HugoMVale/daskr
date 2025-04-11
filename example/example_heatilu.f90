@@ -3,9 +3,11 @@
 !----------------------------------------------------------------------------------------------
 
 module heatilu_m
-!! Auxiliary module for [[example_heatilu]].
+!! Procedures for [[example_heatilu]].
    use daskr_kinds, only: rk, zero, one
    implicit none
+
+   integer, parameter :: lrpar = 4, lipar = 34, nrt = 2
 
 contains
 
@@ -16,8 +18,8 @@ contains
    !! time step.)
       real(rk), intent(out) :: u(:)
       real(rk), intent(out) :: uprime(:)
-      real(rk), intent(in) :: rpar(4)
-      integer, intent(in) :: ipar(34)
+      real(rk), intent(in) :: rpar(:)
+      integer, intent(in) :: ipar(:)
 
       integer :: i, ioff, j, k, m
       real(rk) :: dx, xj, yk
@@ -48,8 +50,8 @@ contains
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
       integer, intent(inout) :: ires
-      real(rk), intent(in) :: rpar(4)
-      integer, intent(in) :: ipar(34)
+      real(rk), intent(in) :: rpar(*)
+      integer, intent(in) :: ipar(*)
 
       integer :: i, ioff, j, k, m, m2, neq
       real(rk) :: coeff, temx, temy
@@ -84,8 +86,8 @@ contains
       real(rk), intent(in) :: uprime(neq)
       integer, intent(in) :: nrt
       real(rk), intent(out) :: rval(nrt)
-      real(rk), intent(in) :: rpar(4)
-      integer, intent(in) :: ipar(34)
+      real(rk), intent(in) :: rpar(*)
+      integer, intent(in) :: ipar(*)
 
       real(rk) :: umax
 
@@ -167,11 +169,11 @@ program example_heatilu
    real(rk), parameter :: permtol = 0.01_rk, tolilut = 0.001_rk
 
    integer :: idid, ierr, iout, liw, liwpmin, lrw, lout, lwpmin, m, mband, ml, mu, ncfl, & 
-              ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrt, nrte, nst
-   integer :: info(20), iwork(leniw + leniwp), ipar(34), jroot(2)
+              ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrte, nst
+   integer :: info(20), iwork(leniw + leniwp), ipar(lipar), jroot(nrt)
 
    real(rk) :: atol, avdim, coeff, dx, hu, rtol, t, tout, umax
-   real(rk) :: rpar(4), rwork(lenrw + lenwp), u(mxneq), uprime(mxneq)
+   real(rk) :: rpar(lrpar), rwork(lenrw + lenwp), u(mxneq), uprime(mxneq)
 
    external :: djacilu, dpsolilu
 
@@ -181,8 +183,8 @@ program example_heatilu
       open (newunit=lout, file='Heat_Test_Matrix.dat', status='unknown')
    end if
 
-   ! Here set parameters for the problem being solved. Use RPAR and IPAR to communicate these
-   ! to the other routines.
+   ! Set parameters for the problem being solved. Use RPAR and IPAR to communicate these to the
+   ! other routines.
    m = maxm
    dx = one/(m + one)
    neq = (m + 2)*(m + 2)
@@ -192,11 +194,8 @@ program example_heatilu
    rpar(3) = dx
    rpar(4) = coeff
 
-   ! Set NRT = number of root functions.
-   nrt = 2
-
-   ! Here set the lengths of the preconditioner work arrays WP and IWP, load them into IWORK,
-   ! and set the total lengths of WORK and IWORK.
+   ! Set the lengths of the preconditioner work arrays WP and IWP, load them into IWORK, and
+   ! set the total lengths of WORK and IWORK.
    iwork(27) = lenwp
    iwork(28) = leniwp
    lrw = lenrw + lenwp
@@ -236,9 +235,9 @@ program example_heatilu
    ! Call subroutine UINIT to initialize U and UPRIME.
    call uinit(u, uprime, rpar, ipar)
 
-   ! Here we set up the INFO array, which describes the various options in the way we want 
-   ! DASKR to solve the problem. In this case, we select the iterative preconditioned Krylov 
-   ! method, and we supply the sparse preconditioner routines DJACILU/DPSOLILU.
+   ! Set up the INFO array, which describes the various options in the way we want DASKR to
+   ! solve the problem. In this case, we select the iterative preconditioned Krylov method,
+   ! and we supply the sparse preconditioner routines DJACILU/DPSOLILU.
    !
    ! We first initialize the entire INFO array to zero, then set select entries to nonzero 
    ! values for desired solution options.
@@ -254,13 +253,13 @@ program example_heatilu
    info(12) = 1
    info(15) = 1
 
-   ! Here we set tolerances for DASKR to indicate how much accuracy we want in the solution, 
-   ! in the sense of local error control.
+   ! Set tolerances for DASKR to indicate how much accuracy we want in the solution, in the 
+   ! sense of local error control.
    ! For this example, we ask for pure absolute error control with a tolerance of 1e-5.
    rtol = zero
    atol = 1.0e-5_rk
 
-   ! Here we generate a heading with important parameter values.
+   ! Generate a heading with important parameter values.
    write (stdout, '(a, /)') 'HEATILU: Heat Equation Example Program for DASKR'
    write (stdout, '(a, i3, a, i4)') 'M+2 by M+2 mesh, M =', m, ', System size NEQ =', neq
    write (stdout, '(a)') 'Root functions are: R1 = max(u) - 0.1 and R2 = max(u) - 0.01'
@@ -271,7 +270,7 @@ program example_heatilu
    write (stdout, '("t", 12x, "UMAX", 9x, "NQ", 5x, "H", 10x, "STEPS", 5x, "NNI", 5x, "NLI")')
 
    !-------------------------------------------------------------------------------------------
-   ! Now we solve the problem.
+   ! Solve the problem.
    !
    ! DASKR will be called to compute 11 intermediate solutions from tout=0.01 to tout=10.24
    ! by powers of 2.
@@ -323,7 +322,7 @@ program example_heatilu
 
    end do
 
-   ! Here we display some final statistics for the problem.
+   ! Display some final statistics for the problem.
    ! The ratio of NLI to NNI is the average dimension of the Krylov subspace involved in the 
    ! Krylov linear iterative method.
    nst = iwork(11)
