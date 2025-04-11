@@ -14,8 +14,8 @@ contains
    pure subroutine uinit(u, uprime, rpar, ipar)
    !! This routine computes and loads the vector of initial values.
    !! The initial `u` values are given by the polynomial `u = 16x(1-x)y(1-y)`.
-   !! The initial `uprime` values are set to zero. ([[daskr]] corrects these during the first 
-   !! time step.)
+   !! The initial `uprime` values are set to zero ([[daskr]] corrects these during the first 
+   !! time step).
       real(rk), intent(out) :: u(:)
       real(rk), intent(out) :: uprime(:)
       real(rk), intent(in) :: rpar(:)
