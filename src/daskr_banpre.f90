@@ -1,3 +1,7 @@
+!----------------------------------------------------------------------------------------------
+! Adapted from original Fortran code in `original/preconds/dbanpre.f`
+!----------------------------------------------------------------------------------------------
+
 module daskr_banpre
 !! Preconditioner Routines for Banded Problems
 !!
@@ -128,6 +132,7 @@ contains
       ! Generate the banded approximate iteration matrix P using difference quotients on the
       ! results of calls to RES.
       do j = 1, mba
+
          do n = j, neq, mband
             k = (n - j)/mband + 1
             wp(isave + k) = y(n)
@@ -138,8 +143,11 @@ contains
             y(n) = y(n) + del
             yprime(n) = yprime(n) + cj*del
          end do
+         
          call res(t, y, yprime, cj, wk, ires, rpar, ipar)
+         
          if (ires < 0) return
+         
          do n = j, neq, mband
             k = (n - j)/mband + 1
             y(n) = wp(isave + k)
@@ -155,6 +163,7 @@ contains
                wp(ii + i) = (wk(i) - savr(i))*delinv
             end do
          end do
+      
       end do
 
       ! Do LU decomposition of the band matrix P.
