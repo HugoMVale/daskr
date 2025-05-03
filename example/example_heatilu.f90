@@ -49,7 +49,7 @@ contains
       real(rk), intent(in) :: uprime(*)
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
-      integer, intent(inout) :: ires
+      integer, intent(out) :: ires
       real(rk), intent(in) :: rpar(*)
       integer, intent(in) :: ipar(*)
 
@@ -154,7 +154,7 @@ program example_heatilu
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
-   use heatilu_m
+   use heatilu_m, only: res, rt, uinit, lipar, lrpar, nrt
    implicit none
 
    integer, parameter :: lenpfac = 5, lenplufac = 5, ipremeth = 1, lfililut = 5, &

@@ -49,7 +49,7 @@ contains
       real(rk), intent(in) :: uprime(*)
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
-      integer, intent(inout) :: ires
+      integer, intent(out) :: ires
       real(rk), intent(in) :: rpar(*)
       integer, intent(in) :: ipar(*)
 
@@ -155,7 +155,7 @@ program example_heat
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
    use daskr_banpre, only: banja, banps
-   use heat_m
+   use heat_m, only: lipar, lrpar, nrt, res, rt, uinit
    implicit none
 
    integer, parameter :: maxm = 10, maxm2 = maxm + 2, mxneq = maxm2**2, &
