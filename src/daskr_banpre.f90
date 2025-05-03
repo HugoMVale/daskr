@@ -53,6 +53,9 @@ module daskr_banpre
 
    use daskr_kinds, only: rk, one
    implicit none
+   private
+
+   public :: banja, banps
 
 contains
 
@@ -64,7 +67,7 @@ contains
    !! difference quotients, exactly as in the banded direct method option of [[daskr]]. 
    !! [[banja]] calls the LINPACK routine [[DGBFA]] to do an LU factorization of this matrix.
       external :: res
-      integer, intent(inout) :: ires
+      integer, intent(out) :: ires
         !! Output flag set by `res`. See `res` description in [[daskr]].
       integer, intent(in) :: neq
         !! Problem size.
@@ -89,7 +92,7 @@ contains
         !! approximation P.
       integer, intent(inout) :: iwp(*)
         !! Integer work space for matrix pivot information.
-      integer, intent(inout) :: ier
+      integer, intent(out) :: ier
         !! Output flag: `ier > 0` if P is singular, and `ier = 0` otherwise.
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
@@ -98,9 +101,9 @@ contains
         !! Integer array used for communication between the calling program and external user
         !! routines. `ipar(1)` and `ipar(2)` must contain `ml` and `mu`, respectively.
 
-      external :: dgbfa, d1mach
+      external :: dgbfa
 
-      real(rk) :: del, delinv, squr, uround, d1mach
+      real(rk) :: del, delinv, squround
       integer :: i, i1, i2, ii, ipsave, isave, j, k, lenp, mba, mband, meb1, meband, ml, &
                  msave, mu, n
 
@@ -114,8 +117,7 @@ contains
 
       ! Set the machine unit roundoff UROUND and SQRT(UROUND), used to set increments in the
       ! difference quotient procedure.
-      uround = d1mach(4)
-      squr = sqrt(uround)
+      squround = sqrt(epsilon(one))
 
       ! Set pointers into WP. LENP is the length of the segment for P.
       ! Following that are two segments of size (NEQ/MBAND), with offsets
@@ -137,7 +139,7 @@ contains
             k = (n - j)/mband + 1
             wp(isave + k) = y(n)
             wp(ipsave + k) = yprime(n)
-            del = squr*max(abs(y(n)), abs(h*yprime(n)), abs(one/rewt(n)))
+            del = squround*max(abs(y(n)), abs(h*yprime(n)), abs(one/rewt(n)))
             del = sign(del, h*yprime(n))
             del = (y(n) + del) - y(n)
             y(n) = y(n) + del
@@ -152,7 +154,7 @@ contains
             k = (n - j)/mband + 1
             y(n) = wp(isave + k)
             yprime(n) = wp(ipsave + k)
-            del = squr*max(abs(y(n)), abs(h*yprime(n)), abs(one/rewt(n)))
+            del = squround*max(abs(y(n)), abs(h*yprime(n)), abs(one/rewt(n)))
             del = sign(del, h*yprime(n))
             del = (y(n) + del) - y(n)
             delinv = one/del
@@ -209,6 +211,7 @@ contains
         !! routines (not used). `ipar(1)` and `ipar(2)` must contain `ml` and `mu`, respectively.
 
       external :: dgbsl
+      
       integer :: meband, ml, mu
 
       ml = ipar(1)
