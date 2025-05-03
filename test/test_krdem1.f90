@@ -29,7 +29,7 @@ contains
       real(rk), intent(in):: yprime(neq)
       real(rk), intent(in):: cj
       real(rk), intent(out):: delta(neq)
-      integer, intent(inout) :: ires
+      integer, intent(out) :: ires
       real(rk), intent(in):: rpar
       integer, intent(in) :: ipar
 
