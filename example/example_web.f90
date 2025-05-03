@@ -61,6 +61,9 @@ module web_m
    !! Procedures for [[example_web]].
    use daskr_kinds, only: rk, zero, one
    implicit none
+   private
+
+   public :: setid, cinit, out, res, jacrs, psolrs, rt, c1_average
 
 contains
 
@@ -698,7 +701,7 @@ program example_web
 
    use daskr_kinds, only: rk, zero, one
    use web_par, only: aa, alpha, bb, beta, dpred, dprey, ee, gg, mx, my, mxns, np, ns, setpar
-   use web_m
+   use web_m, only: setid, cinit, out, res, jacrs, psolrs, rt, c1_average
    implicit none
 
    integer, parameter :: neq = ns*mx*my, maxm = max(mx, my)

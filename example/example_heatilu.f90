@@ -6,9 +6,12 @@ module heatilu_m
 !! Procedures for [[example_heatilu]].
    use daskr_kinds, only: rk, zero, one
    implicit none
+   private
 
-   integer, parameter :: lrpar = 4, lipar = 34, nrt = 2
+   integer, parameter, public :: lrpar = 4, lipar = 34, nrt = 2
 
+   public :: uinit, res, rt
+   
 contains
 
    pure subroutine uinit(u, uprime, rpar, ipar)

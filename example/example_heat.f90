@@ -7,7 +7,9 @@ module heat_m
    use daskr_kinds, only: rk, zero, one
    implicit none
 
-   integer, parameter :: lipar = 4, lrpar = 2, nrt = 2
+   integer, parameter, public :: lipar = 4, lrpar = 2, nrt = 2
+
+   public :: uinit, res, rt
 
 contains
 
