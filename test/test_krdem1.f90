@@ -6,21 +6,13 @@ module krdem1_m
 !! Procedures for [[test_krdem1]].
    use daskr_kinds, only: rk, zero, one
    implicit none
+   private
    
-   ! @note: not so happy with this, but it is required for the time being
-   integer, parameter :: neq = 1, nrt = 2
+   integer, parameter, public :: neq = 1, nrt = 2
+
+   public :: res, rt   
 
 contains
-
-   pure subroutine f(t, y, yprime)
-   !! dy1/dt routine.
-      real(rk), intent(in) :: t
-      real(rk), intent(in) :: y(:)
-      real(rk), intent(out) :: yprime(:)
-
-      yprime(1) = ((2*log(y(1)) + 8.0_rk)/t - 5.0_rk)*y(1)
-
-   end subroutine f
 
    pure subroutine res(t, y, yprime, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
@@ -44,6 +36,16 @@ contains
       end if
 
    end subroutine res
+   
+   pure subroutine f(t, y, yprime)
+   !! dy1/dt routine.
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: y(:)
+      real(rk), intent(out) :: yprime(:)
+
+      yprime(1) = ((2*log(y(1)) + 8.0_rk)/t - 5.0_rk)*y(1)
+
+   end subroutine f
 
    pure subroutine rt(neq, t, y, yprime, nrt, rval, rpar, ipar)
      !! Roots routine.

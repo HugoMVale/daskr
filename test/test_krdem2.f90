@@ -7,20 +7,11 @@ module krdem2_m
    use daskr_kinds, only: rk, zero, one
    implicit none
 
-   integer, parameter :: neq = 2, nrt = 1, nrowpd = 2
+   integer, parameter, public :: neq = 2, nrt = 1, nrowpd = 2
+
+   public :: res, jac, rt
 
 contains
-
-   pure subroutine f(t, y, yprime)
-   !! dy/dt routine.
-      real(rk), intent(in) :: t
-      real(rk), intent(in) :: y(:)
-      real(rk), intent(out) :: yprime(:)
-
-      yprime(1) = y(2)
-      yprime(2) = 100*(one - y(1)**2)*y(2) - y(1)
-
-   end subroutine f
 
    pure subroutine res(t, y, yprime, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
@@ -37,6 +28,17 @@ contains
       delta = yprime - delta
 
    end subroutine res
+   
+   pure subroutine f(t, y, yprime)
+   !! dy/dt routine.
+      real(rk), intent(in) :: t
+      real(rk), intent(in) :: y(:)
+      real(rk), intent(out) :: yprime(:)
+
+      yprime(1) = y(2)
+      yprime(2) = 100*(one - y(1)**2)*y(2) - y(1)
+
+   end subroutine f
 
    pure subroutine jac(t, y, yprime, pd, cj, rpar, ipar)
    !! Jacobian routine.
