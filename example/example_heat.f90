@@ -141,7 +141,7 @@ program example_heat
 !! this approximation are offset by the lower storage and linear system solution costs for a
 !! tridiagonal matrix.
 !!
-!! The routines [[banja]] and [[banps]] that generate and solve the banded preconditioner are
+!! The routines [[banjac]] and [[banpsol]] that generate and solve the banded preconditioner are
 !! provided in a separate file for general use.
 !!
 !! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
@@ -158,7 +158,7 @@ program example_heat
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
-   use daskr_banpre, only: banja, banps
+   use daskr_banpre, only: banjac, banpsol
    use heat_m, only: lipar, lrpar, nrt, res, rt, uinit
    implicit none
 
@@ -271,7 +271,7 @@ program example_heat
 
       do
          call daskr(res, neq, t, u, uprime, tout, info, rtol, atol, idid, &
-                    rwork, lrwork, iwork, liwork, rpar, ipar, banja, banps, rt, nrt, jroot)
+                    rwork, lrwork, iwork, liwork, rpar, ipar, banjac, banpsol, rt, nrt, jroot)
 
          umax = maxval(abs(u))
          
