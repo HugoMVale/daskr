@@ -285,7 +285,7 @@ contains
 
    end subroutine rates
 
-   subroutine jacrs(res_, ires, neq, t, c, cprime, rewt, savr, wk, h, cj, wp, iwp, ier, &
+   subroutine jacrs(res_, ires, neq, t, c, cprime, rewt, savr, wk, h, cj, wp, iwp, ierr, &
                     rpar, ipar)
    !! This routine interfaces to subroutines [[DRBDJA]] or [[DRBGJA]], depending on the flag
    !! `jbg=ipar(2)`, to generate and preprocess the block-diagonal Jacobian corresponding to
@@ -311,7 +311,7 @@ contains
       real(rk), intent(in) :: cj
       real(rk), intent(in) :: wp(*)
       integer, intent(in) :: iwp(*)
-      integer, intent(in) :: ier
+      integer, intent(in) :: ierr
       real(rk), intent(in) :: rpar(*)
       integer, intent(in) :: ipar(*)
 
@@ -320,14 +320,14 @@ contains
 
       jbg = ipar(2)
       if (jbg == 0) then
-         call drbdja(t, c, rpar, rates, wk, rewt, cj, wp, iwp, ier)
+         call drbdja(t, c, rpar, rates, wk, rewt, cj, wp, iwp, ierr)
       else
-         call drbgja(t, c, rpar, rates, wk, rewt, cj, wp, iwp, ier)
+         call drbgja(t, c, rpar, rates, wk, rewt, cj, wp, iwp, ierr)
       end if
 
    end subroutine jacrs
 
-   subroutine psolrs(neq, t, cc, ccprime, savr, wk, cj, wt, wp, iwp, b, eplin, ier, rpar, ipar)
+   subroutine psolrs(neq, t, cc, ccprime, savr, wk, cj, wt, wp, iwp, b, epslin, ierr, rpar, ipar)
    !! This routine applies the inverse of a product preconditioner matrix to the vector in the
    !! array `b`. Depending on the flag `jpre`, this involves a call to [[gs]], for the inverse
    !! of the spatial factor, and/or a call to [[DRBDPS]] or [[DRBGPS]] for the inverse of the
@@ -345,8 +345,8 @@ contains
       real(rk), intent(in) :: wp(*)
       integer, intent(in) :: iwp(*)
       real(rk), intent(inout) :: b(*)
-      real(rk), intent(in) :: eplin
-      integer, intent(inout) :: ier
+      real(rk), intent(in) :: epslin
+      integer, intent(inout) :: ierr
       real(rk), intent(inout) :: rpar(*)
       integer, intent(in) :: ipar(*)
 
@@ -355,7 +355,7 @@ contains
       external :: drbdps, drbgps
 
       jpre = ipar(1)
-      ier = 0
+      ierr = 0
       hl0 = one/cj
 
       jbg = ipar(2)
