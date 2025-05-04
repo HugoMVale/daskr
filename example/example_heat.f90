@@ -141,8 +141,8 @@ program example_heat
 !! this approximation are offset by the lower storage and linear system solution costs for a
 !! tridiagonal matrix.
 !!
-!! The routines [[banjac]] and [[banpsol]] that generate and solve the banded preconditioner are
-!! provided in a separate file for general use.
+!! The routines [[jac_banpre]] and [[psol_banpre]] that generate and solve the banded 
+!! preconditioner are provided in a separate file for general use.
 !!
 !! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
 !! the mesh and various performance statistics are printed.
@@ -208,7 +208,7 @@ program example_heat
 
    ! Set up the INFO array, which describes the various options in the way we want DASKR to
    ! solve the problem. In this case, we select the iterative preconditioned Krylov method,
-   ! and we supply the band preconditioner routines BANJA/BANPS.
+   ! and we supply the band preconditioner routines JAC_BANPRE/PSOL_BANPRE.
    !
    ! We first initialize the entire INFO array to zero, then set select entries to nonzero
    ! values for desired solution options.
@@ -216,8 +216,8 @@ program example_heat
    ! To select the Krylov iterative method for the linear systems, we set INFO(12) = 1.
    !
    ! Since we are using a preconditioner that involves approximate Jacobian elements requiring
-   ! preprocessing, we have a JAC routine, namely subroutine DBANJA, and we must set INFO(15) = 1
-   ! to indicate this to DASKR.
+   ! preprocessing, we have a JAC routine, namely subroutine JAC_BANPRE, and we must set 
+   ! INFO(15) = 1 to indicate this to DASKR.
    !
    ! No other entries of INFO need to be changed for this example.
    info = 0
@@ -251,11 +251,11 @@ program example_heat
    ! DASKR will be called to compute 11 intermediate solutions from tout=0.01 to tout=10.24
    ! by powers of 2.
    !
-   ! We pass to DASKR the names BANJA and BANPS for the JAC and PSOL routines to do the
-   ! preconditioning.
+   ! We pass to DASKR the names JAC_BANPRE and PSOL_BANPRE for the JAC and PSOL routines to do
+   ! the preconditioning.
    !
    ! At each output time, we compute and print the max-norm of the solution (which should decay
-   ! exponentially in t).  We also print some relevant statistics -- the current method order
+   ! exponentially in t). We also print some relevant statistics -- the current method order
    ! and step size, the number of time steps so far, and the numbers of nonlinear and
    ! linear iterations so far.
    !
