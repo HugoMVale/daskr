@@ -94,11 +94,11 @@ program test_krdem1
    use krdem1_m, only: res, rt, neq, nrt
    implicit none
 
-   integer, parameter :: lrw = 76, liw = 41 ! @note: to be replaced by formula or alloc
+   integer, parameter :: lrwork = 76, liwork = 41 ! @note: to be replaced by formula or alloc
    integer :: idid, iout, ipar, jdum, jtype, kprint, lout, nerr, nre, nrea, nrte, nje, nst
-   integer :: info(20), iwork(liw), jroot(2)
+   integer :: info(20), iwork(liwork), jroot(2)
    real(rk) :: er, ero, errt, psdum, rpar, t, tout, yt
-   real(rk) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
+   real(rk) :: atol(neq), rtol(neq), rwork(lrwork), y(neq), yprime(neq)
 
   ! Set report options
    lout = stdout
@@ -140,7 +140,7 @@ program test_krdem1
    do iout = 1, 5
       do
          call daskr(res, neq, t, y, yprime, tout, info, rtol, atol, idid, &
-                    rwork, lrw, iwork, liw, rpar, ipar, jdum, psdum, rt, nrt, jroot)
+                    rwork, lrwork, iwork, liwork, rpar, ipar, jdum, psdum, rt, nrt, jroot)
 
          ! Print Y and error in Y, and print warning if error too large.
          yt = exp(-t**2 + 5*t - 4.0_rk)

@@ -114,11 +114,11 @@ program test_krdem2
    use krdem2_m, only: res, rt, jac, neq, nrt
    implicit none
 
-   integer, parameter :: lrw = 100, liw = 100 ! @note: to be replaced by formula or alloc
+   integer, parameter :: lrwork = 100, liwork = 100 ! @note: to be replaced by formula or alloc
    integer :: idid, iout, ipar, jtype, kprint, lout, nerr, nre, nrea, nrte, nje, nst, kroot
-   integer :: info(20), iwork(liw), jroot(nrt)
+   integer :: info(20), iwork(liwork), jroot(nrt)
    real(rk) :: errt, psdum, rpar, t, tout, tzero
-   real(rk) :: atol(neq), rtol(neq), rwork(lrw), y(neq), yprime(neq)
+   real(rk) :: atol(neq), rtol(neq), rwork(lrwork), y(neq), yprime(neq)
 
    ! Set report options
    lout = stdout
@@ -172,7 +172,7 @@ program test_krdem2
 
          do
             call daskr(res, neq, t, y, yprime, tout, info, rtol, atol, idid, &
-                       rwork, lrw, iwork, liw, rpar, ipar, jac, psdum, rt, nrt, jroot)
+                       rwork, lrwork, iwork, liwork, rpar, ipar, jac, psdum, rt, nrt, jroot)
 
             ! Print Y1 and Y2.
             if (kprint > 2) then
