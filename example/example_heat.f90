@@ -6,9 +6,11 @@ module heat_m
 !! Procedures for [[example_heat]].
    use daskr_kinds, only: rk, zero, one
    implicit none
+   private
 
-   integer, parameter, public :: lipar = 4, lrpar = 2, nrt = 2
+   integer, parameter :: lipar = 4, lrpar = 2, nrt = 2
 
+   public :: lipar, lrpar, nrt
    public :: uinit, res, rt
 
 contains
@@ -160,21 +162,19 @@ program example_heat
    use heat_m, only: lipar, lrpar, nrt, res, rt, uinit
    implicit none
 
-   integer, parameter :: maxm = 10, maxm2 = maxm + 2, mxneq = maxm2**2, &
-                         lenrw = 107 + 18*mxneq, leniw = 40, leniwp = mxneq, &
-                         lenwp = 4*mxneq + 2*((mxneq/3) + 1)
-   integer :: idid, iout, lenpd, liw, liwp, lrw, lwp, m, mband, ml, msave, mu, &
-              ncfl, ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrte, nst
-   integer :: iwork(leniw + leniwp), info(20), ipar(lipar), jroot(nrt)
+   integer, parameter :: m = 10, neq = (m + 2)**2
+   integer :: idid, iout, liwork, liwp, lrwork, lrwp, ml, mu, ncfl, ncfn, nli, nni, nout, &
+              npe, nps, nqu, nre, nrte, nst
+   integer :: info(20), ipar(lipar), jroot(nrt)
+   integer, allocatable :: iwork(:)
 
    real(rk) :: atol, avdim, coeff, dx, hu, rtol, t, tout, umax
-   real(rk) :: u(mxneq), uprime(mxneq), rwork(lenrw + lenwp), rpar(lrpar)
+   real(rk) :: u(neq), uprime(neq), rpar(lrpar)
+   real(rk), allocatable :: rwork(:)
 
    ! Set parameters for the problem being solved. Use RPAR and IPAR to communicate these to
    ! the other routines.
-   m = maxm
-   dx = one/(m + one)
-   neq = (m + 2)*(m + 2)
+   dx = one/(m + 1)
    coeff = one/dx**2
 
    ipar(3) = neq
@@ -188,17 +188,20 @@ program example_heat
    ipar(1) = ml
    ipar(2) = mu
 
-   ! Set the lengths of the preconditioner work arrays WP and IWP, load them into IWORK, and 
-   ! set the total lengths of WORK and IWORK.
-   lenpd = (2*ml + mu + 1)*neq
-   mband = ml + mu + 1
-   msave = (neq/mband) + 1
-   lwp = lenpd + 2*msave
+   ! Set the lengths of the preconditioner work arrays RWP and IWP
+   lrwp = (2*ml + mu + 1)*neq + 2*((neq/(ml + mu + 1)) + 1)
    liwp = neq
-   iwork(27) = lwp
+
+   ! Set the total lengths of RWORK and IWORK and allocate them.
+   lrwork = 107 + 18*neq
+   liwork = 40
+   lrwork = lrwork + lrwp
+   liwork = liwork + liwp
+   allocate(rwork(lrwork), iwork(liwork))
+
+   ! Load the lengths of the preconditioner work arrays RWP and IWP into IWORK
+   iwork(27) = lrwp
    iwork(28) = liwp
-   lrw = lenrw + lwp
-   liw = leniw + liwp
 
    ! Call subroutine UINIT to initialize U and UPRIME.
    call uinit(u, uprime, rpar, ipar)
@@ -268,7 +271,7 @@ program example_heat
 
       do
          call daskr(res, neq, t, u, uprime, tout, info, rtol, atol, idid, &
-                    rwork, lrw, iwork, liw, rpar, ipar, banja, banps, rt, nrt, jroot)
+                    rwork, lrwork, iwork, liwork, rpar, ipar, banja, banps, rt, nrt, jroot)
 
          umax = maxval(abs(u))
          
@@ -301,9 +304,9 @@ program example_heat
    ! linear iterative method.
    nst = iwork(11)
    npe = iwork(13)
-   nre = iwork(12) + npe*mband
-   liw = iwork(17)
-   lrw = iwork(18)
+   nre = iwork(12) + npe*(ml + mu + 1)
+   liwork = iwork(17)
+   lrwork = iwork(18)
    nni = iwork(19)
    nli = iwork(20)
    nps = iwork(21)
@@ -315,7 +318,7 @@ program example_heat
    write (stdout, '(/, a)') &
       'Final statistics for this run:'
    write (stdout, '(a, i5, a, i4)') &
-      'RWORK size =', lrw, '   IWORK size =', liw
+      'RWORK size =', lrwork, '   IWORK size =', liwork
    write (stdout, '(a, i5)') &
       'Number of time steps ................ =', nst
    write (stdout, '(a, i5)') &
