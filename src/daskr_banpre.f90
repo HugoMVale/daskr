@@ -8,7 +8,7 @@ module daskr_banpre
 !! The following pair of subroutines – [[banja]] and [[banps]] – provides a general-purpose 
 !! banded preconditioner matrix for use with the [[daskr]] solver, with the Krylov linear system
 !! method. When using [[daskr]] to solve a problem \(G(t,y,y') = 0\), whose iteration matrix 
-!! (Jacobian) \( J = dG/dy + c_j  dG/dy' \), where \(c\) is a scalar, is either banded or 
+!! (Jacobian) \( J = dG/dy + c_J dG/dy' \), where \(c_J\) is a scalar, is either banded or 
 !! approximately equal to a banded matrix, these routines can be used to generate a banded 
 !! approximation to \(J\) as the preconditioner and to solve the resulting banded linear system,
 !! in conjunction with the Krylov method option (`info(12) = 1`) in [[daskr]].
@@ -59,13 +59,14 @@ module daskr_banpre
 
 contains
 
-   subroutine banja(res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, wp, iwp, ier, rpar, ipar)
+   subroutine banja( &
+      res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, wp, iwp, ier, rpar, ipar)
    !! This subroutine generates a banded preconditioner matrix \(P\) that approximates the
-   !! iteration matrix \(J = dG/dy + c_j dG/dy'\), where the DAE system is \(G(t,y,y') = 0\). 
-   !! The band matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\). It is computed
-   !! by making \(\mathrm{ml} + \mathrm{mu} + 1\) calls to the user's `res` routine and forming
-   !! difference quotients, exactly as in the banded direct method option of [[daskr]]. 
-   !! [[banja]] calls the LINPACK routine [[DGBFA]] to do an LU factorization of this matrix.
+   !! iteration matrix \(J = dG/dy + c_J dG/dy'\), where the DAE system is \(G(t,y,y') = 0\). 
+   !! The band matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\). It is 
+   !! computed by making \(\mathrm{ml} + \mathrm{mu} + 1\) calls to the user's `res` routine and 
+   !! forming difference quotients, exactly as in the banded direct method option of [[daskr]]. 
+   !! [[banja]] calls the LINPACK routine [[dgbfa]] to do an LU factorization of this matrix.
       external :: res
       integer, intent(out) :: ires
         !! Output flag set by `res`. See `res` description in [[daskr]].
@@ -101,7 +102,7 @@ contains
         !! Integer array used for communication between the calling program and external user
         !! routines. `ipar(1)` and `ipar(2)` must contain `ml` and `mu`, respectively.
 
-      external :: dgbfa
+      external :: dgbfa !@todo: replace by module
 
       real(rk) :: del, delinv, squround
       integer :: i, i1, i2, ii, ipsave, isave, j, k, lenp, mba, mband, meb1, meband, ml, &
@@ -173,10 +174,11 @@ contains
 
    end subroutine banja
 
-   subroutine banps(neq, t, y, yprime, savres, wk, cj, wght, wp, iwp, b, eplin, ier, rpar, ipar)
+   subroutine banps( &
+      neq, t, y, yprime, savres, wk, cj, wght, wp, iwp, b, eplin, ier, rpar, ipar)
    !! This subroutine uses the factors produced by [[banja]] to solve linear systems \(P x = b\)
    !! for the banded preconditioner \(P\), given a vector \(b\). It calls the LINPACK routine
-   !! [[DGBSL]] for this.
+   !! [[dgbsl]] for this.
       integer, intent(in) :: neq
         !! Problem size.
       real(rk), intent(in) :: t
@@ -210,7 +212,7 @@ contains
         !! Integer array used for communication between the calling program and external user
         !! routines (not used). `ipar(1)` and `ipar(2)` must contain `ml` and `mu`, respectively.
 
-      external :: dgbsl
+      external :: dgbsl !@todo: replace by module
       
       integer :: meband, ml, mu
 
