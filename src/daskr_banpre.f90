@@ -36,14 +36,14 @@ module daskr_banpre
 !!   call to [[daskr]], pass the procedure names `banja` and `banps` as the arguments `jac` and
 !!   `psol`, respectively.
 !!
-!! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `wp` and `iwp` for use
-!!   by  [[banja]] and [[banps]]. The lengths of these arrays depend on the problem size and 
-!!   half-bandwidths, as follows:
+!! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp` for
+!!   use by  [[banja]] and [[banps]]. The lengths of these arrays depend on the problem size
+!!   and half-bandwidths, as follows:
 !!```  
-!!   lwp  = length of rwork segment wp  = (2*ml + mu + 1)*neq + 2*((neq/(ml + mu + 1)) + 1)
+!!   lrwp = length of rwork segment rwp = (2*ml + mu + 1)*neq + 2*((neq/(ml + mu + 1)) + 1)
 !!   liwp = length of iwork segment iwp = neq
 !!```
-!!   Note the integer divide in `lwp`. Load these lengths in `iwork` as `iwork(27) = lwp` and
+!!   Note the integer divide in `lrwp`. Load these lengths in `iwork` as `iwork(27) = lrwp` and
 !!   `iwork(28) = liwp`, and include these values in the declared size of `rwork` and `iwork`.
 !!
 !! The [[banja]] and [[banps]] routines generate and solve the banded preconditioner matrix 
@@ -60,7 +60,7 @@ module daskr_banpre
 contains
 
    subroutine banja( &
-      res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, wp, iwp, ierr, rpar, ipar)
+      res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
    !! This subroutine generates a banded preconditioner matrix \(P\) that approximates the
    !! iteration matrix \(J = dG/dy + c_J dG/dy'\), where the DAE system is \(G(t,y,y') = 0\). 
    !! The band matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\). It is 
@@ -88,13 +88,13 @@ contains
         !! Current step size.
       real(rk), intent(in) :: cj
         !! Scalar proportional to `1/h`.
-      real(rk), intent(inout) :: wp(*)
+      real(rk), intent(inout) :: rwp(*)
         !! Real work array for P, etc. On output, it contains the LU decomposition of the banded
         !! approximation P.
       integer, intent(inout) :: iwp(*)
         !! Integer work space for matrix pivot information.
       integer, intent(out) :: ierr
-        !! Output flag: `ier > 0` if P is singular, and `ier = 0` otherwise.
+        !! Output flag: `ierr > 0` if P is singular, and `ierr = 0` otherwise.
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
         !! routines.
@@ -138,8 +138,8 @@ contains
 
          do n = j, neq, mband
             k = (n - j)/mband + 1
-            wp(isave + k) = y(n)
-            wp(ipsave + k) = yprime(n)
+            rwp(isave + k) = y(n)
+            rwp(ipsave + k) = yprime(n)
             del = squround*max(abs(y(n)), abs(h*yprime(n)), abs(one/rewt(n)))
             del = sign(del, h*yprime(n))
             del = (y(n) + del) - y(n)
@@ -153,8 +153,8 @@ contains
          
          do n = j, neq, mband
             k = (n - j)/mband + 1
-            y(n) = wp(isave + k)
-            yprime(n) = wp(ipsave + k)
+            y(n) = rwp(isave + k)
+            yprime(n) = rwp(ipsave + k)
             del = squround*max(abs(y(n)), abs(h*yprime(n)), abs(one/rewt(n)))
             del = sign(del, h*yprime(n))
             del = (y(n) + del) - y(n)
@@ -163,19 +163,19 @@ contains
             i2 = min(neq, n + ml)
             ii = n*meb1 - ml
             do i = i1, i2
-               wp(ii + i) = (wk(i) - savres(i))*delinv
+               rwp(ii + i) = (wk(i) - savres(i))*delinv
             end do
          end do
       
       end do
 
       ! Do LU decomposition of the band matrix P.
-      call dgbfa(wp, meband, neq, ml, mu, iwp, ierr)
+      call dgbfa(rwp, meband, neq, ml, mu, iwp, ierr)
 
    end subroutine banja
 
    subroutine banps( &
-      neq, t, y, yprime, savres, wk, cj, wght, wp, iwp, b, epslin, ierr, rpar, ipar)
+      neq, t, y, yprime, savres, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This subroutine uses the factors produced by [[banja]] to solve linear systems \(P x = b\)
    !! for the banded preconditioner \(P\), given a vector \(b\). It calls the LINPACK routine
    !! [[dgbsl]] for this.
@@ -195,7 +195,7 @@ contains
         !! Scalar proportional to `1/h` (not used).
       real(rk), intent(in) :: wght(*)
         !! Error weights for computing norms (not used).
-      real(rk), intent(inout) :: wp(*)
+      real(rk), intent(inout) :: rwp(*)
         !! Real work array containing the LU decomposition of P.
       integer, intent(inout) :: iwp(*)
         !! Integer array containing matrix pivot information.
@@ -219,7 +219,7 @@ contains
       ml = ipar(1)
       mu = ipar(2)
       meband = 2*ml + mu + 1
-      call dgbsl(wp, meband, neq, ml, mu, iwp, b, 0)
+      call dgbsl(rwp, meband, neq, ml, mu, iwp, b, 0)
 
    end subroutine banps
 
