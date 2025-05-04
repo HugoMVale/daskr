@@ -59,7 +59,7 @@ module daskr_banpre
 
 contains
 
-   subroutine banja(res, ires, neq, t, y, yprime, rewt, savr, wk, h, cj, wp, iwp, ier, rpar, ipar)
+   subroutine banja(res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, wp, iwp, ier, rpar, ipar)
    !! This subroutine generates a banded preconditioner matrix \(P\) that approximates the
    !! iteration matrix \(J = dG/dy + c_j dG/dy'\), where the DAE system is \(G(t,y,y') = 0\). 
    !! The band matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\). It is computed
@@ -79,7 +79,7 @@ contains
         !! Current derivatives of dependent variables.
       real(rk), intent(in) :: rewt(*)
         !! Vector of reciprocal error weights, used here for computing increments.
-      real(rk), intent(in) :: savr(*)
+      real(rk), intent(in) :: savres(*)
         !! Current residual evaluated at `(t, y, yprime)`.
       real(rk), intent(in) :: wk(*)
         !! Real work space of length `neq`.
@@ -162,7 +162,7 @@ contains
             i2 = min(neq, n + ml)
             ii = n*meb1 - ml
             do i = i1, i2
-               wp(ii + i) = (wk(i) - savr(i))*delinv
+               wp(ii + i) = (wk(i) - savres(i))*delinv
             end do
          end do
       
@@ -173,7 +173,7 @@ contains
 
    end subroutine banja
 
-   subroutine banps(neq, t, y, yprime, savr, wk, cj, wght, wp, iwp, b, eplin, ier, rpar, ipar)
+   subroutine banps(neq, t, y, yprime, savres, wk, cj, wght, wp, iwp, b, eplin, ier, rpar, ipar)
    !! This subroutine uses the factors produced by [[banja]] to solve linear systems \(P x = b\)
    !! for the banded preconditioner \(P\), given a vector \(b\). It calls the LINPACK routine
    !! [[DGBSL]] for this.
@@ -185,7 +185,7 @@ contains
         !! Current dependent variables (not used).
       real(rk), intent(in) :: yprime(*)
         !! Current derivatives of dependent variables (not used).
-      real(rk), intent(in) :: savr(*)
+      real(rk), intent(in) :: savres(*)
         !! Current residual evaluated at `(t, y, yprime)` (not used).
       real(rk), intent(in) :: wk(*)
         !! Real work space of length `neq` (not used).
@@ -201,7 +201,7 @@ contains
         !! Right-hand side vector on input; solution on output.
       real(rk), intent(in) :: eplin
         !! Tolerance for linear system (not used).
-      integer, intent(inout) :: ier
+      integer, intent(out) :: ier
         !! Output error flag (not used; assumed 0 on input).
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
