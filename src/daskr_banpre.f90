@@ -60,7 +60,7 @@ module daskr_banpre
 contains
 
    subroutine banja( &
-      res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, wp, iwp, ier, rpar, ipar)
+      res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, wp, iwp, ierr, rpar, ipar)
    !! This subroutine generates a banded preconditioner matrix \(P\) that approximates the
    !! iteration matrix \(J = dG/dy + c_J dG/dy'\), where the DAE system is \(G(t,y,y') = 0\). 
    !! The band matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\). It is 
@@ -93,7 +93,7 @@ contains
         !! approximation P.
       integer, intent(inout) :: iwp(*)
         !! Integer work space for matrix pivot information.
-      integer, intent(out) :: ier
+      integer, intent(out) :: ierr
         !! Output flag: `ier > 0` if P is singular, and `ier = 0` otherwise.
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
@@ -129,7 +129,7 @@ contains
       ipsave = isave + msave
 
       ! Initialize error flags.
-      ier = 0
+      ierr = 0
       ires = 0
 
       ! Generate the banded approximate iteration matrix P using difference quotients on the
@@ -170,12 +170,12 @@ contains
       end do
 
       ! Do LU decomposition of the band matrix P.
-      call dgbfa(wp, meband, neq, ml, mu, iwp, ier)
+      call dgbfa(wp, meband, neq, ml, mu, iwp, ierr)
 
    end subroutine banja
 
    subroutine banps( &
-      neq, t, y, yprime, savres, wk, cj, wght, wp, iwp, b, eplin, ier, rpar, ipar)
+      neq, t, y, yprime, savres, wk, cj, wght, wp, iwp, b, epslin, ierr, rpar, ipar)
    !! This subroutine uses the factors produced by [[banja]] to solve linear systems \(P x = b\)
    !! for the banded preconditioner \(P\), given a vector \(b\). It calls the LINPACK routine
    !! [[dgbsl]] for this.
@@ -201,9 +201,9 @@ contains
         !! Integer array containing matrix pivot information.
       real(rk), intent(inout) :: b(*)
         !! Right-hand side vector on input; solution on output.
-      real(rk), intent(in) :: eplin
+      real(rk), intent(in) :: epslin
         !! Tolerance for linear system (not used).
-      integer, intent(out) :: ier
+      integer, intent(out) :: ierr
         !! Output error flag (not used; assumed 0 on input).
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
