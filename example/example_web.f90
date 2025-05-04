@@ -63,7 +63,7 @@ module web_m
    implicit none
    private
 
-   public :: setid, cinit, out, res, jacrs, psolrs, rt, c1_average
+   public :: setid, cinit, out, res, jac, psol, rt, c1_average
 
 contains
 
@@ -181,7 +181,7 @@ contains
    end subroutine out
 
    pure subroutine res(t, c, cprime, cj, delta, ires, rpar, ipar)
-   !! This routine computes the residuals vector, using subroutine [[f]] for the right-hand
+   !! This routine computes the residuals vector, using subroutine `f` for the right-hand
    !! sides.
       use web_par, only: ns, np, mx, my, mxns
       real(rk), intent(in) :: t
@@ -216,7 +216,7 @@ contains
 
    pure subroutine f(t, c, cprime, rpar)
    !! This routine computes the right-hand sides of all the equations and returns them in the
-   !! array `cprime`. The interaction rates are computed by calls to [[rates]], and these are
+   !! array `cprime`. The interaction rates are computed by calls to `rates`, and these are
    !! saved in `rpar` for later use in preconditioning.
       use web_par, only: cox, coy, ns, mx, my, mxns
       real(rk), intent(in) :: t
@@ -285,8 +285,8 @@ contains
 
    end subroutine rates
 
-   subroutine jacrs(res_, ires, neq, t, c, cprime, rewt, savr, wk, h, cj, wp, iwp, ierr, &
-                    rpar, ipar)
+   subroutine jac(res_, ires, neq, t, c, cprime, rewt, savr, wk, h, cj, rwp, iwp, ierr, &
+                  rpar, ipar)
    !! This routine interfaces to subroutines [[DRBDJA]] or [[DRBGJA]], depending on the flag
    !! `jbg=ipar(2)`, to generate and preprocess the block-diagonal Jacobian corresponding to
    !! the reaction term \(v\).
@@ -295,8 +295,8 @@ contains
    !! * If `jbg==1`, we call [[DRBGJA]], and use block-grouping.
    !!
    !! Array `rpar`, containing the current \(v\) vector, is passed to [[DRBDJA]] and [[DRBGJA]]
-   !! as argument `R0`, consistent with the loading of `rpar` in [[f]]. The procedure        name
-   !! [[rates]] is passed as the name of the routine which computes the individual blocks of
+   !! as argument `R0`, consistent with the loading of `rpar` in  subroutine`f`. The procedure
+   !! name `rates` is passed as the name of the routine which computes the individual blocks of
    !! \(v\).
       external :: res_
       integer, intent(in) :: ires
@@ -309,7 +309,7 @@ contains
       real(rk), intent(in) :: wk(*)
       real(rk), intent(in) :: h
       real(rk), intent(in) :: cj
-      real(rk), intent(in) :: wp(*)
+      real(rk), intent(in) :: rwp(*)
       integer, intent(in) :: iwp(*)
       integer, intent(in) :: ierr
       real(rk), intent(in) :: rpar(*)
@@ -320,20 +320,21 @@ contains
 
       jbg = ipar(2)
       if (jbg == 0) then
-         call drbdja(t, c, rpar, rates, wk, rewt, cj, wp, iwp, ierr)
+         call drbdja(t, c, rpar, rates, wk, rewt, cj, rwp, iwp, ierr)
       else
-         call drbgja(t, c, rpar, rates, wk, rewt, cj, wp, iwp, ierr)
+         call drbgja(t, c, rpar, rates, wk, rewt, cj, rwp, iwp, ierr)
       end if
 
-   end subroutine jacrs
+   end subroutine jac
 
-   subroutine psolrs(neq, t, cc, ccprime, savr, wk, cj, wt, wp, iwp, b, epslin, ierr, rpar, ipar)
+   subroutine psol(neq, t, cc, ccprime, savr, wk, cj, wt, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This routine applies the inverse of a product preconditioner matrix to the vector in the
-   !! array `b`. Depending on the flag `jpre`, this involves a call to [[gs]], for the inverse
-   !! of the spatial factor, and/or a call to [[DRBDPS]] or [[DRBGPS]] for the inverse of the
-   !! reaction-based factor (`cj*I_d - dR/dy`). The latter factor uses block-grouping (with a
-   !! call to [[DRBGPS]]) if `jbg == 1`, and does not (with a call to [[DRBDPS]]) if `jbg == 0`.
-   !! the flag `jbg` is passed as `ipar(2)`. The array `b` is overwritten with the solution.
+   !! array `b`. Depending on the flag `jpre`, this involves a call to `gauss_seidel`, for the
+   !! inverse of the spatial factor, and/or a call to [[DRBDPS]] or [[DRBGPS]] for the inverse 
+   !! of the reaction-based factor (`cj*I_d - dR/dy`). The latter factor uses block-grouping 
+   !! (with a call to [[DRBGPS]]) if `jbg == 1`, and does not (with a call to [[DRBDPS]]) if 
+   !! `jbg == 0`. The flag `jbg` is passed as `ipar(2)`. The array `b` is overwritten with the
+   !! solution.
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: cc(*)
@@ -342,7 +343,7 @@ contains
       real(rk), intent(inout) :: wk(*)
       real(rk), intent(in) :: cj
       real(rk), intent(in) :: wt(*)
-      real(rk), intent(in) :: wp(*)
+      real(rk), intent(in) :: rwp(*)
       integer, intent(in) :: iwp(*)
       real(rk), intent(inout) :: b(*)
       real(rk), intent(in) :: epslin
@@ -363,13 +364,13 @@ contains
       if (jpre == 2 .or. jpre == 3) call gauss_seidel(neq, hl0, b, wk)
 
       if (jpre /= 2) then
-         if (jbg == 0) call drbdps(b, wp, iwp)
-         if (jbg == 1) call drbgps(b, wp, iwp)
+         if (jbg == 0) call drbdps(b, rwp, iwp)
+         if (jbg == 1) call drbgps(b, rwp, iwp)
       end if
 
       if (jpre == 4) call gauss_seidel(neq, hl0, b, wk)
 
-   end subroutine psolrs
+   end subroutine psol
 
    pure subroutine gauss_seidel(n, hl0, z, x)
    !! This routine provides the inverse of the spatial factor for a product preconditoner in an
@@ -701,7 +702,7 @@ program example_web
 
    use daskr_kinds, only: rk, zero, one
    use web_par, only: aa, alpha, bb, beta, dpred, dprey, ee, gg, mx, my, mxns, np, ns, setpar
-   use web_m, only: setid, cinit, out, res, jacrs, psolrs, rt, c1_average
+   use web_m, only: setid, cinit, out, res, jac, psol, rt, c1_average
    implicit none
 
    integer, parameter :: neq = ns*mx*my, maxm = max(mx, my)
@@ -878,7 +879,7 @@ program example_web
 
          do
             call daskr(res, neq, t, cc, ccprime, tout, info, rtol, atol, &
-                       idid, rwork, lrw, iwork, liw, rpar, ipar, jacrs, psolrs, &
+                       idid, rwork, lrw, iwork, liw, rpar, ipar, jac, psol, &
                        rt, nrt, jroot)
 
             nst = iwork(11)
