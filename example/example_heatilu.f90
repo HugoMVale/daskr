@@ -157,28 +157,24 @@ program example_heatilu
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
+   use daskr_ilupre, only: setup_ilupre, jac_ilupre, psol_ilupre
    use heatilu_m, only: res, rt, uinit, lipar, lrpar, nrt
    implicit none
 
+   integer, parameter :: m = 10, neq = (m + 2)**2
    integer, parameter :: lenpfac = 5, lenplufac = 5, ipremeth = 1, lfililut = 5, &
-                         ireorder = 1, isrnorm = 1, normtype = 2, jacout = 0, &
-                         jscalcol = 1, maxm = 10, maxm2 = maxm + 2, mxneq = maxm2**2, &
-                         lenwp = 2*lenpfac*mxneq + lenplufac*mxneq + isrnorm*mxneq &
-                         + 2*(mxneq + 1), &
-                         leniwp = 4*(mxneq + 1) + 3*lenpfac*mxneq + 2*lenplufac*mxneq &
-                         + ireorder*2*mxneq + (ipremeth - 1)*2*mxneq, &
-                         lenrw = 107 + 18*mxneq, leniw = 40
+                         ireorder = 1, isrnorm = 1, normtype = 2, jacout = 0, jscalcol = 1
 
    real(rk), parameter :: permtol = 0.01_rk, tolilut = 0.001_rk
 
-   integer :: idid, ierr, iout, liw, liwpmin, lrw, lout, lwpmin, m, mband, ml, mu, ncfl, & 
-              ncfn, neq, nli, nni, nout, npe, nps, nqu, nre, nrte, nst
-   integer :: info(20), iwork(leniw + leniwp), ipar(lipar), jroot(nrt)
+   integer :: idid, ierr, iout, lout, liwork, liwp, liwp_min, lrwork, lrwp, lrwp_min, mband, &
+              ml, mu, ncfl, ncfn, nli, nni, nout, npe, nps, nqu, nre, nrte, nst
+   integer :: info(20), ipar(lipar), jroot(nrt)
+   integer, allocatable :: iwork(:)
 
    real(rk) :: atol, avdim, coeff, dx, hu, rtol, t, tout, umax
-   real(rk) :: rpar(lrpar), rwork(lenrw + lenwp), u(mxneq), uprime(mxneq)
-
-   external :: djacilu, dpsolilu
+   real(rk) :: rpar(lrpar), u(neq), uprime(neq)
+   real(rk), allocatable :: rwork(:)
 
    ! Open matrix output file if JACOUT==1
    if (jacout == 1) then
@@ -188,21 +184,13 @@ program example_heatilu
 
    ! Set parameters for the problem being solved. Use RPAR and IPAR to communicate these to the
    ! other routines.
-   m = maxm
-   dx = one/(m + one)
-   neq = (m + 2)*(m + 2)
+   dx = one/(m + 1)
    coeff = one/dx**2
+
    ipar(33) = neq
    ipar(34) = m
    rpar(3) = dx
    rpar(4) = coeff
-
-   ! Set the lengths of the preconditioner work arrays WP and IWP, load them into IWORK, and
-   ! set the total lengths of WORK and IWORK.
-   iwork(27) = lenwp
-   iwork(28) = leniwp
-   lrw = lenrw + lenwp
-   liw = leniw + leniwp
 
    ! Load values into IPAR and RPAR for sparse preconditioner.
    ml = 1
@@ -222,14 +210,29 @@ program example_heatilu
    rpar(1) = tolilut
    rpar(2) = permtol
 
-   ! Check IPAR, RPAR, LENWP and LENIWP for illegal entries and long enough work array lengths.
-   call dspsetup(neq, lenwp, leniwp, rpar, ipar, ierr, lwpmin, liwpmin)
+   ! Set the lengths of the preconditioner work arrays RWP and IWP
+   lrwp = 2*lenpfac*neq + lenplufac*neq + isrnorm*neq + 2*(neq + 1)
+   liwp = 4*(neq + 1) + 3*lenpfac*neq + 2*lenplufac*neq + ireorder*2*neq + (ipremeth - 1)*2*neq
+
+   ! Set the total lengths of RWORK and IWORK and allocate them.
+   lrwork = 107 + 18*neq
+   liwork = 40
+   lrwork = lrwork + lrwp
+   liwork = liwork + liwp
+   allocate(rwork(lrwork), iwork(liwork))
+
+   ! Load the lengths of the preconditioner work arrays RWP and IWP into IWORK
+   iwork(27) = lrwp
+   iwork(28) = liwp
+
+   ! Check IPAR, RPAR, LRWP and LIWP for illegal entries and long enough work array lengths.
+   call setup_ilupre(neq, lrwp, liwp, rpar, ipar, ierr, lrwp_min, liwp_min)
    if (ierr /= 0) then
       write (stdout, '(a, i5)') ' Error return from DSPSETUP: IERR = ', ierr
-      if (lwpmin > lenwp) then
+      if (lrwp_min > lrwp) then
          write (stdout, *) ' More WP work array length needed'
       end if
-      if (liwpmin > leniwp) then
+      if (liwp_min > liwp) then
          write (stdout, *) ' More IWP work array length needed'
       end if
       stop
@@ -296,8 +299,8 @@ program example_heatilu
    nout = 11
    do iout = 1, nout
       do
-         call daskr(res, neq, t, u, uprime, tout, info, rtol, atol, idid, &
-                    rwork, lrw, iwork, liw, rpar, ipar, djacilu, dpsolilu, rt, nrt, jroot)
+         call daskr(res, neq, t, u, uprime, tout, info, rtol, atol, idid, rwork, lrwork, &
+                    iwork, liwork, rpar, ipar, jac_ilupre, psol_ilupre, rt, nrt, jroot)
 
          umax = maxval(abs(u))
 
@@ -331,8 +334,8 @@ program example_heatilu
    nst = iwork(11)
    npe = iwork(13)
    nre = iwork(12) + npe*mband
-   liw = iwork(17)
-   lrw = iwork(18)
+   liwork = iwork(17)
+   lrwork = iwork(18)
    nni = iwork(19)
    nli = iwork(20)
    nps = iwork(21)
@@ -342,7 +345,7 @@ program example_heatilu
    nrte = iwork(36)
 
    write (stdout, '(/, a)') 'Final statistics for this run:'
-   write (stdout, '(a, i5, a, i5)') 'RWORK size =', lrw, ' IWORK size =', liw
+   write (stdout, '(a, i5, a, i5)') 'RWORK size =', lrwork, ' IWORK size =', liwork
    write (stdout, '(a, i5)') 'Number of time steps ................ =', nst
    write (stdout, '(a, i5)') 'Number of residual evaluations ...... =', nre
    write (stdout, '(a, i5)') 'Number of res. evals. for precond.... =', ipar(30)
@@ -353,7 +356,7 @@ program example_heatilu
    write (stdout, '(a, i5)') 'Number of linear iterations ......... =', nli
    write (stdout, '(a, f8.4)') 'Average Krylov subspace dimension =', avdim
    write (stdout, '(i5, x, a, i5, x, a)') ncfn, 'nonlinear conv. failures,', ncfl, 'linear conv. failures'
-   write (stdout, '(a, i7, 1x, i7)') 'Minimum lengths for work arrays WP and IWP: ', lwpmin, liwpmin
+   write (stdout, '(a, i7, 1x, i7)') 'Minimum lengths for work arrays WP and IWP: ', lrwp_min, liwp_min
 
    ! Close matrix output file if JACOUT==1
    if (jacout == 1) close(unit=lout)
