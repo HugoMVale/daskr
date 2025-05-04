@@ -140,8 +140,8 @@ program example_heatilu
 !! this approximation are offset by the lower storage and linear system solution costs for a
 !! tridiagonal matrix.
 !!
-!! The routines [[DJACILU]] and [[DPSOLILU]] that generate and solve the banded preconditioner are
-!! provided in a separate file for general use.
+!! The routines [[jac_ilupre]] and [[psol_ilupre]] that generate and solve the banded 
+!! preconditioner are provided in a separate file for general use.
 !!
 !! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
 !! the mesh and various performance statistics are printed.
@@ -243,7 +243,7 @@ program example_heatilu
 
    ! Set up the INFO array, which describes the various options in the way we want DASKR to
    ! solve the problem. In this case, we select the iterative preconditioned Krylov method,
-   ! and we supply the sparse preconditioner routines DJACILU/DPSOLILU.
+   ! and we supply the sparse preconditioner routines JAC_ILUPRE/PSOL_ILUPRE.
    !
    ! We first initialize the entire INFO array to zero, then set select entries to nonzero 
    ! values for desired solution options.
@@ -251,8 +251,8 @@ program example_heatilu
    ! To select the Krylov iterative method for the linear systems, we set INFO(12) = 1.
    !
    ! Since we are using a preconditioner that involves approximate Jacobian elements requiring 
-   ! preprocessing, we have a JAC routine, namely subroutine DJACILU, and we must set INFO(15) = 1
-   ! to indicate this to DASKR.
+   ! preprocessing, we have a JAC routine, namely subroutine JAC_ILUPRE, and we must set 
+   ! INFO(15) = 1 to indicate this to DASKR.
    !
    ! No other entries of INFO need to be changed for this example.
    info = 0
@@ -281,8 +281,8 @@ program example_heatilu
    ! DASKR will be called to compute 11 intermediate solutions from tout=0.01 to tout=10.24
    ! by powers of 2.
    !
-   ! We pass to DASKR the names DJACILU and DPSOLILU for the JAC and PSOL routines to do the
-   ! preconditioning.
+   ! We pass to DASKR the names JAC_ILUPRE and PSOL_ILUPRE for the JAC and PSOL routines to do 
+   ! the preconditioning.
    !
    ! At each output time, we compute and print the max-norm of the solution (which should
    ! decay exponentially in t). We also print some relevant statistics -- the current method
