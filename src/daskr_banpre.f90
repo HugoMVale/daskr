@@ -69,7 +69,7 @@ contains
    !! [[banjac]] calls the LINPACK routine [[dgbfa]] to do an LU factorization of this matrix.
       external :: res
       integer, intent(out) :: ires
-        !! Output flag set by `res`. See `res` description in [[daskr]].
+        !! Error flag set by `res`.
       integer, intent(in) :: neq
         !! Problem size.
       real(rk), intent(in) :: t
@@ -79,7 +79,7 @@ contains
       real(rk), intent(inout) :: yprime(*)
         !! Current derivatives of dependent variables.
       real(rk), intent(in) :: rewt(*)
-        !! Vector of reciprocal error weights.
+        !! Reciprocal error weights for scaling `y` and `yprime`.
       real(rk), intent(in) :: savres(*)
         !! Current residual evaluated at `(t, y, yprime)`.
       real(rk), intent(in) :: wk(*)
@@ -94,7 +94,7 @@ contains
       integer, intent(inout) :: iwp(*)
         !! Integer work space for matrix pivot information.
       integer, intent(out) :: ierr
-        !! Output flag: `ierr > 0` if P is singular, and `ierr = 0` otherwise.
+        !! Error flag: `ierr > 0` if P is singular, and `ierr = 0` otherwise.
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
         !! routines.
@@ -204,13 +204,13 @@ contains
       real(rk), intent(in) :: epslin
         !! Tolerance for linear system (not used).
       integer, intent(out) :: ierr
-        !! Output error flag (not used; assumed 0 on input).
+        !! Error flag (not used).
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
         !! routines (not used).
       integer, intent(inout) :: ipar(*)
         !! Integer array used for communication between the calling program and external user
-        !! routines (not used). `ipar(1)` and `ipar(2)` must contain `ml` and `mu`, respectively.
+        !! routines (not used).
 
       external :: dgbsl !@todo: replace by module
       
