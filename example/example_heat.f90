@@ -158,7 +158,7 @@ program example_heat
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
-   use daskr_banpre, only: banjac, banpsol
+   use daskr_banpre, only: jac_banpre, psol_banpre
    use heat_m, only: lipar, lrpar, nrt, res, rt, uinit
    implicit none
 
@@ -270,8 +270,8 @@ program example_heat
    do iout = 1, nout
 
       do
-         call daskr(res, neq, t, u, uprime, tout, info, rtol, atol, idid, &
-                    rwork, lrwork, iwork, liwork, rpar, ipar, banjac, banpsol, rt, nrt, jroot)
+         call daskr(res, neq, t, u, uprime, tout, info, rtol, atol, idid, rwork, lrwork, &
+                    iwork, liwork, rpar, ipar, jac_banpre, psol_banpre, rt, nrt, jroot)
 
          umax = maxval(abs(u))
          

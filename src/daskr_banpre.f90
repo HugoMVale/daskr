@@ -5,13 +5,13 @@
 module daskr_banpre
 !! Preconditioner Routines for Banded Problems
 !!
-!! The following pair of subroutines – [[banjac]] and [[banpsol]] – provides a general-purpose 
-!! banded preconditioner matrix for use with the [[daskr]] solver, with the Krylov linear system
-!! method. When using [[daskr]] to solve a problem \(G(t,y,y') = 0\), whose iteration matrix 
-!! (Jacobian) \( J = dG/dy + c_J dG/dy' \), where \(c_J\) is a scalar, is either banded or 
-!! approximately equal to a banded matrix, these routines can be used to generate a banded 
-!! approximation to \(J\) as the preconditioner and to solve the resulting banded linear system,
-!! in conjunction with the Krylov method option (`info(12) = 1`) in [[daskr]].
+!! The following pair of subroutines – [[jac_banpre]] and [[psol_banpre]] – provides a 
+!! general-purpose banded preconditioner matrix for use with the [[daskr]] solver, with the 
+!! Krylov linear system method. When using [[daskr]] to solve a problem \(G(t,y,y') = 0\), whose 
+!! iteration matrix (Jacobian) \( J = dG/dy + c_J dG/dy' \), where \(c_J\) is a scalar, is either 
+!! banded or approximately equal to a banded matrix, these routines can be used to generate a  
+!! banded approximation to \(J\) as the preconditioner and to solve the resulting banded linear
+!! system, in conjunction with the Krylov method option (`info(12) = 1`) in [[daskr]].
 !!
 !! Other than the user-supplied residual routine `res` defining \(G(t,y,y')\), the only other 
 !! inputs required by these routines are the half-bandwidth parameters \(\mathrm{ml}\) and 
@@ -19,7 +19,7 @@ module daskr_banpre
 !! the half-bandwidths are defined as integers between 0 and \(\mathrm{neq} -1\) such that only
 !! elements with indices \((i,j)\) satisfying \( -\mathrm{ml} \le j, i \le \mathrm{mu} \) are
 !! to be retained in the preconditioner. For example, if \(\mathrm{ml} = \mathrm{mu} = 0\), a
-!! diagonal matrix will be generated as the preconditioner.  The banded preconditioner is 
+!! diagonal matrix will be generated as the preconditioner. The banded preconditioner is 
 !! obtained by difference quotient approximations. If the true problem Jacobian is not banded 
 !! but is approximately equal to a matrix that is banded, the procedure used here will have the
 !! effect of lumping the elements outside of the band onto the elements within the band.
@@ -29,7 +29,7 @@ module daskr_banpre
 !!
 !! * Dimension the array `ipar` to have length at least 2, and load the half-bandwidths into 
 !!   `ipar` as `ipar(1) = ml` and `ipar(2) = mu`. Array `ipar` is used to communicate these 
-!!   parameters to [[banjac]] and [[banpsol]]. If the user program also uses `ipar` for 
+!!   parameters to [[jac_banpre]] and [[psol_banpre]]. If the user program also uses `ipar` for 
 !!   communication with `res`, that data should be located beyond the first 2 positions.
 !!
 !! * Import this module. Set `info(15) = 1` to indicate that a `jac` routine exists. Then in the
@@ -37,8 +37,8 @@ module daskr_banpre
 !!   `psol`, respectively.
 !!
 !! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp` for
-!!   use by  [[banjac]] and [[banpsol]]. The lengths of these arrays depend on the problem size
-!!   and half-bandwidths, as follows:
+!!   use by  [[jac_banpre]] and [[psol_banpre]]. The lengths of these arrays depend on the 
+!!   problem size and half-bandwidths, as follows:
 !!```  
 !!   lrwp = length of rwork segment rwp = (2*ml + mu + 1)*neq + 2*((neq/(ml + mu + 1)) + 1)
 !!   liwp = length of iwork segment iwp = neq
@@ -46,27 +46,27 @@ module daskr_banpre
 !!   Note the integer divide in `lrwp`. Load these lengths in `iwork` as `iwork(27) = lrwp` and
 !!   `iwork(28) = liwp`, and include these values in the declared size of `rwork` and `iwork`.
 !!
-!! The [[banjac]] and [[banpsol]] routines generate and solve the banded preconditioner matrix 
-!! \(P\) within the preconditioned Krylov algorithm used by [[daskr]] when `info(12) = 1`. \(P\)
-!! is generated and LU-factored periodically during the integration, and the factors are used to
-!! solve systems \(Px = b\) as needed.
+!! The [[jac_banpre]] and [[psol_banpre]] routines generate and solve the banded preconditioner  
+!! matrix \(P\) within the preconditioned Krylov algorithm used by [[daskr]] when `info(12) = 1`.
+!! \(P\) is generated and LU-factored periodically during the integration, and the factors are
+!! used to solve systems \(Px = b\) as needed.
 
    use daskr_kinds, only: rk, one
    implicit none
    private
 
-   public :: banjac, banpsol
+   public :: jac_banpre, psol_banpre
 
 contains
 
-   subroutine banjac( &
+   subroutine jac_banpre( &
       res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
    !! This subroutine generates a banded preconditioner matrix \(P\) that approximates the
    !! iteration matrix \(J = dG/dy + c_J dG/dy'\), where the DAE system is \(G(t,y,y') = 0\). 
    !! The band matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\). It is 
    !! computed by making \(\mathrm{ml} + \mathrm{mu} + 1\) calls to the user's `res` routine and 
    !! forming difference quotients, exactly as in the banded direct method option of [[daskr]]. 
-   !! [[banjac]] calls the LINPACK routine [[dgbfa]] to do an LU factorization of this matrix.
+   !! [[jac_banpre]] calls the LINPACK routine [[dgbfa]] to do an LU factorization of this matrix.
       external :: res
       integer, intent(out) :: ires
         !! Error flag set by `res`.
@@ -172,12 +172,12 @@ contains
       ! Do LU decomposition of the band matrix P.
       call dgbfa(rwp, meband, neq, ml, mu, iwp, ierr)
 
-   end subroutine banjac
+   end subroutine jac_banpre
 
-   subroutine banpsol( &
+   subroutine psol_banpre( &
       neq, t, y, yprime, savres, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This subroutine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
-   !! given a vector \(b\), using the factors produced by [[banjac]]. It calls the LINPACK 
+   !! given a vector \(b\), using the factors produced by [[jac_banpre]]. It calls the LINPACK 
    !! routine [[dgbsl]] for this.
       integer, intent(in) :: neq
         !! Problem size.
@@ -190,7 +190,7 @@ contains
       real(rk), intent(in) :: savres(*)
         !! Current residual evaluated at `(t, y, yprime)` (not used).
       real(rk), intent(in) :: wk(*)
-        !! Real work space of length `neq` (not used).
+        !! Real work space available to this subroutine (not used).
       real(rk), intent(in) :: cj
         !! Scalar proportional to `1/h` (not used).
       real(rk), intent(in) :: wght(*)
@@ -206,11 +206,11 @@ contains
       integer, intent(out) :: ierr
         !! Error flag (not used).
       real(rk), intent(inout) :: rpar(*)
-        !! Real array used for communication between the calling program and external user
-        !! routines (not used).
+        !! Real array used for communication between the calling program and user routines
+        !! (not used).
       integer, intent(inout) :: ipar(*)
-        !! Integer array used for communication between the calling program and external user
-        !! routines (not used).
+        !! Integer array used for communication between the calling program and user routines 
+        !! (not used).
 
       external :: dgbsl !@todo: replace by module
       
@@ -221,6 +221,6 @@ contains
       meband = 2*ml + mu + 1
       call dgbsl(rwp, meband, neq, ml, mu, iwp, b, 0)
 
-   end subroutine banpsol
+   end subroutine psol_banpre
 
 end module daskr_banpre
