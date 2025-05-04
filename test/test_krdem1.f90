@@ -8,8 +8,9 @@ module krdem1_m
    implicit none
    private
    
-   integer, parameter, public :: neq = 1, nrt = 2
+   integer, parameter :: neq = 1, nrt = 2
 
+   public :: neq, nrt
    public :: res, rt   
 
 contains

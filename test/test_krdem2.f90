@@ -6,9 +6,11 @@ module krdem2_m
 !! Procedures for [[test_krdem2]].
    use daskr_kinds, only: rk, zero, one
    implicit none
+   private
 
-   integer, parameter, public :: neq = 2, nrt = 1, nrowpd = 2
+   integer, parameter :: neq = 2, nrt = 1, nrowpd = 2
 
+   public :: neq, nrt, nrowpd
    public :: res, jac, rt
 
 contains
