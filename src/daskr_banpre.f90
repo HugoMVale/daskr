@@ -79,11 +79,11 @@ contains
       real(rk), intent(inout) :: yprime(*)
         !! Current derivatives of dependent variables.
       real(rk), intent(in) :: rewt(*)
-        !! Vector of reciprocal error weights, used here for computing increments.
+        !! Vector of reciprocal error weights.
       real(rk), intent(in) :: savres(*)
         !! Current residual evaluated at `(t, y, yprime)`.
       real(rk), intent(in) :: wk(*)
-        !! Real work space of length `neq`.
+        !! Real work space available to this subroutine.
       real(rk), intent(in) :: h
         !! Current step size.
       real(rk), intent(in) :: cj
@@ -176,9 +176,9 @@ contains
 
    subroutine banpsol( &
       neq, t, y, yprime, savres, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
-   !! This subroutine uses the factors produced by [[banjac]] to solve linear systems \(P x = b\)
-   !! for the banded preconditioner \(P\), given a vector \(b\). It calls the LINPACK routine
-   !! [[dgbsl]] for this.
+   !! This subroutine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
+   !! given a vector \(b\), using the factors produced by [[banjac]]. It calls the LINPACK 
+   !! routine [[dgbsl]] for this.
       integer, intent(in) :: neq
         !! Problem size.
       real(rk), intent(in) :: t
