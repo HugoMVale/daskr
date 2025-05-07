@@ -5,12 +5,12 @@
 module daskr_banpre
 !! Preconditioner Routines for Banded Problems
 !!
-!! The following pair of subroutines – [[jac_banpre]] and [[psol_banpre]] – provides a 
+!! The following pair of subroutines — [[jac_banpre]] and [[psol_banpre]] — provides a 
 !! general-purpose banded preconditioner matrix for use with the [[daskr]] solver, with the 
 !! Krylov linear system method. When using [[daskr]] to solve a problem \(G(t,y,y') = 0\), whose 
-!! iteration matrix (Jacobian) \( J = dG/dy + c_J dG/dy' \), where \(c_J\) is a scalar, is either 
-!! banded or approximately equal to a banded matrix, these routines can be used to generate a  
-!! banded approximation to \(J\) as the preconditioner and to solve the resulting banded linear
+!! Jacobian \( J = dG/dy + c_J dG/dy' \), where \(c_J\) is a scalar, is either banded or
+!! approximately equal to a banded matrix, these routines can be used to generate a banded
+!! *approximation* to \(J\) as the preconditioner and to solve the resulting banded linear 
 !! system, in conjunction with the Krylov method option (`info(12) = 1`) in [[daskr]].
 !!
 !! Other than the user-supplied residual routine `res` defining \(G(t,y,y')\), the only other 
@@ -44,9 +44,10 @@ module daskr_banpre
 !!   liwp = length of iwork segment iwp = neq
 !!```
 !!   Note the integer divide in `lrwp`. Load these lengths in `iwork` as `iwork(27) = lrwp` and
-!!   `iwork(28) = liwp`, and include these values in the declared size of `rwork` and `iwork`.
+!!   `iwork(28) = liwp`, and include these values in the declared size of `rwork` and `iwork`,
+!!   respectively.
 !!
-!! The [[jac_banpre]] and [[psol_banpre]] routines generate and solve the banded preconditioner  
+!! The [[jac_banpre]] and [[psol_banpre]] routines generate and solve the banded preconditioner
 !! matrix \(P\) within the preconditioned Krylov algorithm used by [[daskr]] when `info(12) = 1`.
 !! \(P\) is generated and LU-factored periodically during the integration, and the factors are
 !! used to solve systems \(Px = b\) as needed.
@@ -62,11 +63,12 @@ contains
    subroutine jac_banpre( &
       res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
    !! This subroutine generates a banded preconditioner matrix \(P\) that approximates the
-   !! iteration matrix \(J = dG/dy + c_J dG/dy'\), where the DAE system is \(G(t,y,y') = 0\). 
-   !! The band matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\). It is 
+   !! Jacobian matrix \(J = dG/dy + c_J dG/dy'\), where the DAE system is \(G(t,y,y') = 0\). 
+   !! The band matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\), and is 
    !! computed by making \(\mathrm{ml} + \mathrm{mu} + 1\) calls to the user's `res` routine and 
    !! forming difference quotients, exactly as in the banded direct method option of [[daskr]]. 
-   !! [[jac_banpre]] calls the LINPACK routine [[dgbfa]] to do an LU factorization of this matrix.
+   !! Afterwards, this matrix is LU factorized by the LINPACK routine [[dgbfa]] and the factors
+   !! are stored in the work arrays `rwp` and `iwp`.
       external :: res
       integer, intent(out) :: ires
         !! Error flag set by `res`.
@@ -177,8 +179,8 @@ contains
    subroutine psol_banpre( &
       neq, t, y, yprime, savres, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This subroutine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
-   !! given a vector \(b\), using the factors produced by [[jac_banpre]]. It calls the LINPACK 
-   !! routine [[dgbsl]] for this.
+   !! given a vector \(b\), using the LU decomposition produced by [[jac_banpre]]. The solution
+   !! is carried out by the LINPACK routine [[dgbsl]].
       integer, intent(in) :: neq
         !! Problem size.
       real(rk), intent(in) :: t
