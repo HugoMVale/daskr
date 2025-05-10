@@ -15,11 +15,11 @@ module krdem1_m
 
 contains
 
-   pure subroutine res(t, y, yprime, cj, delta, ires, rpar, ipar)
+   pure subroutine res(t, y, ydot, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
       real(rk), intent(in):: t
       real(rk), intent(in):: y(neq)
-      real(rk), intent(in):: yprime(neq)
+      real(rk), intent(in):: ydot(neq)
       real(rk), intent(in):: cj
       real(rk), intent(out):: delta(neq)
       integer, intent(out) :: ires
@@ -33,33 +33,33 @@ contains
          return
       else
          call f(t, y, delta)
-         delta = yprime - delta
+         delta = ydot - delta
       end if
 
    end subroutine res
    
-   pure subroutine f(t, y, yprime)
+   pure subroutine f(t, y, ydot)
    !! dy1/dt routine.
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(:)
-      real(rk), intent(out) :: yprime(:)
+      real(rk), intent(out) :: ydot(:)
 
-      yprime(1) = ((2*log(y(1)) + 8.0_rk)/t - 5.0_rk)*y(1)
+      ydot(1) = ((2*log(y(1)) + 8.0_rk)/t - 5.0_rk)*y(1)
 
    end subroutine f
 
-   pure subroutine rt(neq, t, y, yprime, nrt, rval, rpar, ipar)
+   pure subroutine rt(neq, t, y, ydot, nrt, rval, rpar, ipar)
      !! Roots routine.
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(neq)
-      real(rk), intent(in) :: yprime(neq)
+      real(rk), intent(in) :: ydot(neq)
       integer, intent(in) :: nrt
       real(rk), intent(out) :: rval(nrt)
       real(rk), intent(in) :: rpar
       integer, intent(in) :: ipar
 
-      rval(1) = yprime(1)
+      rval(1) = ydot(1)
       rval(2) = log(y(1)) - 2.2491_rk
 
    end subroutine rt
@@ -72,23 +72,23 @@ program test_krdem1
 !! The initial value problem is:
 !!
 !! $$\begin{aligned}
-!!  y'(t) &= \left(\frac{2 \ln(y) + 8}{t} - 5\right)y \\
-!!  y(1)  &= 1, \quad 1 \le t \le 6
+!!  \dot{y}(t) &= \left(\frac{2 \ln(y) + 8}{t} - 5\right)y \\
+!!  y(1)       &= 1, \quad 1 \le t \le 6
 !! \end{aligned}$$
 !! 
 !! The solution is:
 !!
-!! $$ y(t) = \exp(-t^2 + 5t - 4), \quad y'(1) = 3 $$
+!! $$ y(t) = \exp(-t^2 + 5t - 4), \quad \dot{y}(1) = 3 $$
 !!
 !! The two root functions are:
 !!   
 !! $$\begin{aligned}
-!! r_1(t,y,y') &= y'              \quad &&(\text{with root at } t = 2.5), \\
-!! r_2(t,y,y') &= \ln(y) - 2.2491 \quad &&(\text{with roots at } t = 2.47 \text{ and } 2.53)
+!! r_1(t,y,\dot{y}) &= \dot{y}              \quad &&(\text{with root at v} t = 2.5), \\
+!! r_2(t,y,\dot{y}) &= \ln(y) - 2.2491 \quad &&(\text{with roots at } t = 2.47 \text{ and } 2.53)
 !! \end{aligned}$$
 !!
 !! If the errors are too large, or other difficulty occurs, a warning message is printed.
-!! To run the demonstration problem with full printing, set `kprint=3`.
+!! To run the demonstration problem with full printing, set `kprint = 3`.
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, zero, one, two
@@ -99,7 +99,7 @@ program test_krdem1
    integer :: idid, iout, ipar, jdum, jtype, kprint, lout, nerr, nre, nrea, nrte, nje, nst
    integer :: info(20), iwork(liwork), jroot(2)
    real(rk) :: er, ero, errt, psdum, rpar, t, tout, yt
-   real(rk) :: atol(neq), rtol(neq), rwork(lrwork), y(neq), yprime(neq)
+   real(rk) :: atol(neq), rtol(neq), rwork(lrwork), y(neq), ydot(neq)
 
   ! Set report options
    lout = stdout
@@ -112,11 +112,11 @@ program test_krdem1
    rtol = zero
    atol = 1e-6_rk
 
-   ! Set INFO(11) = 1 if DASKR is to compute the initial YPRIME, and generate an initial guess
-   ! for YPRIME.  Otherwise, set INFO(11) = 0 and supply the correct initial value for YPRIME.
+   ! Set INFO(11) = 1 if DASKR is to compute the initial YDOT, and generate an initial guess
+   ! for YDOT. Otherwise, set INFO(11) = 0 and supply the correct initial value for YDOT.
    info(11) = 0
    y(1) = one
-   yprime(1) = 3.0_rk
+   ydot(1) = 3.0_rk
 
    ! Note: JTYPE indicates the Jacobian type:
    ! JTYPE = 1 ==> Jacobian is dense and user-supplied
@@ -125,11 +125,11 @@ program test_krdem1
    info(5) = 2 - jtype
    if (kprint >= 2) then
       write (lout, '(/, a, /)') 'DKRDEM-1: Test Program for DASKR'
-      write (lout, '(a)') 'Problem is  dY/dT = ((2*LOG(Y)+8)/T - 5)*Y,  Y(1) = 1'
-      write (lout, '(a)') 'Solution is  Y(T) = EXP(-T**2 + 5*T - 4)'
+      write (lout, '(a)') 'Problem is  dy/dt = ((2*ln(y)+8)/t - 5)*y,  y(1) = 1'
+      write (lout, '(a)') 'Solution is  y(t) = exp(-t**2 + 5*t - 4)'
       write (lout, '(a)') 'Root functions are:'
-      write (lout, '(a)') 'R1 = dY/dT  (root at T = 2.5)'
-      write (lout, '(a)') 'R2 = LOG(Y) - 2.2491  (roots at T = 2.47 and T = 2.53)'
+      write (lout, '(a)') 'r1 = dy/dt  (root at t = 2.5)'
+      write (lout, '(a)') 'r2 = ln(y) - 2.2491  (roots at t = 2.47 and t = 2.53)'
       write (lout, '(a, e10.1, a, e10.1, a, i3, /)') &
          'RTOL =', rtol(1), ' ATOL =', atol(1), ' JTYPE =', jtype
    end if
@@ -140,7 +140,7 @@ program test_krdem1
    ero = zero
    do iout = 1, 5
       do
-         call daskr(res, neq, t, y, yprime, tout, info, rtol, atol, idid, &
+         call daskr(res, neq, t, y, ydot, tout, info, rtol, atol, idid, &
                     rwork, lrwork, iwork, liwork, rpar, ipar, jdum, psdum, rt, nrt, jroot)
 
          ! Print Y and error in Y, and print warning if error too large.
