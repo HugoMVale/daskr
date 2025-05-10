@@ -15,11 +15,11 @@ module krdem2_m
 
 contains
 
-   pure subroutine res(t, y, yprime, cj, delta, ires, rpar, ipar)
+   pure subroutine res(t, y, ydot, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
       real(rk), intent(in):: t
       real(rk), intent(in):: y(neq)
-      real(rk), intent(in):: yprime(neq)
+      real(rk), intent(in):: ydot(neq)
       real(rk), intent(in):: cj
       real(rk), intent(out):: delta(neq)
       integer, intent(out) :: ires
@@ -27,26 +27,26 @@ contains
       integer, intent(in) :: ipar
 
       call f(t, y, delta)
-      delta = yprime - delta
+      delta = ydot - delta
 
    end subroutine res
    
-   pure subroutine f(t, y, yprime)
+   pure subroutine f(t, y, ydot)
    !! dy/dt routine.
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(:)
-      real(rk), intent(out) :: yprime(:)
+      real(rk), intent(out) :: ydot(:)
 
-      yprime(1) = y(2)
-      yprime(2) = 100*(one - y(1)**2)*y(2) - y(1)
+      ydot(1) = y(2)
+      ydot(2) = 100*(one - y(1)**2)*y(2) - y(1)
 
    end subroutine f
 
-   pure subroutine jac(t, y, yprime, pd, cj, rpar, ipar)
+   pure subroutine jac(t, y, ydot, pd, cj, rpar, ipar)
    !! Jacobian routine.
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(neq)
-      real(rk), intent(in) :: yprime(neq)
+      real(rk), intent(in) :: ydot(neq)
       real(rk), intent(out) :: pd(nrowpd, neq)
       real(rk), intent(in) :: cj
       real(rk), intent(in):: rpar
@@ -68,12 +68,12 @@ contains
 
    end subroutine jac
 
-   pure subroutine rt(neq, t, y, yprime, nrt, rval, rpar, ipar)
+   pure subroutine rt(neq, t, y, ydot, nrt, rval, rpar, ipar)
      !! Roots routine.
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(neq)
-      real(rk), intent(in) :: yprime(neq)
+      real(rk), intent(in) :: ydot(neq)
       integer, intent(in) :: nrt
       real(rk), intent(out) :: rval(nrt)
       real(rk), intent(in) :: rpar
@@ -91,20 +91,20 @@ program test_krdem2
 !! The initial value problem is:
 !!
 !! $$\begin{aligned}
-!! y_1'(t) &= y_2 \\
-!! y_2'(t) &= 100(1 - y_1^2)y_2 - y_1
+!! \dot{y}_1(t) &= y_2 \\
+!! \dot{y}_2(t) &= 100(1 - y_1^2)y_2 - y_1
 !! \end{aligned}$$
 !! 
 !! with initial conditions:
 !!      
 !! $$\begin{aligned}
 !! y_1(0)  &= 2, \quad y_2(0)  = 0, \quad 0 \le t \le 200 \\
-!! y_1'(0) &= 0, \quad y_2'(0) = -2
+!! \dot{y}_1(0) &= 0, \quad \dot{y}_2'(0) = -2
 !! \end{aligned}$$
 !!
 !! The root function is:
 !!
-!! $$ r_1(t, y, y') = y_1 $$
+!! $$ r_1(t, y, \dot{y}) = y_1 $$
 !!
 !! The analytical solution is not known, but the zeros of \(y_1\) are known to 15 figures.
 !!
@@ -120,7 +120,7 @@ program test_krdem2
    integer :: idid, iout, ipar, jtype, kprint, lout, nerr, nre, nrea, nrte, nje, nst, kroot
    integer :: info(20), iwork(liwork), jroot(nrt)
    real(rk) :: errt, psdum, rpar, t, tout, tzero
-   real(rk) :: atol(neq), rtol(neq), rwork(lrwork), y(neq), yprime(neq)
+   real(rk) :: atol(neq), rtol(neq), rwork(lrwork), y(neq), ydot(neq)
 
    ! Set report options
    lout = stdout
@@ -138,11 +138,11 @@ program test_krdem2
    atol(2) = 1e-4_rk
 
    if (kprint >= 2) then
-      write (lout, '(/, a, /)') 'DKRDEM-2: Test Program for DASKR'
-      write (lout, '(a)') 'Van Der Pol oscillator'
-      write (lout, '(a)') 'Problem is dY1/dT = Y2,  dY2/dT = 100*(1-Y1**2)*Y2 - Y1'
-      write (lout, '(a)') '            Y1(0) = 2,    Y2(0) = 0'
-      write (lout, '(a)') 'Root function is  R(T,Y,YP) = Y1'
+      write (lout, '(/, a, /)') "DKRDEM-2: Test Program for DASKR"
+      write (lout, '(a)') "Van Der Pol oscillator"
+      write (lout, '(a)') "Problem is dy1/dt = y2,  dy2/dt = 100*(1-y1**2)*y2 - y1"
+      write (lout, '(a)') "            y1(0) = 2,    y2(0) = 0"
+      write (lout, '(a)') "Root function is  r(t,y,y') = y1"
       write (lout, '(a, e10.1, a, 2(e10.1))') 'RTOL =', rtol(1), ' ATOL =', atol(1:2)
    end if
 
@@ -161,8 +161,8 @@ program test_krdem2
       t = zero
       y(1) = two
       y(2) = zero
-      yprime(1) = zero
-      yprime(2) = -two
+      ydot(1) = zero
+      ydot(2) = -two
       tout = 20.0_rk
 
       if (kprint > 2) then
@@ -173,7 +173,7 @@ program test_krdem2
       do iout = 1, 10
 
          do
-            call daskr(res, neq, t, y, yprime, tout, info, rtol, atol, idid, &
+            call daskr(res, neq, t, y, ydot, tout, info, rtol, atol, idid, &
                        rwork, lrwork, iwork, liwork, rpar, ipar, jac, psdum, rt, nrt, jroot)
 
             ! Print Y1 and Y2.
