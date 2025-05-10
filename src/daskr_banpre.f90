@@ -5,16 +5,18 @@
 module daskr_banpre
 !! Preconditioner Routines for Banded Problems
 !!
-!! The following pair of subroutines — [[jac_banpre]] and [[psol_banpre]] — provides a 
-!! general-purpose banded preconditioner matrix for use with the [[daskr]] solver, with the 
-!! Krylov linear system method. When using [[daskr]] to solve a problem \(G(t,y,y') = 0\), whose 
-!! Jacobian \( J = dG/dy + c_J dG/dy' \), where \(c_J\) is a scalar, is either banded or
-!! approximately equal to a banded matrix, these routines can be used to generate a banded
-!! *approximation* to \(J\) as the preconditioner and to solve the resulting banded linear 
-!! system, in conjunction with the Krylov method option (`info(12) = 1`) in [[daskr]].
-!!
-!! Other than the user-supplied residual routine `res` defining \(G(t,y,y')\), the only other 
-!! inputs required by these routines are the half-bandwidth parameters \(\mathrm{ml}\) and 
+!! This module — specifically the subroutines [[jac_banpre]] and [[psol_banpre]] — provides a
+!! **general-purpose** banded preconditioner for use with the [[daskr]] solver, with the Krylov 
+!! linear system method.
+!!  
+!! When using [[daskr]] to solve a problem \(G(t,y,\dot{y}) = 0\), whose Jacobian
+!! \( J = \partial G/ \partial y + c_J \partial G/ \partial \dot{y} \), where \(c_J\) is a
+!! scalar, is either banded or approximately equal to a banded matrix, these routines can be
+!! used to generate a banded approximation to \(J\) as the preconditioner and to solve the 
+!! resulting banded linear system, in conjunction with the Krylov method option (`info(12) = 1`).
+!!  
+!! Other than the user-supplied residual routine `res` defining \(G(t,y,\dot{y})\), the only  
+!! other inputs required by these routines are the half-bandwidth parameters \(\mathrm{ml}\) and 
 !! \(\mathrm{mu}\) of the approximate banded Jacobian. If the system size is \(\mathrm{neq}\),
 !! the half-bandwidths are defined as integers between 0 and \(\mathrm{neq} -1\) such that only
 !! elements with indices \((i,j)\) satisfying \( -\mathrm{ml} \le j, i \le \mathrm{mu} \) are
@@ -33,8 +35,8 @@ module daskr_banpre
 !!   communication with `res`, that data should be located beyond the first 2 positions.
 !!
 !! * Import this module. Set `info(15) = 1` to indicate that a `jac` routine exists. Then in the
-!!   call to [[daskr]], pass the procedure names `banja` and `banps` as the arguments `jac` and
-!!   `psol`, respectively.
+!!   call to [[daskr]], pass the procedure names `jac_banpre` and `psol_banpre` as the arguments
+!!  `jac` and `psol`, respectively.
 !!
 !! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp` for
 !!   use by  [[jac_banpre]] and [[psol_banpre]]. The lengths of these arrays depend on the 
@@ -61,14 +63,13 @@ module daskr_banpre
 contains
 
    subroutine jac_banpre( &
-      res, ires, neq, t, y, yprime, rewt, savres, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
-   !! This subroutine generates a banded preconditioner matrix \(P\) that approximates the
-   !! Jacobian matrix \(J = dG/dy + c_J dG/dy'\), where the DAE system is \(G(t,y,y') = 0\). 
-   !! The band matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\), and is 
-   !! computed by making \(\mathrm{ml} + \mathrm{mu} + 1\) calls to the user's `res` routine and 
-   !! forming difference quotients, exactly as in the banded direct method option of [[daskr]]. 
-   !! Afterwards, this matrix is LU factorized by the LINPACK routine [[dgbfa]] and the factors
-   !! are stored in the work arrays `rwp` and `iwp`.
+      res, ires, neq, t, y, ydot, rewt, savres, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
+   !! This routine generates a banded preconditioner matrix \(P\) that *approximates* the
+   !! Jacobian matrix \(J\). The banded matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and 
+   !! \(\mathrm{mu}\), and is computed by making \(\mathrm{ml} + \mathrm{mu} + 1\) calls to the
+   !! user's `res` routine and forming difference quotients, exactly as in the banded direct
+   !! method option of [[daskr]]. Afterwards, this matrix is LU factorized by the LINPACK routine
+   !! [[dgbfa]] and the factors are stored in the work arrays `rwp` and `iwp`.
       external :: res
       integer, intent(out) :: ires
         !! Error flag set by `res`.
@@ -78,25 +79,25 @@ contains
         !! Independent variable.
       real(rk), intent(inout) :: y(*)
         !! Current dependent variables.
-      real(rk), intent(inout) :: yprime(*)
+      real(rk), intent(inout) :: ydot(*)
         !! Current derivatives of dependent variables.
       real(rk), intent(in) :: rewt(*)
-        !! Reciprocal error weights for scaling `y` and `yprime`.
+        !! Reciprocal error weights for scaling `y` and `ydot`.
       real(rk), intent(in) :: savres(*)
-        !! Current residual evaluated at `(t, y, yprime)`.
+        !! Current residual evaluated at `(t, y, ydot)`.
       real(rk), intent(in) :: wk(*)
         !! Real work space available to this subroutine.
       real(rk), intent(in) :: h
         !! Current step size.
       real(rk), intent(in) :: cj
-        !! Scalar proportional to `1/h`.
+        !! Scalar used in forming the system Jacobian.
       real(rk), intent(inout) :: rwp(*)
-        !! Real work array for P, etc. On output, it contains the LU decomposition of the banded
-        !! approximation P.
+        !! Real work array for \(P\), etc. On output, it contains the LU decomposition of the 
+        !! banded approximation \(P\).
       integer, intent(inout) :: iwp(*)
         !! Integer work space for matrix pivot information.
       integer, intent(out) :: ierr
-        !! Error flag: `ierr > 0` if P is singular, and `ierr = 0` otherwise.
+        !! Error flag: `ierr > 0` if \(P\) is singular, and `ierr = 0` otherwise.
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
         !! routines.
@@ -124,7 +125,7 @@ contains
 
       ! Set pointers into WP. LENP is the length of the segment for P.
       ! Following that are two segments of size (NEQ/MBAND), with offsets
-      ! ISAVE and IPSAVE, for temporary storage of Y and YPRIME elements.
+      ! ISAVE and IPSAVE, for temporary storage of Y and YDOT elements.
       lenp = (2*ml + mu + 1)*neq
       msave = (neq/mband) + 1
       isave = lenp
@@ -141,24 +142,24 @@ contains
          do n = j, neq, mband
             k = (n - j)/mband + 1
             rwp(isave + k) = y(n)
-            rwp(ipsave + k) = yprime(n)
-            del = squround*max(abs(y(n)), abs(h*yprime(n)), abs(one/rewt(n)))
-            del = sign(del, h*yprime(n))
+            rwp(ipsave + k) = ydot(n)
+            del = squround*max(abs(y(n)), abs(h*ydot(n)), abs(one/rewt(n)))
+            del = sign(del, h*ydot(n))
             del = (y(n) + del) - y(n)
             y(n) = y(n) + del
-            yprime(n) = yprime(n) + cj*del
+            ydot(n) = ydot(n) + cj*del
          end do
          
-         call res(t, y, yprime, cj, wk, ires, rpar, ipar)
+         call res(t, y, ydot, cj, wk, ires, rpar, ipar)
          
          if (ires < 0) return
          
          do n = j, neq, mband
             k = (n - j)/mband + 1
             y(n) = rwp(isave + k)
-            yprime(n) = rwp(ipsave + k)
-            del = squround*max(abs(y(n)), abs(h*yprime(n)), abs(one/rewt(n)))
-            del = sign(del, h*yprime(n))
+            ydot(n) = rwp(ipsave + k)
+            del = squround*max(abs(y(n)), abs(h*ydot(n)), abs(one/rewt(n)))
+            del = sign(del, h*ydot(n))
             del = (y(n) + del) - y(n)
             delinv = one/del
             i1 = max(1, n - mu)
@@ -177,8 +178,8 @@ contains
    end subroutine jac_banpre
 
    subroutine psol_banpre( &
-      neq, t, y, yprime, savres, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
-   !! This subroutine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
+      neq, t, y, ydot, savres, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
+   !! This routine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
    !! given a vector \(b\), using the LU decomposition produced by [[jac_banpre]]. The solution
    !! is carried out by the LINPACK routine [[dgbsl]].
       integer, intent(in) :: neq
@@ -187,18 +188,18 @@ contains
         !! Independent variable (not used).
       real(rk), intent(in) :: y(*)
         !! Current dependent variables (not used).
-      real(rk), intent(in) :: yprime(*)
+      real(rk), intent(in) :: ydot(*)
         !! Current derivatives of dependent variables (not used).
       real(rk), intent(in) :: savres(*)
-        !! Current residual evaluated at `(t, y, yprime)` (not used).
+        !! Current residual evaluated at `(t, y, ydot)` (not used).
       real(rk), intent(in) :: wk(*)
         !! Real work space available to this subroutine (not used).
       real(rk), intent(in) :: cj
-        !! Scalar proportional to `1/h` (not used).
+        !! Scalar used in forming the system Jacobian (not used).
       real(rk), intent(in) :: wght(*)
         !! Error weights for computing norms (not used).
       real(rk), intent(inout) :: rwp(*)
-        !! Real work array containing the LU decomposition of P.
+        !! Real work array containing the LU decomposition of \(P\).
       integer, intent(inout) :: iwp(*)
         !! Integer array containing matrix pivot information.
       real(rk), intent(inout) :: b(*)
