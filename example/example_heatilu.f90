@@ -14,13 +14,13 @@ module heatilu_m
    
 contains
 
-   pure subroutine uinit(u, uprime, rpar, ipar)
+   pure subroutine uinit(u, udot, rpar, ipar)
    !! This routine computes and loads the vector of initial values.
-   !! The initial `u` values are given by the polynomial `u = 16x(1-x)y(1-y)`.
-   !! The initial `uprime` values are set to zero ([[daskr]] corrects these during the first 
+   !! The initial `u` values are given by the polynomial `u = 16*x*(1-x)*y*(1-y)`.
+   !! The initial `udot` values are set to zero ([[daskr]] corrects these during the first 
    !! time step).
       real(rk), intent(out) :: u(:)
-      real(rk), intent(out) :: uprime(:)
+      real(rk), intent(out) :: udot(:)
       real(rk), intent(in) :: rpar(:)
       integer, intent(in) :: ipar(:)
 
@@ -40,16 +40,16 @@ contains
          end do
       end do
 
-      uprime = zero
+      udot = zero
 
    end subroutine uinit
 
-   pure subroutine res(t, u, uprime, cj, delta, ires, rpar, ipar)
+   pure subroutine res(t, u, udot, cj, delta, ires, rpar, ipar)
    !! User-supplied residuals subroutine.
    !! It computes the residuals for the 2D discretized heat equation, with zero boundary values.
       real(rk), intent(in) :: t
       real(rk), intent(in) :: u(*)
-      real(rk), intent(in) :: uprime(*)
+      real(rk), intent(in) :: udot(*)
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
       integer, intent(out) :: ires
@@ -75,18 +75,18 @@ contains
             i = ioff + j + 1
             temx = u(i - 1) + u(i + 1)
             temy = u(i - m2) + u(i + m2)
-            delta(i) = uprime(i) - (temx + temy - 4*u(i))*coeff
+            delta(i) = udot(i) - (temx + temy - 4*u(i))*coeff
          end do
       end do
 
    end subroutine res
 
-   pure subroutine rt(neq, t, u, uprime, nrt, rval, rpar, ipar)
+   pure subroutine rt(neq, t, u, udot, nrt, rval, rpar, ipar)
    !! Roots routine. 
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: u(neq)
-      real(rk), intent(in) :: uprime(neq)
+      real(rk), intent(in) :: udot(neq)
       integer, intent(in) :: nrt
       real(rk), intent(out) :: rval(nrt)
       real(rk), intent(in) :: rpar(*)
@@ -104,8 +104,8 @@ end module heatilu_m
 
 program example_heatilu
 !! Example program for [[daskr]]:
-!! DAE system derived from the discretized heat equation on a square; solution  using the 
-!! Krylov option with sparse incomplete LU preconditioner.
+!! DAE system derived from the discretized heat equation on a square; solution using the Krylov
+!! option with sparse incomplete LU preconditioner.
 !!
 !! This program solves a DAE system that arises from the heat equation,
 !! 
@@ -118,7 +118,7 @@ program example_heatilu
 !! At each interior point of the mesh, the discretized PDE becomes an ODE for the discrete value
 !! of \(u\). At each point on the boundary, we pose the equation \(u = 0\). The discrete values 
 !! of \(u\) form a vector \(U\), ordered first by \(x\), then by \(y\). The result is a DAE 
-!! system \(G(t,U,U') = 0\) of size \(\mathrm{NEQ} = (M+2)^2\).
+!! system \(G(t,U,\dot{U}) = 0\) of size \(\mathrm{NEQ} = (M+2)^2\).
 !!   
 !! The initial conditions are posed as:
 !!
@@ -148,9 +148,9 @@ program example_heatilu
 !!
 !! For details and test results on this problem, see the reference:
 !!
-!! * Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Using Krylov Methods in the
-!!   Solution of Large-Scale Differential-Algebraic Systems", SIAM J. Sci. Comput., 15 (1994),
-!!   pp. 1467-1488.
+!! 1. Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Using Krylov Methods in the
+!!    Solution of Large-Scale Differential-Algebraic Systems", SIAM J. Sci. Comput., 15 (1994),
+!!    pp. 1467-1488.
 !! 
 !! @note
 !! [[example_heat]] solves the same problem, but without using incomplete LU factorization.
@@ -173,7 +173,7 @@ program example_heatilu
    integer, allocatable :: iwork(:)
 
    real(rk) :: atol, avdim, coeff, dx, hu, rtol, t, tout, umax
-   real(rk) :: rpar(lrpar), u(neq), uprime(neq)
+   real(rk) :: rpar(lrpar), u(neq), udot(neq)
    real(rk), allocatable :: rwork(:)
 
    ! Open matrix output file if JACOUT==1
@@ -238,8 +238,8 @@ program example_heatilu
       stop
    end if
 
-   ! Call subroutine UINIT to initialize U and UPRIME.
-   call uinit(u, uprime, rpar, ipar)
+   ! Call subroutine UINIT to initialize U and UDOT.
+   call uinit(u, udot, rpar, ipar)
 
    ! Set up the INFO array, which describes the various options in the way we want DASKR to
    ! solve the problem. In this case, we select the iterative preconditioned Krylov method,
@@ -299,7 +299,7 @@ program example_heatilu
    nout = 11
    do iout = 1, nout
       do
-         call daskr(res, neq, t, u, uprime, tout, info, rtol, atol, idid, rwork, lrwork, &
+         call daskr(res, neq, t, u, udot, tout, info, rtol, atol, idid, rwork, lrwork, &
                     iwork, liwork, rpar, ipar, jac_ilupre, psol_ilupre, rt, nrt, jroot)
 
          umax = maxval(abs(u))
