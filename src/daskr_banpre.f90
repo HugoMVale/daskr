@@ -15,7 +15,7 @@ module daskr_banpre
 !! used to generate a banded approximation to \(J\) as the preconditioner and to solve the 
 !! resulting banded linear system, in conjunction with the Krylov method option (`info(12) = 1`).
 !!  
-!! Other than the user-supplied residual routine `res` defining \(G(t,y,\dot{y})\), the only  
+!! Other than the user-supplied residual routine `res` defining \(G(t,y,\dot{y})\), the only
 !! other inputs required by these routines are the half-bandwidth parameters \(\mathrm{ml}\) and 
 !! \(\mathrm{mu}\) of the approximate banded Jacobian. If the system size is \(\mathrm{neq}\),
 !! the half-bandwidths are defined as integers between 0 and \(\mathrm{neq} -1\) such that only
