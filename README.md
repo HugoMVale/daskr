@@ -18,11 +18,11 @@ This is a work in progress. First, I'm modernizing the examples and converting s
 
 `daskr` is a library for solving systems of differential-algebraic equations of the form:
 
-$$ G(t, y, y') = 0 $$
+$$ G(t, y, \dot{y}) = 0 $$
 $$ y(t_0) = y_0 $$
-$$ y'(t_0) = y'_0 $$
+$$ \dot{y}(t_0) = \dot{y}_0 $$
 
-where $G$, $y$, and $y'$ are $N$-dimensional vectors. The linear systems which arise at each time step can be solved with dense or banded _direct_ methods (Gaussian elimination with partial pivoting) or with _iterative_ Krylov methods (preconditioned [GMRES]). Additionally, it includes the ability to find the roots of a given set of functions while carrying out the integration.
+where $G$, $y$, and $\dot{y}$ are $N$-dimensional vectors. The linear systems which arise at each time step can be solved with dense or banded _direct_ methods (Gaussian elimination with partial pivoting) or with _iterative_ Krylov methods (preconditioned [GMRES]). Additionally, it includes the ability to find the roots of a given set of functions while carrying out the integration.
 
 [GMRES]: https://en.wikipedia.org/wiki/Generalized_minimal_residual_method
 
