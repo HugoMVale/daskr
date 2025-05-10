@@ -63,7 +63,7 @@ module web_m
    implicit none
    private
 
-   public :: setid, cinit, out, res, jac, psol, rt, c1_average
+   public :: setid, cinit, output, res, jac, psol, rt, c1_average
 
 contains
 
@@ -95,11 +95,13 @@ contains
 
    end subroutine setid
 
-   pure subroutine cinit(c, cprime, pred_ic, rpar)
+   pure subroutine cinit(c, cdot, pred_ic, rpar)
    !! This routine computes and loads the vectors of initial values.
+
       use web_par, only: ax, ay, alpha, beta, dx, dy, ns, np, mx, my, mxns, pi
+   
       real(rk), intent(out) :: c(:)
-      real(rk), intent(out) :: cprime(:)
+      real(rk), intent(out) :: cdot(:)
       real(rk), intent(in)  :: pred_ic
       real(rk), intent(inout) :: rpar(:)
 
@@ -126,22 +128,22 @@ contains
          end do
       end do
 
-      ! Load CPRIME
+      ! Load CDOT
       t = zero
-      call f(t, c, cprime, rpar)
+      call f(t, c, cdot, rpar)
       do jy = 1, my
          iyoff = mxns*(jy - 1)
          do jx = 1, mx
             ioff = iyoff + ns*(jx - 1)
             do i = npp1, ns
-               cprime(ioff + i) = zero
+               cdot(ioff + i) = zero
             end do
          end do
       end do
 
    end subroutine cinit
 
-   impure subroutine out(t, c, ns, mx, my, lout)
+   impure subroutine output(t, c, ns, mx, my, lout)
    !! This routine prints the values of the individual species densities at the current time
    !! `t`, to logical unit `lout`.
       real(rk), intent(in) :: t
@@ -178,15 +180,17 @@ contains
       end do
       write (lout, *) ''
 
-   end subroutine out
+   end subroutine output
 
-   pure subroutine res(t, c, cprime, cj, delta, ires, rpar, ipar)
+   pure subroutine res(t, c, cdot, cj, delta, ires, rpar, ipar)
    !! This routine computes the residuals vector, using subroutine `f` for the right-hand
    !! sides.
+
       use web_par, only: ns, np, mx, my, mxns
+   
       real(rk), intent(in) :: t
       real(rk), intent(in) :: c(*)
-      real(rk), intent(in) :: cprime(*)
+      real(rk), intent(in) :: cdot(*)
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
       integer, intent(in) :: ires
@@ -206,7 +210,7 @@ contains
                if (i > np) then
                   delta(ici) = -delta(ici)
                else
-                  delta(ici) = cprime(ici) - delta(ici)
+                  delta(ici) = cdot(ici) - delta(ici)
                end if
             end do
          end do
@@ -214,14 +218,16 @@ contains
 
    end subroutine res
 
-   pure subroutine f(t, c, cprime, rpar)
+   pure subroutine f(t, c, cdot, rpar)
    !! This routine computes the right-hand sides of all the equations and returns them in the
-   !! array `cprime`. The interaction rates are computed by calls to `rates`, and these are
-   !! saved in `rpar` for later use in preconditioning.
+   !! array `cdot`. The interaction rates are computed by calls to `rates`, and these are saved
+   !! in `rpar` for later use in preconditioning.
+
       use web_par, only: cox, coy, ns, mx, my, mxns
+   
       real(rk), intent(in) :: t
       real(rk), intent(in) :: c(*)
-      real(rk), intent(out) :: cprime(*)
+      real(rk), intent(out) :: cdot(*)
       real(rk), intent(inout) :: rpar(*)
 
       integer :: i, ic, ici, idxl, idxu, idyl, idyu, iyoff, jx, jy
@@ -249,23 +255,25 @@ contains
                ! Do differencing in X
                dcxli = c(ici) - c(ici - idxl)
                dcxui = c(ici + idxu) - c(ici)
-               ! Collect terms and load CPRIME elements
-               cprime(ici) = coy(i)*(dcyui - dcyli) + cox(i)*(dcxui - dcxli) + rpar(ici)
+               ! Collect terms and load CDOT elements
+               cdot(ici) = coy(i)*(dcyui - dcyli) + cox(i)*(dcxui - dcxli) + rpar(ici)
             end do
          end do
       end do
 
    end subroutine f
 
-   pure subroutine rates(t, jx, jy, c, rate)
-   !! This routine computes one block of the rate term of the system \(v\), namely block
-   !! `(jx, jy)`, for use in preconditioning.
+   pure subroutine rates(t, jx, jy, c, rxy)
+   !! This routine computes one block of the rate term of the system, namely block `(jx, jy)`,
+   !! for use in preconditioning.
+
       use web_par, only: alpha, beta, acoef, bcoef, dx, dy, pi, ns
+   
       real(rk), intent(in) :: t
       integer, intent(in) :: jx
       integer, intent(in) :: jy
       real(rk), intent(in) :: c(*)
-      real(rk), intent(inout) :: rate(*)
+      real(rk), intent(out) :: rxy(*)
 
       integer :: i
       real(rk) :: fac, x, y
@@ -274,44 +282,46 @@ contains
       x = (jx - 1)*dx
       fac = one + alpha*x*y + beta*sin(4*pi*x)*sin(4*pi*y)
 
-      rate(1:ns) = zero
+      rxy(1:ns) = zero
       do i = 1, ns
-         rate(1:ns) = rate(1:ns) + c(i)*acoef(1:ns, i)
+         rxy(1:ns) = rxy(1:ns) + c(i)*acoef(1:ns, i)
       end do
 
       do i = 1, ns
-         rate(i) = c(i)*(bcoef(i)*fac + rate(i))
+         rxy(i) = c(i)*(bcoef(i)*fac + rxy(i))
       end do
 
    end subroutine rates
 
-   subroutine jac(res_, ires, neq, t, c, cprime, rewt, savr, wk, h, cj, rwp, iwp, ierr, &
-                  rpar, ipar)
-   !! This routine interfaces to subroutines [[DRBDJA]] or [[DRBGJA]], depending on the flag
+   subroutine jac(res_, ires, neq, t, c, cdot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
+   !! This routine interfaces to subroutines [[jac_rbdpre]] or [[DRBGJA]], depending on the flag
    !! `jbg=ipar(2)`, to generate and preprocess the block-diagonal Jacobian corresponding to
-   !! the reaction term \(v\).
+   !! the reaction term.
    !!
-   !! * If `jbg==0`, we call [[DRBDJA]], with no block-grouping.
-   !! * If `jbg==1`, we call [[DRBGJA]], and use block-grouping.
+   !! * If `jbg == 0`, we call [[jac_rbdpre]], with no block-grouping.
+   !! * If `jbg == 1`, we call [[DRBGJA]], and use block-grouping.
    !!
-   !! Array `rpar`, containing the current \(v\) vector, is passed to [[DRBDJA]] and [[DRBGJA]]
-   !! as argument `R0`, consistent with the loading of `rpar` in  subroutine`f`. The procedure
+   !! Array `rpar`, containing the current \(v\) vector, is passed to [[jac_rbdpre]] and [[DRBGJA]]
+   !! as argument `r0`, consistent with the loading of `rpar` in  subroutine `f`. The procedure
    !! name `rates` is passed as the name of the routine which computes the individual blocks of
    !! \(v\).
+
+      use daskr_rbdpre, only: jac_rbdpre
+      
       external :: res_
       integer, intent(in) :: ires
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
-      real(rk), intent(in) :: c(*)
-      real(rk), intent(in) :: cprime(*)
+      real(rk), intent(inout) :: c(*)
+      real(rk), intent(in) :: cdot(*)
       real(rk), intent(in) :: rewt(*)
       real(rk), intent(in) :: savr(*)
-      real(rk), intent(in) :: wk(*)
+      real(rk), intent(inout) :: wk(*)
       real(rk), intent(in) :: h
       real(rk), intent(in) :: cj
-      real(rk), intent(in) :: rwp(*)
-      integer, intent(in) :: iwp(*)
-      integer, intent(in) :: ierr
+      real(rk), intent(inout) :: rwp(*)
+      integer, intent(inout) :: iwp(*)
+      integer, intent(inout) :: ierr
       real(rk), intent(in) :: rpar(*)
       integer, intent(in) :: ipar(*)
 
@@ -320,25 +330,28 @@ contains
 
       jbg = ipar(2)
       if (jbg == 0) then
-         call drbdja(t, c, rpar, rates, wk, rewt, cj, rwp, iwp, ierr)
+         call jac_rbdpre(t, c, rpar, rates, wk, rewt, cj, rwp, iwp, ierr)
       else
          call drbgja(t, c, rpar, rates, wk, rewt, cj, rwp, iwp, ierr)
       end if
 
    end subroutine jac
 
-   subroutine psol(neq, t, cc, ccprime, savr, wk, cj, wt, rwp, iwp, b, epslin, ierr, rpar, ipar)
+   subroutine psol(neq, t, c, cdot, savr, wk, cj, wt, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This routine applies the inverse of a product preconditioner matrix to the vector in the
    !! array `b`. Depending on the flag `jpre`, this involves a call to `gauss_seidel`, for the
-   !! inverse of the spatial factor, and/or a call to [[DRBDPS]] or [[DRBGPS]] for the inverse 
+   !! inverse of the spatial factor, and/or a call to [[psol_rbdpre]] or [[DRBGPS]] for the inverse 
    !! of the reaction-based factor (`cj*I_d - dR/dy`). The latter factor uses block-grouping 
-   !! (with a call to [[DRBGPS]]) if `jbg == 1`, and does not (with a call to [[DRBDPS]]) if 
+   !! (with a call to [[DRBGPS]]) if `jbg == 1`, and does not (with a call to [[psol_rbdpre]]) if 
    !! `jbg == 0`. The flag `jbg` is passed as `ipar(2)`. The array `b` is overwritten with the
    !! solution.
+
+      use daskr_rbdpre, only: psol_rbdpre
+      
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
-      real(rk), intent(in) :: cc(*)
-      real(rk), intent(in) :: ccprime(*)
+      real(rk), intent(in) :: c(*)
+      real(rk), intent(in) :: cdot(*)
       real(rk), intent(in) :: savr(*)
       real(rk), intent(inout) :: wk(*)
       real(rk), intent(in) :: cj
@@ -353,7 +366,6 @@ contains
 
       integer :: jbg, jpre
       real(rk) :: hl0
-      external :: drbdps, drbgps
 
       jpre = ipar(1)
       ierr = 0
@@ -364,7 +376,7 @@ contains
       if (jpre == 2 .or. jpre == 3) call gauss_seidel(neq, hl0, b, wk)
 
       if (jpre /= 2) then
-         if (jbg == 0) call drbdps(b, rwp, iwp)
+         if (jbg == 0) call psol_rbdpre(b, rwp, iwp)
          if (jbg == 1) call drbgps(b, rwp, iwp)
       end if
 
@@ -375,10 +387,12 @@ contains
    pure subroutine gauss_seidel(n, hl0, z, x)
    !! This routine provides the inverse of the spatial factor for a product preconditoner in an
    !! ns-species reaction-diffusion problem. It performs `itmax` Gauss-Seidel iterations to
-   !! compute an approximation to \(A_S^{-1} z\), where \(A_S = I - h_{l0} J_ d \), and \(J_d\)
+   !! compute an approximation to \(A_S^{-1} z\), where \(A_S = I - h_{l0} J_d \), and \(J_d\)
    !! represents the diffusion contributions to the Jacobian. The solution vector is returned
    !! in `z`.
+
       use web_par, only: cox, coy, ns, mx, my, mxns
+   
       integer, intent(in) :: n
       real(rk), intent(in) :: hl0
       real(rk), intent(inout) :: z(*)
@@ -576,12 +590,12 @@ contains
 
    end subroutine c1_average
 
-   pure subroutine rt(neq, t, c, cprime, nrt, rval, rpar, ipar)
+   pure subroutine rt(neq, t, c, cdot, nrt, rval, rpar, ipar)
    !! Roots routine.
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: c(neq)
-      real(rk), intent(in) :: cprime(neq)
+      real(rk), intent(in) :: cdot(neq)
       integer, intent(in) :: nrt
       real(rk), intent(out) :: rval(nrt)
       real(rk), intent(in) :: rpar(*)
@@ -671,7 +685,7 @@ program example_web
 !! * The spatial factor uses a fixed number of Gauss-Seidel iterations based on the diffusion
 !!   terms only.
 !! * The reaction-based factor is a block-diagonal matrix based on the partial derivatives of
-!!   the interaction terms `R` only.
+!!   the interaction terms \(R\) only.
 !!
 !! With block-grouping, only a subset of the \((s \times s)\) blocks are computed. An integer
 !! flag, `jpre`, is set in the main program to specify whether the preconditioner is to use only
@@ -679,7 +693,7 @@ program example_web
 !!
 !! The reaction-based preconditioner factor is set up and solved in seven subroutines:
 !!
-!! * [[DMSET2]], [[DRBDJA]], [[DRBDPS]] in the case of no block-grouping, and
+!! * [[setup_rbdpre]], [[jac_rbdpre]], [[psol_rbdpre]] in the case of no block-grouping, and
 !! * [[DGSET2]], [[GSET1]], [[DRBGJA]], [[DRBGPS]]  in the case of block-grouping.
 !!
 !! These routines are provided separately for general use on problems arising from
@@ -691,18 +705,19 @@ program example_web
 !!
 !! References:
 !!
-!! * Peter N. Brown and Alan C. Hindmarsh, "Reduced Storage Matrix Methods in Stiff ODE
-!!   Systems", J. Appl. Math. & Comp., 31 (1989), pp. 40-91.
-!! * Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Using Krylov Methods in the
-!!   Solution of Large-Scale Differential-Algebraic Systems", SIAM J. Sci. Comput., 15 (1994),
-!!   pp. 1467-1488.
-!! * Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Consistent Initial Condition
-!!   Calculation for Differential-Algebraic Systems", LLNL Report UCRL-JC-122175, August 1995;
-!!   SIAM J. Sci. Comput., 19 (1998), pp. 1495 - 1512.
+!! 1. Peter N. Brown and Alan C. Hindmarsh, "Reduced Storage Matrix Methods in Stiff ODE
+!!    Systems", J. Appl. Math. & Comp., 31 (1989), pp. 40-91.
+!! 2. Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Using Krylov Methods in the
+!!    Solution of Large-Scale Differential-Algebraic Systems", SIAM J. Sci. Comput., 15 (1994),
+!!    pp. 1467-1488.
+!! 3. Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Consistent Initial Condition
+!!    Calculation for Differential-Algebraic Systems", LLNL Report UCRL-JC-122175, August 1995;
+!!    SIAM J. Sci. Comput., 19 (1998), pp. 1495 - 1512.
 
    use daskr_kinds, only: rk, zero, one
+   use daskr_rbdpre, only: setup_rbdpre, jac_rbdpre, psol_rbdpre
    use web_par, only: aa, alpha, bb, beta, dpred, dprey, ee, gg, mx, my, mxns, np, ns, setpar
-   use web_m, only: setid, cinit, out, res, jac, psol, rt, c1_average
+   use web_m, only: setid, cinit, output, res, jac, psol, rt, c1_average
    implicit none
 
    integer, parameter :: neq = ns*mx*my, maxm = max(mx, my)
@@ -710,7 +725,7 @@ program example_web
    integer :: idid, info(20), iout, ipar(2), iwork(liw), jbg, jpre, jroot, leniw, &
               lenrw, ldout, lcout, meth, ncfl, ncfn, ng, nli, nlidif, nni, nnidif, nout, &
               npe, nps, nqu, nre, nrt, nrte, nst, nxg, nyg
-   real(rk) :: atol, avlin, c1ave, cc(neq), ccprime(neq), hu, pred_ic, rpar(neq), rtol, &
+   real(rk) :: atol, avlin, c1ave, c(neq), cdot(neq), hu, pred_ic, rpar(neq), rtol, &
                rwork(lrw), t, tout
 
    ! Dimension solution arrays and work arrays.
@@ -844,7 +859,7 @@ program example_web
          ! block-grouping data, and the IWORK segment ID indicating the differential and 
          ! algebraic components.
          if (jbg == 0) then
-            call dmset2(mx, my, ns, np, 40, iwork)
+            call setup_rbdpre(mx, my, ns, np, 40, iwork)
             write (ldout, '(a)') 'No block-grouping in reaction factor'
          end if
          if (jbg == 1) then
@@ -861,7 +876,7 @@ program example_web
       ! Set the initial T and TOUT, and call CINIT to set initial values.
       t = zero
       tout = 1.0e-8_rk
-      call cinit(cc, ccprime, pred_ic, rpar)
+      call cinit(c, cdot, pred_ic, rpar)
 
       nli = 0
       nni = 0
@@ -878,7 +893,7 @@ program example_web
       do iout = 0, nout
 
          do
-            call daskr(res, neq, t, cc, ccprime, tout, info, rtol, atol, &
+            call daskr(res, neq, t, c, cdot, tout, info, rtol, atol, &
                        idid, rwork, lrw, iwork, liw, rpar, ipar, jac, psol, &
                        rt, nrt, jroot)
 
@@ -895,10 +910,10 @@ program example_web
             if (nnidif > 0) avlin = one*nlidif/nnidif
 
             if (meth == 0) then
-               call out(t, cc, ns, mx, my, lcout)
+               call output(t, c, ns, mx, my, lcout)
             end if
 
-            call c1_average(cc, c1ave)
+            call c1_average(c, c1ave)
             write (ldout, '(e11.5, f10.5, i7, i6, i6, i6, i6, i6, e11.2, f9.4)') &
                t, c1ave, nst, nre, nni, nli, npe, nqu, hu, avlin
 
