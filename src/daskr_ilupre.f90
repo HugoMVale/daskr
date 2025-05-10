@@ -5,14 +5,15 @@
 module daskr_ilupre
 !! Preconditioner Routines for Sparse Problems
 !!
-!! The following triple of subroutines — [[setup_ilupre]], [[jac_ilupre]], and [[psol_ilupre]]
-!! — provides a general-purpose sparse incomplete LU (ILU) preconditioner matrix for use with 
-!! the [[daskr]] solver, with the Krylov linear system method. When using [[daskr]] to solve a
-!! problem \(G(t,y,y') = 0\), whose Jacobian \( J = dG/dy + c_J dG/dy' \), where \(c_J\) is a
-!! scalar, is either banded or approximately equal to a banded matrix, these routines can be
-!! used to generate a banded *approximation* to \(J\) as the preconditioner and to solve the
-!! resulting banded linear system, in conjunction with the Krylov method option (`info(12) = 1`)
-!! in [[daskr]].
+!! This module — specifically the routines [[setup_ilupre]], [[jac_ilupre]], and [[psol_ilupre]]
+!! — provides a **general-purpose** sparse incomplete LU (ILU) preconditioner for use with the 
+!! [[daskr]] solver, with the Krylov linear system method. 
+!!   
+!! When using [[daskr]] to solve a problem \(G(t,y,\dot{y}) = 0\), whose Jacobian
+!! \( J = \partial G/ \partial y + c_J \partial G/ \partial \dot{y} \), where \(c_J\) is a
+!! scalar, is a general sparse matrix, these routines can be used to generate an approximation
+!! to \(J\) as the preconditioner and to solve the resulting sparse linear system, in conjunction
+!! with the Krylov method option (`info(12) = 1`).
 !!
 !! The incomplete LU factorization is achieved via one of two routines — [[ilut]] or [[ilutp]]
 !! — from the SPARSKIT library. The routine [[ilut]] performs an ILU factorization of a sparse
@@ -38,10 +39,10 @@ module daskr_ilupre
 !! * Dimension the array `ipar` to have length at least 30, and load the following parameters
 !!   into `ipar` as:
 !!   
-!! | Index  | Name         | Description |
-!! |--------|--------------|-------------|
-!! | 1      | `ml`         | The lower bandwidth used in calculating \(J\). |
-!! | 2      | `mu`         | The upper bandwidth used in calculating \(J\). |
+!! | Index  | Name         | Description                                                      |
+!! |--------|--------------|------------------------------------------------------------------|
+!! | 1      | `ml`         | The lower bandwidth used in calculating \(J\).                   |
+!! | 2      | `mu`         | The upper bandwidth used in calculating \(J\).                   |
 !! | 3      | `lenpfac`    | The average number of nonzeros in a row of \(J\). The maximum of nonzeros allowed in \(J\) is `nnzmx = lenpfac*neq`. `lenpfac >= 2`. |
 !! | 4      | `lenplufac`  | The average amount of fill-in per row in the factored \(J\). The maximum number of nonzeros allowed in the factored \(J\) is `lenplumx = nnzmx + lenplufac*neq`. `lenplufac >=2`. |
 !! | 5      | `ipremeth`   | Preconditioner type flag. `=1` means [[ilut]] and `=2` means [[ilutp]]. |
@@ -51,7 +52,7 @@ module daskr_ilupre
 !! | 9      | `normtype`   | Type of row norm scaling for `isrnorm`. `=0` means max-norm. `=1` means 1-norm. `=2` means 2-norm. |
 !! | 10     | `jacout`     | Output Jacobian flag. `=1` means write \(J\) and initial residual \(G\) to a file (logical unit in `ipar(29)`). Integration halts with `ires = -2`. `=0` means no output. Storage format is Boeing-Harwell. |
 !! | 11     | `jscalcol`   | Flag for scaling \(J\) columns by the inverses of elements in the `ewt` array. `=0` means no scaling. `=1` means perform scaling. |
-!! | 21:28  | —            | Used to hold pointer information. |
+!! | 21:28  | —            | Used to hold pointer information.                                |
 !! | 29     | `jacout_unit`| Logical unit number for matrix output file. Used only if `jacout = 1`. |
 !! | 30     | `rescalls`   | On return from [[daskr]], holds the number of calls to the `res` routine used in preconditioner evaluations. | 
 !!   
@@ -68,17 +69,17 @@ module daskr_ilupre
 !!  of \(L\) and \(U\). Taking `tolilut /= 0` but `lfililut = neq` will give the usual threshold
 !!  strategy (however, fill-in is then unpredictable).
 !!
-!! * Set `info(15) = 1` to indicate that a `jac` routine exists. Then in the call to [[daskr]],
-!!   pass the procedure names `jac_ilupre` and `psol_ilupre` as the arguments `jac` and `psol`,
-!!   respectively.
+!! * Import this module. Set `info(15) = 1` to indicate that a `jac` routine exists. Then in the
+!!   call to [[daskr]], pass the procedure names `jac_ilupre` and `psol_ilupre` as the arguments
+!!   `jac` and `psol`, respectively.
 !!
 !! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp` for use
 !!   by [[jac_ilupre]] and [[psol_ilupre]]. The lengths of these depend on the problem size, 
 !!   half-bandwidths, and other parameters as follows:
 !!
-!! | Variable | Length                                                                              |
-!! |----------|-------------------------------------------------------------------------------------|
-!! | `lrwp`   | `2*lenpfac*neq + lenplufac*neq + isrnorm*neq + neq`                                 |
+!! | Variable | Length                                                                        |
+!! |----------|-------------------------------------------------------------------------------|
+!! | `lrwp`   | `2*lenpfac*neq + lenplufac*neq + isrnorm*neq + neq`                           |
 !! | `liwp`   | `3*neq + 1 + 3*lenpfac*neq + 2*lenplufac*neq + 2*ireorder*neq + 2*(ipremeth-1)*neq` |
 !!   
 !! Load these lengths in `iwork` as `iwork(27) = lrwp` and `iwork(28) = liwp` and include these
@@ -97,7 +98,7 @@ module daskr_ilupre
 
 contains
 
-   subroutine setup_ilupre(neq, lrwp, liwp, rpar, ipar, ierr, lrwp_min, liwp_min)
+   pure subroutine setup_ilupre(neq, lrwp, liwp, rpar, ipar, ierr, lrwp_min, liwp_min)
    !! Setup routine for the incomplete LU (ILU) preconditioner. This routine checks the user
    !! input and calculates the minimum length needed for the preconditioner workspace arrays.
       integer, intent(in) :: neq
@@ -274,7 +275,7 @@ contains
    end subroutine setup_ilupre
 
    subroutine jac_ilupre( &
-      res, ires, neq, t, y, yprime, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
+      res, ires, neq, t, y, ydot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
    !! This subroutine uses finite-differences to calculate the Jacobian matrix in sparse
    !! format, and then performs an incomplete LU (ILU) decomposition using either [[ilut]] or 
    !! [[ilutp]] from SPARSKIT.
@@ -288,18 +289,18 @@ contains
          !! Independent variable.
       real(rk), intent(inout) :: y(neq)
          !! Current dependent variables.
-      real(rk), intent(inout) :: yprime(neq)
+      real(rk), intent(inout) :: ydot(neq)
          !! Current derivatives of dependent variables.
       real(rk), intent(in) :: rewt(neq)
-         !! Reciprocal error weights for scaling `y` and `yprime`.
+         !! Reciprocal error weights for scaling `y` and `ydot`.
       real(rk), intent(inout) :: savr(neq)
-         !! Current residual evaluated at `(t, y, yprime)`.
+         !! Current residual evaluated at `(t, y, ydot)`.
       real(rk), intent(inout) :: wk(neq)
          !! Real work space available to this subroutine.
       real(rk), intent(in) :: h
          !! Current step size.
       real(rk), intent(in) :: cj
-         !! Scalar proportional to `1/h`.
+         !! Scalar used in forming the system Jacobian.
       real(rk), intent(out) :: rwp(*)
          !! Matrix elements of ILU.
       integer, intent(out) :: iwp(*)
@@ -372,7 +373,7 @@ contains
 
       ! Calculate Jacobian matrix.
       ierr = 0
-      call jcalc(neq, t, y, yprime, savr, lbw, ubw, wk, rewt, res, h, cj, nnzmx, rwp(ljac), &
+      call jcalc(neq, t, y, ydot, savr, lbw, ubw, wk, rewt, res, h, cj, nnzmx, rwp(ljac), &
                  iwp(ljacj), iwp(ljaci), rwp(lplu), iwp(ljlu), iwp(lju), ipar, rpar, ires, &
                  nre, ierr)
       if (ires < 0) return
@@ -467,7 +468,7 @@ contains
    end subroutine jac_ilupre
 
    subroutine psol_ilupre( &
-      neq, t, y, yprime, r0, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
+      neq, t, y, ydot, r0, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This subroutine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
    !! given a vector \(b\), using the LU decomposition produced by [[jac_ilupre]]. The solution
    !! is carried out by the SPARSKIT routine [[lusol]].
@@ -477,14 +478,14 @@ contains
          !! Independent variable (not used).
       real(rk), intent(in) :: y(*)
          !! Current dependent variables (not used).
-      real(rk), intent(in) :: yprime(*)
+      real(rk), intent(in) :: ydot(*)
          !! Current derivatives of dependent variables (not used).
       real(rk), intent(in) :: r0(*)
-         !! Current residual evaluated at `(t, y, yprime)` (not used).
+         !! Current residual evaluated at `(t, y, ydot)` (not used).
       real(rk), intent(in) :: wk(*)
          !! Real work space available to this subroutine.
       real(rk), intent(in) :: cj
-         !! Scalar proportional to `1/h` (not used).
+         !! Scalar used in forming the system Jacobian.
       real(rk), intent(in) :: wght(*)
          !! Error weights for computing norms.
       real(rk), intent(inout) :: rwp(*)
@@ -550,7 +551,7 @@ contains
    end subroutine psol_ilupre
 
    subroutine jcalc( &
-      neq, t, y, yprime, r0, ml, mu, r1, rewt, res, h, cj, nnzmx, jac, ja, ia, rcoo, jcoo, &
+      neq, t, y, ydot, r0, ml, mu, r1, rewt, res, h, cj, nnzmx, jac, ja, ia, rcoo, jcoo, &
       icoo, ipar, rpar, ires, nre, ierr)
    !! This subroutine calculates the Jacobian matrix by one-sided finite-differences. Lower and
    !! upper bandwidths are used to select the elements to be computed. The Jacobian is stored
@@ -561,10 +562,10 @@ contains
          !! Independent variable.
       real(rk), intent(inout) :: y(neq)
          !! Current dependent variables.
-      real(rk), intent(inout) :: yprime(neq)
+      real(rk), intent(inout) :: ydot(neq)
          !! Current derivatives of dependent variables.
       real(rk), intent(in) :: r0(neq)
-         !! Current residual evaluated at `(t, y, yprime)`.
+         !! Current residual evaluated at `(t, y, ydot)`.
       integer, intent(in) :: ml
          !! Lower bandwidth.
       integer, intent(in) :: mu
@@ -572,13 +573,13 @@ contains
       real(rk), intent(inout) :: r1(neq)
          !! Real work space available to this subroutine.
       real(rk), intent(in) :: rewt(neq)
-         !! Reciprocal error weights for scaling `y` and `yprime`.
+         !! Reciprocal error weights for scaling `y` and `ydot`.
       external :: res
          !! Function that evaluates residuals.
       real(rk), intent(in) ::  h
          !! Current step size.
       real(rk), intent(in) :: cj
-         !! Scalar proportional to `1/h`.
+         !! Scalar used in forming the system Jacobian.
       integer, intent(in) :: nnzmx
          !! Maximum number of nonzeros in Jacobian.
       real(rk), intent(out) :: jac(nnzmx)
@@ -632,23 +633,23 @@ contains
 
          do jj = j, neq, mband
             jac(jj) = y(jj)
-            jac(jj + neq) = yprime(jj)
-            del = squround*max(abs(y(jj)), abs(h*yprime(jj)), abs(one/rewt(jj)))
-            del = sign(del, h*yprime(jj))
+            jac(jj + neq) = ydot(jj)
+            del = squround*max(abs(y(jj)), abs(h*ydot(jj)), abs(one/rewt(jj)))
+            del = sign(del, h*ydot(jj))
             del = (y(jj) + del) - y(jj)
             y(jj) = y(jj) + del
-            yprime(jj) = yprime(jj) + cj*del
+            ydot(jj) = ydot(jj) + cj*del
          end do
 
-         call res(t, y, yprime, cj, r1, ires, rpar, ipar)
+         call res(t, y, ydot, cj, r1, ires, rpar, ipar)
          if (ires < 0) return
 
          nre = nre + 1
          do jj = j, neq, mband
             y(jj) = jac(jj)
-            yprime(jj) = jac(jj + neq)
-            del = squround*max(abs(y(jj)), abs(h*yprime(jj)), abs(one/rewt(jj)))
-            del = sign(del, h*yprime(jj))
+            ydot(jj) = jac(jj + neq)
+            del = squround*max(abs(y(jj)), abs(h*ydot(jj)), abs(one/rewt(jj)))
+            del = sign(del, h*ydot(jj))
             del = (y(jj) + del) - y(jj)
             delinv = one/del
             i1 = max(1, (jj - mu))
