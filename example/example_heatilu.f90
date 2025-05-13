@@ -134,14 +134,14 @@ program example_heatilu
 !! \end{aligned}$$
 !!
 !! The Krylov linear system solution method, with preconditioning, is selected. The 
-!! preconditioner is a band matrix with half-bandwidths equal to 1, i.e. a tridiagonal matrix.
+!! preconditioner is a sparse matrix with half-bandwidths equal to 1, i.e. a tridiagonal matrix.
 !! (The true half-bandwidths are equal to \(M+2\)). This corresponds to ignoring the y-direction
 !! coupling in the ODEs, for purposes of preconditioning. The extra iterations resulting from
 !! this approximation are offset by the lower storage and linear system solution costs for a
 !! tridiagonal matrix.
 !!
-!! The routines [[jac_ilupre]] and [[psol_ilupre]] that generate and solve the banded 
-!! preconditioner are imported from the module [[daskr_ilupre]].
+!! The routines that generate and solve the sparse preconditioner are imported from the module
+!! [[daskr_ilupre]].
 !!
 !! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
 !! the mesh and various performance statistics are printed.
