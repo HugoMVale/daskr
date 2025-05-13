@@ -13,7 +13,7 @@ module daskr_ilupre
 !! \( J = \partial G/ \partial y + c_J \partial G/ \partial \dot{y} \), where \(c_J\) is a
 !! scalar, is a general sparse matrix, these routines can be used to generate an approximation
 !! to \(J\) as the preconditioner and to solve the resulting sparse linear system, in conjunction
-!! with the Krylov method option (`info(12) = 1`).
+!! with the Krylov method option.
 !!
 !! The incomplete LU factorization is achieved via one of two routines — [[ilut]] or [[ilutp]]
 !! — from the SPARSKIT library. The routine [[ilut]] performs an ILU factorization of a sparse
@@ -69,9 +69,10 @@ module daskr_ilupre
 !!  of \(L\) and \(U\). Taking `tolilut /= 0` but `lfililut = neq` will give the usual threshold
 !!  strategy (however, fill-in is then unpredictable).
 !!
-!! * Import this module. Set `info(15) = 1` to indicate that a `jac` routine exists. Then in the
-!!   call to [[daskr]], pass the procedure names `jac_ilupre` and `psol_ilupre` as the arguments
-!!   `jac` and `psol`, respectively.
+!! * Import this module. Set `info(12) = 1` to select the Krylov iterative method and also
+!!   `info(15) = 1` to indicate that a `jac` routine exists. Then in the call to [[daskr]], pass
+!!   the procedure names `jac_ilupre` and `psol_ilupre` as the arguments `jac` and `psol`,
+!!   respectively.
 !!
 !! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp` for use
 !!   by [[jac_ilupre]] and [[psol_ilupre]]. The lengths of these depend on the problem size, 

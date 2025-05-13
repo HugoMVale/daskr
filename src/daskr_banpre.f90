@@ -13,7 +13,7 @@ module daskr_banpre
 !! \( J = \partial G/ \partial y + c_J \partial G/ \partial \dot{y} \), where \(c_J\) is a
 !! scalar, is either banded or approximately equal to a banded matrix, these routines can be
 !! used to generate a banded approximation to \(J\) as the preconditioner and to solve the 
-!! resulting banded linear system, in conjunction with the Krylov method option (`info(12) = 1`).
+!! resulting banded linear system, in conjunction with the Krylov method option.
 !!  
 !! Other than the user-supplied residual routine `res` defining \(G(t,y,\dot{y})\), the only
 !! other inputs required by these routines are the half-bandwidth parameters \(\mathrm{ml}\) and 
@@ -34,9 +34,10 @@ module daskr_banpre
 !!   parameters to [[jac_banpre]] and [[psol_banpre]]. If the user program also uses `ipar` for 
 !!   communication with `res`, that data should be located beyond the first 2 positions.
 !!
-!! * Import this module. Set `info(15) = 1` to indicate that a `jac` routine exists. Then in the
-!!   call to [[daskr]], pass the procedure names `jac_banpre` and `psol_banpre` as the arguments
-!!  `jac` and `psol`, respectively.
+!! * Import this module. Set `info(12) = 1` to select the Krylov iterative method and also
+!!   `info(15) = 1` to indicate that a `jac` routine exists. Then in the call to [[daskr]], pass
+!!   the procedure names `jac_banpre` and `psol_banpre` as the arguments `jac` and `psol`,
+!!   respectively.
 !!
 !! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp` for
 !!   use by  [[jac_banpre]] and [[psol_banpre]]. The lengths of these arrays depend on the 

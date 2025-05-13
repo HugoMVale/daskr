@@ -142,7 +142,7 @@ program example_heat
 !! tridiagonal matrix.
 !!
 !! The routines [[jac_banpre]] and [[psol_banpre]] that generate and solve the banded 
-!! preconditioner are provided in a separate file for general use.
+!! preconditioner are imported from the module [[daskr_banpre]].
 !!
 !! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
 !! the mesh and various performance statistics are printed.
