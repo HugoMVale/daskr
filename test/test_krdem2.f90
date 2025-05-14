@@ -154,7 +154,7 @@ program test_krdem2
    do jtype = 1, 2
 
       ! Set INFO(1) = 0 to indicate start of a new problem
-      ! Set INFO(5) = 2 - JTYPE to tell DDASKR the Jacobian type.
+      ! Set INFO(5) = 2 - JTYPE to tell DASKR the Jacobian type.
       info(1) = 0
       info(1) = 0
       info(5) = 2 - jtype
@@ -169,7 +169,7 @@ program test_krdem2
          write (lout, '(/, 70("."), /, a, i2, /)') 'Solution with JTYPE =', jtype
       end if
 
-      ! Call DDASKR in loop over TOUT values = 20, 40, ..., 200.
+      ! Call DASKR in loop over TOUT values = 20, 40, ..., 200.
       do iout = 1, 10
 
          do
@@ -186,7 +186,7 @@ program test_krdem2
 
             ! If no root found, increment TOUT and loop back.
             ! If a root was found, write results and check root location.
-            ! Then return to DDASKR to continue the integration.
+            ! Then return to DASKR to continue the integration.
             if (idid /= 5) then
                tout = tout + 20.0_rk
                exit
