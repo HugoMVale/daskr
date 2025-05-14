@@ -341,7 +341,7 @@ contains
    !! This routine applies the inverse of a product preconditioner matrix to the vector in the
    !! array `b`. Depending on the flag `jpre`, this involves a call to `gauss_seidel`, for the
    !! inverse of the spatial factor, and/or a call to [[psol_rbdpre]] or [[psol_rbgpre]] for the
-   !! inverse of the reaction-based factor \(c_J I_d - \partial R / \partial dot{y} \).
+   !! inverse of the reaction-based factor \(c_J I_d - \partial R / \partial \dot{y} \).
    !! If `jbg == 0`, the latter factor does not use block-grouping and [[jac_rbdpre]] is called.
    !! Otherwise, if `jbg == 1`, block-grouping is used and [[jac_rbgpre]] is called. The array
    !! `b` is overwritten with the solution.
@@ -669,7 +669,7 @@ program example_web
 !!
 !! The root function is:
 !!
-!! $$ r(t,c,dot{c}) = -20 + \iint c_1 dx dy $$
+!! $$ r(t,c,\dot{c}) = -20 + \iint c_1 dx dy $$
 !!
 !! The DAE system is solved by [[daskr]] with three different method options:
 !!
