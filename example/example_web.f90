@@ -294,17 +294,17 @@ contains
    end subroutine rates
 
    subroutine jac(res_, ires, neq, t, c, cdot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
-   !! This routine interfaces to subroutines [[jac_rbdpre]] or [[DRBGJA]], depending on the flag
-   !! `jbg=ipar(2)`, to generate and preprocess the block-diagonal Jacobian corresponding to
-   !! the reaction term.
+   !! This routine interfaces to subroutines [[jac_rbdpre]] or [[jac_rbgpre]], depending on the 
+   !! flag `jbg = ipar(2)`, to generate and preprocess the block-diagonal Jacobian corresponding
+   !! to the reaction term.
    !!
    !! * If `jbg == 0`, we call [[jac_rbdpre]], with no block-grouping.
-   !! * If `jbg == 1`, we call [[DRBGJA]], and use block-grouping.
+   !! * If `jbg == 1`, we call [[jac_rbgpre]], and use block-grouping.
    !!
-   !! Array `rpar`, containing the current \(v\) vector, is passed to [[jac_rbdpre]] and [[DRBGJA]]
-   !! as argument `r0`, consistent with the loading of `rpar` in  subroutine `f`. The procedure
-   !! name `rates` is passed as the name of the routine which computes the individual blocks of
-   !! \(v\).
+   !! Array `rpar`, containing the current \(R\) vector, is passed to [[jac_rbdpre]] and
+   !! [[jac_rbgpre]] as argument `r0`, consistent with the loading of `rpar` in  subroutine `f`.
+   !! The procedure name `rates` is passed as the name of the routine which computes the individual
+   !! blocks of \(R\).
 
       use daskr_rbdpre, only: jac_rbdpre
       
@@ -340,11 +340,11 @@ contains
    subroutine psol(neq, t, c, cdot, savr, wk, cj, wt, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This routine applies the inverse of a product preconditioner matrix to the vector in the
    !! array `b`. Depending on the flag `jpre`, this involves a call to `gauss_seidel`, for the
-   !! inverse of the spatial factor, and/or a call to [[psol_rbdpre]] or [[DRBGPS]] for the inverse 
-   !! of the reaction-based factor (`cj*I_d - dR/dy`). The latter factor uses block-grouping 
-   !! (with a call to [[DRBGPS]]) if `jbg == 1`, and does not (with a call to [[psol_rbdpre]]) if 
-   !! `jbg == 0`. The flag `jbg` is passed as `ipar(2)`. The array `b` is overwritten with the
-   !! solution.
+   !! inverse of the spatial factor, and/or a call to [[psol_rbdpre]] or [[psol_rbgpre]] for the
+   !! inverse of the reaction-based factor \(c_J I_d - \partial R / \partial dot{y} \).
+   !! If `jbg == 0`, the latter factor does not use block-grouping and [[jac_rbdpre]] is called.
+   !! Otherwise, if `jbg == 1`, block-grouping is used and [[jac_rbgpre]] is called. The array
+   !! `b` is overwritten with the solution.
 
       use daskr_rbdpre, only: psol_rbdpre
       
@@ -368,10 +368,9 @@ contains
       real(rk) :: hl0
 
       jpre = ipar(1)
-      ierr = 0
-      hl0 = one/cj
-
       jbg = ipar(2)
+      ierr = 0
+      hl0 = one/cj     
 
       if (jpre == 2 .or. jpre == 3) call gauss_seidel(neq, hl0, b, wk)
 
@@ -634,14 +633,14 @@ program example_web
 !!
 !! $$\begin{aligned}
 !! \frac{\partial c_i}{\partial t} &= d_i \left( \frac{\partial^2 c_i}{\partial x^2}
-!!           + \frac{\partial^2 c_i}{\partial y^2} \right) + v_i \quad i=1,...,s/2 \\
+!!           + \frac{\partial^2 c_i}{\partial y^2} \right) + R_i \quad i=1,...,s/2 \\
 !!                               0 &= d_i \left( \frac{\partial^2 c_i}{\partial x^2}
-!!           + \frac{\partial^2 c_i}{\partial y^2} \right) + v_i \quad i=s/2+1,...,s
+!!           + \frac{\partial^2 c_i}{\partial y^2} \right) + R_i \quad i=s/2+1,...,s
 !! \end{aligned}$$
 !!
 !! where the rate of formation of species \(i\) is given by:
 !!
-!! $$ v_i(x,y,c) = c_i \left( b_i + \sum_{j=1}^s a_{ij} c_j \right) $$
+!! $$ R_i(x,y,c) = c_i \left( b_i + \sum_{j=1}^s a_{ij} c_j \right) $$
 !!
 !! The number of species is \(s = 2 p\), with the first \(p\) being prey and the last \(p\)
 !! being predators. The coefficients \(a_{ij}\), \(b_i\), \(d_i\) are:
@@ -670,7 +669,7 @@ program example_web
 !!
 !! The root function is:
 !!
-!! $$ r(t,c,c') = \iint c_1 dx dy - 20 $$
+!! $$ r(t,c,dot{c}) = -20 + \iint c_1 dx dy $$
 !!
 !! The DAE system is solved by [[daskr]] with three different method options:
 !!
@@ -691,13 +690,12 @@ program example_web
 !! flag, `jpre`, is set in the main program to specify whether the preconditioner is to use only
 !! one of the two factors or both, and in which order.
 !!
-!! The reaction-based preconditioner factor is set up and solved in seven subroutines:
+!! The reaction-based preconditioner factor is set up and solved in independent modules:
 !!
-!! * [[setup_rbdpre]], [[jac_rbdpre]], [[psol_rbdpre]] in the case of no block-grouping, and
-!! * [[DGSET2]], [[GSET1]], [[DRBGJA]], [[DRBGPS]]  in the case of block-grouping.
+!! * [[daskr_rbdpre]] in the case of no block-grouping, and
+!! * [[daskr_rbgpre]] in the case of block-grouping.
 !!
-!! These routines are provided separately for general use on problems arising from
-!! reaction-transport systems.
+!! These modules are provided separately for general use on reaction-transport problems.
 !!
 !! Two output files are written: one with the problem description and performance statistics on
 !! and one with solution profiles at selected output times. The solution file is written only
