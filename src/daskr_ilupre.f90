@@ -3,25 +3,24 @@
 !----------------------------------------------------------------------------------------------
 
 module daskr_ilupre
-!! Preconditioner Routines for Sparse Problems
+!! # Preconditioner Routines for Sparse Problems
 !!
-!! This module — specifically the routines [[setup_ilupre]], [[jac_ilupre]], and [[psol_ilupre]]
-!! — provides a **general-purpose** sparse incomplete LU (ILU) preconditioner for use with the 
-!! [[daskr]] solver, with the Krylov linear system method. 
-!!   
+!! This module provides a general-purpose sparse incomplete LU (ILU) preconditioner for use with 
+!! the [[daskr]] solver, with the Krylov linear system method. 
+!!
 !! When using [[daskr]] to solve a problem \(G(t,y,\dot{y}) = 0\), whose Jacobian
 !! \( J = \partial G/ \partial y + c_J \partial G/ \partial \dot{y} \), where \(c_J\) is a
-!! scalar, is a general sparse matrix, these routines can be used to generate an approximation
-!! to \(J\) as the preconditioner and to solve the resulting sparse linear system, in conjunction
-!! with the Krylov method option.
+!! scalar, is a general sparse matrix, the routines [[jac_ilupre]] and [[psol_ilupre]] can be
+!! used to generate an approximation to \(J\) as the preconditioner and to solve the resulting
+!! sparse linear system, in conjunction with the Krylov method option.
 !!
-!! The incomplete LU factorization is achieved via one of two routines — [[ilut]] or [[ilutp]]
-!! — from the SPARSKIT library. The routine [[ilut]] performs an ILU factorization of a sparse
-!! matrix using a dual thresholding technique based on a drop tolerance (`tolilut`) and a level
-!! of fill-in parameter (`lfililut`). The parameter `lfililut` controls the amount of fill-in 
-!! allowed in the factorization (limited to a maximum of `2*lfililut*neq`, but normally much 
-!! less). Increasing `lfililut` will generally make the ILU factorization more accurate. The 
-!! parameter `tolilut` also controls the accuracy of the ILU factorization via a drop tolerance
+!! Internally, the incomplete LU factorization is achieved via one of two routines — [[ilut]]
+!! or [[ilutp]] — from the SPARSKIT library. The routine [[ilut]] performs an ILU factorization
+!! of a sparse matrix using a dual thresholding technique based on a drop tolerance (`tolilut`)
+!! and a level of fill-in parameter (`lfililut`). The parameter `lfililut` controls the amount
+!! of fill-in allowed in the factorization (limited to a maximum of `2*lfililut*neq`, but normally
+!! much less). Increasing `lfililut` will generally make the ILU factorization more accurate.
+!! The parameter `tolilut` also controls the accuracy of the ILU factorization via a drop tolerance
 !! based on element size. Decreasing `tolilut` will increase the amount of fill-in and make for
 !! a more accurate factorization. The routine [[ilutp]] is a variant of [[ilut]] that in addition
 !! performs pivoting based on a tolerance ratio `permtol`.
@@ -32,7 +31,9 @@ module daskr_ilupre
 !! Cuthill-McKee (RCM) reordering before performing the ILU factorization. Based on the limited
 !! amount of testing done so far, RCM seems the best overall choice. It is possible to include
 !! a different reordering technique if desired.
-!
+!!
+!! ## Usage
+!!  
 !! To use these routines in conjunction with [[daskr]], the user's calling program should include
 !! the following, in addition to setting the other [[daskr]] input parameters:
 !
@@ -55,41 +56,43 @@ module daskr_ilupre
 !! | 21:28  | —            | Used to hold pointer information.                                |
 !! | 29     | `jacout_unit`| Logical unit number for matrix output file. Used only if `jacout = 1`. |
 !! | 30     | `rescalls`   | On return from [[daskr]], holds the number of calls to the `res` routine used in preconditioner evaluations. | 
-!!   
-!! * Dimension the array `rpar` to have length at least 2, and load the following parameters 
-!!   into `rpar` as:
-!!  
-!! | Index | Name      | Description                                                          |
-!! |-------|-----------|----------------------------------------------------------------------|
-!! | 1     | `tolilut` | Drop tolerance for use by [[ilut]] and [[ilutp]]. `tolilut >= 0`. Larger values cause less fill-in. Good values range from 0.001 to 0.01.                                   |
-!! | 2     | `permtol` | Tolerance ratio used in determining column pivoting by ILUTP. `permtol >= 0`. Good values are from 0.1 to 0.01. Two columns are permuted only if `a(i,j)*permtol > a(i,i)`. |
-!!  
-!!  The two parameters `tolilut` and `lfililut` give the user a great deal of flexibility. One 
-!!  can use `tolilut = 0` to get a strategy based on keeping the largest elements in each row 
-!!  of \(L\) and \(U\). Taking `tolilut /= 0` but `lfililut = neq` will give the usual threshold
-!!  strategy (however, fill-in is then unpredictable).
 !!
-!! * Import this module. Set `info(12) = 1` to select the Krylov iterative method and also
-!!   `info(15) = 1` to indicate that a `jac` routine exists. Then in the call to [[daskr]], pass
-!!   the procedure names `jac_ilupre` and `psol_ilupre` as the arguments `jac` and `psol`,
-!!   respectively.
+!! * Dimension the array `rpar` to have length at least 2, and load the parameters shown in the
+!!   table below into `rpar`.
+!!  
+!!    | Index | Name      | Description                                                          |
+!!    |-------|-----------|----------------------------------------------------------------------|
+!!    | 1     | `tolilut` | Drop tolerance for use by [[ilut]] and [[ilutp]]. `tolilut >= 0`. Larger values cause less fill-in. Good values range from 0.001 to 0.01.                                   |
+!!    | 2     | `permtol` | Tolerance ratio used in determining column pivoting by ILUTP. `permtol >= 0`. Good values are from 0.1 to 0.01. Two columns are permuted only if `a(i,j)*permtol > a(i,i)`. |
+!!  
+!! * The two parameters `tolilut` and `lfililut` give the user a great deal of flexibility. One 
+!!   can use `tolilut = 0` to get a strategy based on keeping the largest elements in each row 
+!!   of \(L\) and \(U\). Taking `tolilut /= 0` but `lfililut = neq` will give the usual threshold
+!!   strategy (however, fill-in is then unpredictable).
+!!
+!! * Set `info(12) = 1` to select the Krylov iterative method and `info(15) = 1` to indicate
+!!   that a `jac` routine exists. Then in the call to [[daskr]], pass the procedure names
+!!   `jac_ilupre` and `psol_ilupre` as the arguments `jac` and `psol`, respectively.
 !!
 !! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp` for use
 !!   by [[jac_ilupre]] and [[psol_ilupre]]. The lengths of these depend on the problem size, 
-!!   half-bandwidths, and other parameters as follows:
+!!   half-bandwidths, and other parameters as shown in the table below. Load these lengths in
+!!   `iwork` as `iwork(27) = lrwp` and `iwork(28) = liwp` and include these values in the declared
+!!   size of `rwork` and `iwork`, respectively.
 !!
-!! | Variable | Length                                                                        |
-!! |----------|-------------------------------------------------------------------------------|
-!! | `lrwp`   | `2*lenpfac*neq + lenplufac*neq + isrnorm*neq + neq`                           |
-!! | `liwp`   | `3*neq + 1 + 3*lenpfac*neq + 2*lenplufac*neq + 2*ireorder*neq + 2*(ipremeth-1)*neq` |
-!!   
-!! Load these lengths in `iwork` as `iwork(27) = lrwp` and `iwork(28) = liwp` and include these
-!! values in the declared size of `rwork` and `iwork`, respectively.
-!!   
+!!    | Variable | Length                                                                              |
+!!    |----------|-------------------------------------------------------------------------------------|
+!!    | `lrwp`   | `2*lenpfac*neq + lenplufac*neq + isrnorm*neq + neq`                                 |
+!!    | `liwp`   | `3*neq + 1 + 3*lenpfac*neq + 2*lenplufac*neq + 2*ireorder*neq + 2*(ipremeth-1)*neq` |
+!!      
 !! The [[jac_ilupre]] and [[psol_ilupre]] routines generate and solve the sparse preconditioner
 !! matrix \(P\) within the preconditioned Krylov algorithm used by [[daskr]] when `info(12) = 1`. 
 !! \(P\) is generated and LU-factored periodically during the integration, and the factors are
 !! used to solve systems \(Px = b\) as needed.
+!!
+!! ## Example
+!!
+!! The program [[example_heatilu]] shows how to use this preconditioner.
 
    use daskr_kinds, only: rk, zero, one
    implicit none
@@ -100,8 +103,8 @@ module daskr_ilupre
 contains
 
    pure subroutine setup_ilupre(neq, lrwp, liwp, rpar, ipar, ierr, lrwp_min, liwp_min)
-   !! Setup routine for the incomplete LU (ILU) preconditioner. This routine checks the user
-   !! input and calculates the minimum length needed for the preconditioner workspace arrays.
+   !! Setup routine for the incomplete LU preconditioner. This routine checks the user input
+   !! and calculates the minimum length needed for the preconditioner workspace arrays.
       integer, intent(in) :: neq
          !! Problem size.
       integer, intent(in) :: lrwp
@@ -277,9 +280,9 @@ contains
 
    subroutine jac_ilupre( &
       res, ires, neq, t, y, ydot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
-   !! This subroutine uses finite-differences to calculate the Jacobian matrix in sparse
-   !! format, and then performs an incomplete LU (ILU) decomposition using either [[ilut]] or 
-   !! [[ilutp]] from SPARSKIT.
+   !! This subroutine uses finite-differences to calculate the Jacobian matrix in sparse format,
+   !! and then performs an incomplete LU decomposition using either [[ilut]] or [[ilutp]] from
+   !! SPARSKIT.
       external :: res
          !! Function that evaluates residuals.
       integer, intent(inout) :: ires
@@ -472,7 +475,7 @@ contains
       neq, t, y, ydot, r0, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This subroutine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
    !! given a vector \(b\), using the LU decomposition produced by [[jac_ilupre]]. The solution
-   !! is carried out by the SPARSKIT routine [[lusol]].
+   !! is carried out by [[lusol]] from SPARSKIT.
       integer, intent(in) :: neq
          !! Problem size.
       real(rk), intent(in) :: t
@@ -689,8 +692,8 @@ contains
    subroutine jilu( &
       neq, nnzmx, jac, ja, ia, ju, plu, jlu, rwk1, iwk1, lenplumx, tolilut, &
       lfililut, permtol, premeth, iperm, ierr)
-   !! This subroutine computes the incomplete LU (ILU) decomposition of the Jacobian matrix and
-   !! returns it in any given storage format.
+   !! This subroutine computes the incomplete LU decomposition of the Jacobian matrix and returns
+   !! it in any given storage format.
       integer, intent(in) :: neq
          !! Problem size.
       integer, intent(in) :: nnzmx

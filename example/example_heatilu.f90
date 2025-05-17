@@ -146,8 +146,10 @@ program example_heatilu
 !! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
 !! the mesh and various performance statistics are printed.
 !!
-!! For details and test results on this problem, see the reference:
+!! For details and test results on this problem, see Brown et al. [1].
 !!
+!! **References**
+!!  
 !! 1. Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Using Krylov Methods in the
 !!    Solution of Large-Scale Differential-Algebraic Systems", SIAM J. Sci. Comput., 15 (1994),
 !!    pp. 1467-1488.

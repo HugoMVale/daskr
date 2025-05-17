@@ -298,8 +298,8 @@ contains
    !! flag `jbg = ipar(2)`, to generate and preprocess the block-diagonal Jacobian corresponding
    !! to the reaction term.
    !!
-   !! * If `jbg == 0`, we call [[jac_rbdpre]], with no block-grouping.
-   !! * If `jbg == 1`, we call [[jac_rbgpre]], and use block-grouping.
+   !! * If `jbg == 0`, we call [[jac_rbdpre]], without block-grouping.
+   !! * If `jbg == 1`, we call [[jac_rbgpre]], with block-grouping.
    !!
    !! Array `rpar`, containing the current \(R\) vector, is passed to [[jac_rbdpre]] and
    !! [[jac_rbgpre]] as argument `r0`, consistent with the loading of `rpar` in  subroutine `f`.
@@ -341,7 +341,7 @@ contains
    !! This routine applies the inverse of a product preconditioner matrix to the vector in the
    !! array `b`. Depending on the flag `jpre`, this involves a call to `gauss_seidel`, for the
    !! inverse of the spatial factor, and/or a call to [[psol_rbdpre]] or [[psol_rbgpre]] for the
-   !! inverse of the reaction-based factor \(c_J I_d - \partial R / \partial \dot{y} \).
+   !! inverse of the reaction-based factor \(c_J I_d - \partial R / \partial y \).
    !! If `jbg == 0`, the latter factor does not use block-grouping and [[jac_rbdpre]] is called.
    !! Otherwise, if `jbg == 1`, block-grouping is used and [[jac_rbgpre]] is called. The array
    !! `b` is overwritten with the solution.
@@ -701,7 +701,7 @@ program example_web
 !! and one with solution profiles at selected output times. The solution file is written only
 !! in the case of the direct method.
 !!
-!! References:
+!! **References**
 !!
 !! 1. Peter N. Brown and Alan C. Hindmarsh, "Reduced Storage Matrix Methods in Stiff ODE
 !!    Systems", J. Appl. Math. & Comp., 31 (1989), pp. 40-91.
