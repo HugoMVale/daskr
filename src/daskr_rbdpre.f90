@@ -57,11 +57,11 @@ module daskr_rbdpre
 !!      
 !! * A `jac` routine, as prescribed by the [[daskr]] instructions, which calls [[jac_rbdpre]],
 !!   and does any other Jacobian-related preprocessing needed for preconditioning. The latter
-!!   routine takes as argument `r0` the current value of the reaction vector \(R\).
-!!   values of \(t\) and \(u\). This can be done, for example, by taking `r0` to be `rpar`RPAR,
-!!   and loading `rpar` with the vector \(R\) in the last call to the `res` routine; in that
-!!   case, the calling program must declare `rpar` to have length at least `neq`. Alternatively,
-!!   insert a call to `rblock` (see below) within the loop over mesh points in [[jac_rbdpre]].
+!!   routine takes as argument `r0` the current value of the reaction vector \(R\). This can be
+!!   done, for example, by taking `r0` to be `rpar`, and loading `rpar` with the vector \(R\)
+!!   in the last call to the `res` routine; in that case, the calling program must declare `rpar`
+!!   to have length at least `neq`. Alternatively, insert a call to `rblock` within the loop 
+!!   over mesh points inside [[jac_rbdpre]].
 !!   
 !! * A `psol` routine, as prescribed by the [[daskr]] instructions, which calls [[psol_rbdpre]]
 !!    for the solution of systems \(A_R x = b\), and does any other linear system solving required
