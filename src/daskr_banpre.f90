@@ -50,11 +50,6 @@ module daskr_banpre
 !!    | `lrwp`   | `(2*ml + mu + 1)*neq + 2*((neq/(ml + mu + 1)) + 1)` |
 !!    | `liwp`   | `neq`                                               |
 !!
-!! The [[jac_banpre]] and [[psol_banpre]] routines generate and solve the banded preconditioner
-!! matrix \(P\) within the preconditioned Krylov algorithm used by [[daskr]] when `info(12) = 1`.
-!! \(P\) is generated and LU-factored periodically during the integration, and the factors are
-!! used to solve systems \(Px = b\) as needed.
-!!
 !! ## Example
 !!
 !! The program [[example_heat]] shows how to use this preconditioner.

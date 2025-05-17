@@ -85,11 +85,6 @@ module daskr_ilupre
 !!    | `lrwp`   | `2*lenpfac*neq + lenplufac*neq + isrnorm*neq + neq`                                 |
 !!    | `liwp`   | `3*neq + 1 + 3*lenpfac*neq + 2*lenplufac*neq + 2*ireorder*neq + 2*(ipremeth-1)*neq` |
 !!      
-!! The [[jac_ilupre]] and [[psol_ilupre]] routines generate and solve the sparse preconditioner
-!! matrix \(P\) within the preconditioned Krylov algorithm used by [[daskr]] when `info(12) = 1`. 
-!! \(P\) is generated and LU-factored periodically during the integration, and the factors are
-!! used to solve systems \(Px = b\) as needed.
-!!
 !! ## Example
 !!
 !! The program [[example_heatilu]] shows how to use this preconditioner.
