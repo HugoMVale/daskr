@@ -28,7 +28,7 @@ where $G$, $y$, and $\dot{y}$ are $N$-dimensional vectors. The linear systems wh
 
 ## History
 
-The first version of the library, named DASSL [1], solved the linear systems arising from the implicit time integration methods at each time step using direct methods. DASPK [2,3] extended the capabilities of DASSL to include iterative methods, which can be significantly more efficient, especially for large-scale problems. Furthermore, DASPK added the ability to initialize $y'_0$ in case it is not known. Lastly, DASKR [4] included the ability to find the roots of a given set of functions while integrating the DAE system.
+The first version of the library, named DASSL [1], solved the linear systems arising from the implicit time integration methods at each time step using direct methods. DASPK [2,3] extended the capabilities of DASSL to include iterative methods, which can be significantly more efficient, especially for large-scale problems. Furthermore, DASPK added the ability to initialize $\dot{y}_0$ in case it is not known. Lastly, DASKR [4] included the ability to find the roots of a given set of functions while integrating the DAE system.
 
 | Version | Date written  | Last update | Direct solver | Iterative solver | Root finding |    Standard   |
 |:-------:|:-------------:|:-----------:|:-------------:|:----------------:|:------------:|:-------------:|
