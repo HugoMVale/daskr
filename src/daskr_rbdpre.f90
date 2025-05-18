@@ -88,8 +88,8 @@ module daskr_rbdpre
    private
 
    ! Module variables >>Thread Unsafe<<
-   real(rk) :: srur
    integer :: mp, mpd, mpsq, meshx, meshy, mxmp
+   real(rk) :: srur
 
    public :: setup_rbdpre, jac_rbdpre, psol_rbdpre
 
@@ -254,9 +254,8 @@ contains
          !! Pivots for the LU factorizations. `ipbd` is the segment `iwp` of `iwork`.
 
       external :: dgesl
-      integer :: ib, ibd, ier, jx, jy
+      integer :: ib, ibd, jx, jy
 
-      ier = 0
       ib = 1
       ibd = 1
       do jy = 1, meshy
