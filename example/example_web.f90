@@ -4,6 +4,7 @@
 
 module web_par
    !! Common set of parameters for [[example_web]].
+   
    use daskr_kinds, only: rk, one
    implicit none
 
@@ -18,6 +19,7 @@ contains
    impure subroutine setpar()
    !! This routine sets the basic problem parameters which are passed to the various routines
    !! via the module [[web_par]].
+   
       integer :: i, j
 
       ax = one
@@ -59,6 +61,7 @@ end module web_par
 
 module web_m
    !! Procedures for [[example_web]].
+
    use daskr_kinds, only: rk, zero, one
    implicit none
    private
@@ -70,6 +73,7 @@ contains
    pure subroutine setid(mx, my, ns, nsd, lid, iwork)
    !! This routine sets the ID array in `iwork`, indicating which components are differential
    !! and which are algebraic.
+
       integer, intent(in) :: mx
       integer, intent(in) :: my
       integer, intent(in) :: ns
@@ -146,6 +150,7 @@ contains
    impure subroutine output(t, c, ns, mx, my, lout)
    !! This routine prints the values of the individual species densities at the current time
    !! `t`, to logical unit `lout`.
+   
       real(rk), intent(in) :: t
       real(rk), intent(in) :: c(ns, mx, my)
       integer, intent(in) :: ns
@@ -307,6 +312,7 @@ contains
    !! blocks of \(R\).
 
       use daskr_rbdpre, only: jac_rbdpre
+      use daskr_rbgpre, only: jac_rbgpre
       
       external :: res_
       integer, intent(in) :: ires
@@ -326,13 +332,12 @@ contains
       integer, intent(in) :: ipar(*)
 
       integer :: jbg
-      external :: drbdja, drbgja
 
       jbg = ipar(2)
       if (jbg == 0) then
          call jac_rbdpre(t, c, rpar, rates, wk, rewt, cj, rwp, iwp, ierr)
       else
-         call drbgja(t, c, rpar, rates, wk, rewt, cj, rwp, iwp, ierr)
+         call jac_rbgpre(t, c, rpar, rates, wk, rewt, cj, rwp, iwp, ierr)
       end if
 
    end subroutine jac
@@ -347,6 +352,7 @@ contains
    !! `b` is overwritten with the solution.
 
       use daskr_rbdpre, only: psol_rbdpre
+      use daskr_rbgpre, only: psol_rbgpre
       
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
@@ -376,7 +382,7 @@ contains
 
       if (jpre /= 2) then
          if (jbg == 0) call psol_rbdpre(b, rwp, iwp)
-         if (jbg == 1) call drbgps(b, rwp, iwp)
+         if (jbg == 1) call psol_rbgpre(b, rwp, iwp)
       end if
 
       if (jpre == 4) call gauss_seidel(neq, hl0, b, wk)
@@ -569,6 +575,7 @@ contains
 
    pure subroutine c1_average(c, c1ave)
    !! This routine computes the spatial average value of \(c_1\).
+
       use web_par, only: mx, my, ns, mxns
       real(rk), intent(in) :: c(*)
       real(rk), intent(out) :: c1ave
@@ -591,6 +598,7 @@ contains
 
    pure subroutine rt(neq, t, c, cdot, nrt, rval, rpar, ipar)
    !! Roots routine.
+
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: c(neq)
@@ -714,6 +722,7 @@ program example_web
 
    use daskr_kinds, only: rk, zero, one
    use daskr_rbdpre, only: setup_rbdpre, jac_rbdpre, psol_rbdpre
+   use daskr_rbgpre, only: setup_rbgpre, jac_rbgpre, psol_rbgpre
    use web_par, only: aa, alpha, bb, beta, dpred, dprey, ee, gg, mx, my, mxns, np, ns, setpar
    use web_m, only: setid, cinit, output, res, jac, psol, rt, c1_average
    implicit none
@@ -773,7 +782,7 @@ program example_web
    ! Set the flat initial guess for the predators.
    pred_ic = 1e5_rk
 
-   ! Set remaining method parameters for DDASKR.
+   ! Set remaining method parameters for DASKR.
    ! These include the INFO array and tolerances.
    info = 0
 
@@ -853,7 +862,7 @@ program example_web
          write (ldout, '(a)') &
             '(1 = reaction factor A_R, 2 = spatial factor A_S, 3 = A_S*A_R, 4 = A_R*A_S)'
 
-         ! Call DMSET2 if JBG = 0, or DGSET2 if JBG = 1, to set the 2D mesh parameters and 
+         ! Call the preconditioner setup routines to set the 2D mesh parameters and 
          ! block-grouping data, and the IWORK segment ID indicating the differential and 
          ! algebraic components.
          if (jbg == 0) then
@@ -864,7 +873,7 @@ program example_web
             nxg = 5
             nyg = 5
             ng = nxg*nyg
-            call dgset2(mx, my, ns, np, nxg, nyg, 40, iwork)
+            call setup_rbgpre(mx, my, ns, np, nxg, nyg, 40, iwork)
             write (ldout, '(a)') 'Block-grouping in reaction factor'
             write (ldout, '(a, i5, a, i3, a, i3, a)') &
                'Number of groups =', ng, ' (NGX by NGY, NGX =', nxg, ',  NGY =', nyg, ')'
