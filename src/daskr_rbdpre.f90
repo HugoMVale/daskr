@@ -69,7 +69,7 @@ module daskr_rbdpre
 !!
 !! ## Example
 !!
-!! The program [[example_web]] shows how to use this preconditioner.
+!! The program [[example_web]] demonstrates the use of this preconditioner.
 !!   
 !! ## References
 !!   

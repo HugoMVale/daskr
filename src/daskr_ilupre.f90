@@ -87,7 +87,7 @@ module daskr_ilupre
 !!      
 !! ## Example
 !!
-!! The program [[example_heatilu]] shows how to use this preconditioner.
+!! The program [[example_heatilu]] demonstrates the use of this preconditioner.
 
    use daskr_kinds, only: rk, zero, one
    implicit none

@@ -52,7 +52,7 @@ module daskr_banpre
 !!
 !! ## Example
 !!
-!! The program [[example_heat]] shows how to use this preconditioner.
+!! The program [[example_heat]] demonstrates the use of this preconditioner.  
 
    use daskr_kinds, only: rk, one
    implicit none
