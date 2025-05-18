@@ -4,6 +4,7 @@
 
 module heatilu_m
 !! Procedures for [[example_heatilu]].
+
    use daskr_kinds, only: rk, zero, one
    implicit none
    private
@@ -19,6 +20,7 @@ contains
    !! The initial `u` values are given by the polynomial `u = 16*x*(1-x)*y*(1-y)`.
    !! The initial `udot` values are set to zero ([[daskr]] corrects these during the first 
    !! time step).
+
       real(rk), intent(out) :: u(:)
       real(rk), intent(out) :: udot(:)
       real(rk), intent(in) :: rpar(:)
@@ -47,6 +49,7 @@ contains
    pure subroutine res(t, u, udot, cj, delta, ires, rpar, ipar)
    !! User-supplied residuals subroutine.
    !! It computes the residuals for the 2D discretized heat equation, with zero boundary values.
+
       real(rk), intent(in) :: t
       real(rk), intent(in) :: u(*)
       real(rk), intent(in) :: udot(*)
@@ -83,6 +86,7 @@ contains
 
    pure subroutine rt(neq, t, u, udot, nrt, rval, rpar, ipar)
    !! Roots routine. 
+   
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: u(neq)

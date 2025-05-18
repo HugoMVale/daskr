@@ -4,6 +4,7 @@
 
 module krdem1_m
 !! Procedures for [[test_krdem1]].
+
    use daskr_kinds, only: rk, zero, one
    implicit none
    private
@@ -17,6 +18,7 @@ contains
 
    pure subroutine res(t, y, ydot, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
+
       real(rk), intent(in):: t
       real(rk), intent(in):: y(neq)
       real(rk), intent(in):: ydot(neq)
@@ -40,6 +42,7 @@ contains
    
    pure subroutine f(t, y, ydot)
    !! dy1/dt routine.
+   
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(:)
       real(rk), intent(out) :: ydot(:)

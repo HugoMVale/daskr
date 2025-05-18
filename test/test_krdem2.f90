@@ -4,6 +4,7 @@
 
 module krdem2_m
 !! Procedures for [[test_krdem2]].
+
    use daskr_kinds, only: rk, zero, one
    implicit none
    private
@@ -17,6 +18,7 @@ contains
 
    pure subroutine res(t, y, ydot, cj, delta, ires, rpar, ipar)
    !! Residuals routine.
+
       real(rk), intent(in):: t
       real(rk), intent(in):: y(neq)
       real(rk), intent(in):: ydot(neq)
@@ -33,6 +35,7 @@ contains
    
    pure subroutine f(t, y, ydot)
    !! dy/dt routine.
+
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(:)
       real(rk), intent(out) :: ydot(:)
@@ -44,6 +47,7 @@ contains
 
    pure subroutine jac(t, y, ydot, pd, cj, rpar, ipar)
    !! Jacobian routine.
+
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(neq)
       real(rk), intent(in) :: ydot(neq)
@@ -70,6 +74,7 @@ contains
 
    pure subroutine rt(neq, t, y, ydot, nrt, rval, rpar, ipar)
      !! Roots routine.
+   
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(neq)
