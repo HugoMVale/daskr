@@ -53,7 +53,7 @@ module daskr_rbdpre
 !! * Set `info(12) = 1` to select the Krylov iterative method and `info(15) = 1` to indicate
 !!   that a `jac` routine exists.
 !!         
-!! * Call [[setup_rbdpre]] to set mesh data and mesh-related inputs. 
+!! * Call [[setup_rbdpre]] to set mesh-related inputs. 
 !!      
 !! * A `jac` routine, as prescribed by the [[daskr]] instructions, which calls [[jac_rbdpre]],
 !!   and does any other Jacobian-related preprocessing needed for preconditioning. The latter
@@ -64,8 +64,8 @@ module daskr_rbdpre
 !!   over mesh points inside [[jac_rbdpre]].
 !!   
 !! * A `psol` routine, as prescribed by the [[daskr]] instructions, which calls [[psol_rbdpre]]
-!!    for the solution of systems \(A_R x = b\), and does any other linear system solving required
-!!    by the preconditioner.
+!!   for the solution of systems \(A_R x = b\), and does any other linear system solving required
+!!   by the preconditioner.
 !!
 !! ## Example
 !!
