@@ -40,22 +40,22 @@ module daskr_ilupre
 !! * Dimension the array `ipar` to have length at least 30, and load the following parameters
 !!   into `ipar` as:
 !!   
-!! | Index  | Name         | Description                                                      |
-!! |--------|--------------|------------------------------------------------------------------|
-!! | 1      | `ml`         | The lower bandwidth used in calculating \(J\).                   |
-!! | 2      | `mu`         | The upper bandwidth used in calculating \(J\).                   |
-!! | 3      | `lenpfac`    | The average number of nonzeros in a row of \(J\). The maximum of nonzeros allowed in \(J\) is `nnzmx = lenpfac*neq`. `lenpfac >= 2`. |
-!! | 4      | `lenplufac`  | The average amount of fill-in per row in the factored \(J\). The maximum number of nonzeros allowed in the factored \(J\) is `lenplumx = nnzmx + lenplufac*neq`. `lenplufac >=2`. |
-!! | 5      | `ipremeth`   | Preconditioner type flag. `=1` means [[ilut]] and `=2` means [[ilutp]]. |
-!! | 6      | `lfililut`   | Fill-in parameter for [[ilut]] and [[ilutp]]. The largest `lfililut` elements per row of the L and U factors are kept. Each row of L and U will have a maximum of `lfililut` elements in addition to their original number of nonzero elements. |
-!! | 7      | `ireorder`   | Reordering flag. `=0` means no reordering of \(J\) rows/columns before incomplete factorization. `=1` means reverse Cuthill-McKee (RCM) reordering is performed. |
-!! | 8      | `isrnorm`    | Row norm flag. `=1` means compute and use row norms as scalings in the preconditioner system \(P x = b\). `=0` means no row norm scaling. |
-!! | 9      | `normtype`   | Type of row norm scaling for `isrnorm`. `=0` means max-norm. `=1` means 1-norm. `=2` means 2-norm. |
-!! | 10     | `jacout`     | Output Jacobian flag. `=1` means write \(J\) and initial residual \(G\) to a file (logical unit in `ipar(29)`). Integration halts with `ires = -2`. `=0` means no output. Storage format is Boeing-Harwell. |
-!! | 11     | `jscalcol`   | Flag for scaling \(J\) columns by the inverses of elements in the `ewt` array. `=0` means no scaling. `=1` means perform scaling. |
-!! | 21:28  | —            | Used to hold pointer information.                                |
-!! | 29     | `jacout_unit`| Logical unit number for matrix output file. Used only if `jacout = 1`. |
-!! | 30     | `rescalls`   | On return from [[daskr]], holds the number of calls to the `res` routine used in preconditioner evaluations. | 
+!!    | Index  | Name         | Description                                                      |
+!!    |--------|--------------|------------------------------------------------------------------|
+!!    | 1      | `ml`         | The lower bandwidth used in calculating \(J\).                   |
+!!    | 2      | `mu`         | The upper bandwidth used in calculating \(J\).                   |
+!!    | 3      | `lenpfac`    | The average number of nonzeros in a row of \(J\). The maximum of nonzeros allowed in \(J\) is `nnzmx = lenpfac*neq`. `lenpfac >= 2`. |
+!!    | 4      | `lenplufac`  | The average amount of fill-in per row in the factored \(J\). The maximum number of nonzeros allowed in the factored \(J\) is `lenplumx = nnzmx + lenplufac*neq`. `lenplufac >=2`. |
+!!    | 5      | `ipremeth`   | Preconditioner type flag. `=1` means [[ilut]] and `=2` means [[ilutp]]. |
+!!    | 6      | `lfililut`   | Fill-in parameter for [[ilut]] and [[ilutp]]. The largest `lfililut` elements per row of the L and U factors are kept. Each row of L and U will have a maximum of `lfililut` elements in addition to their original number of nonzero elements. |
+!!    | 7      | `ireorder`   | Reordering flag. `=0` means no reordering of \(J\) rows/columns before incomplete factorization. `=1` means reverse Cuthill-McKee (RCM) reordering is performed. |
+!!    | 8      | `isrnorm`    | Row norm flag. `=1` means compute and use row norms as scalings in the preconditioner system \(P x = b\). `=0` means no row norm scaling. |
+!!    | 9      | `normtype`   | Type of row norm scaling for `isrnorm`. `=0` means max-norm. `=1` means 1-norm. `=2` means 2-norm. |
+!!    | 10     | `jacout`     | Output Jacobian flag. `=1` means write \(J\) and initial residual \(G\) to a file (logical unit in `ipar(29)`). Integration halts with `ires = -2`. `=0` means no output. Storage format is Boeing-Harwell. |
+!!    | 11     | `jscalcol`   | Flag for scaling \(J\) columns by the inverses of elements in the `ewt` array. `=0` means no scaling. `=1` means perform scaling. |
+!!    | 21:28  | —            | Used to hold pointer information.                                |
+!!    | 29     | `jacout_unit`| Logical unit number for matrix output file. Used only if `jacout = 1`. |
+!!    | 30     | `rescalls`   | On return from [[daskr]], holds the number of calls to the `res` routine used in preconditioner evaluations. | 
 !!
 !! * Dimension the array `rpar` to have length at least 2, and load the parameters shown in the
 !!   table below into `rpar`.
