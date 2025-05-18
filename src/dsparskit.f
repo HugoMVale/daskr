@@ -1,3 +1,4 @@
+      module dsparskit
 c----------------------------------------------------------------------c
 c                          S P A R S K I T                             c
 c----------------------------------------------------------------------c
@@ -9,7 +10,9 @@ c aplsb  :   computes     C = A + s B                                  c
 c diamua :   Computes     C = Diag * A                                 c
 c amudia :   Computes     C = A* Diag                                  c
 c aplsca :   Computes     A:= A + s I    (s = scalar)                  c 
-c----------------------------------------------------------------------c 
+c----------------------------------------------------------------------c
+      contains
+c----------------------------------------------------------------------c
       subroutine aplb (nrow,ncol,job,a,ja,ia,b,jb,ib,
      *     c,jc,ic,nzmax,iw,ierr)
       real*8 a(*), b(*), c(*) 
@@ -3316,7 +3319,7 @@ c nlev    = number of levels in the final BFS traversal.
 c riord   =
 c levels  =
 c----------------------------------------------------------------------- 
-      integer j,nlevp,deg,nfirst,mindeg,nod,maskdeg
+      integer j,nlevp,deg,nfirst,mindeg,nod
       integer iperm(1) 
       nlevp = 0 
  1    continue
@@ -3389,3 +3392,5 @@ c ... Local variable:
       return
 c  end of atob
       end
+c----------------------------------------------------------------------c      
+      end module dsparskit

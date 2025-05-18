@@ -100,6 +100,7 @@ contains
    pure subroutine setup_ilupre(neq, lrwp, liwp, rpar, ipar, ierr, lrwp_min, liwp_min)
    !! Setup routine for the incomplete LU preconditioner. This routine checks the user input
    !! and calculates the minimum length needed for the preconditioner workspace arrays.
+
       integer, intent(in) :: neq
          !! Problem size.
       integer, intent(in) :: lrwp
@@ -278,6 +279,9 @@ contains
    !! This subroutine uses finite-differences to calculate the Jacobian matrix in sparse format,
    !! and then performs an incomplete LU decomposition using either [[ilut]] or [[ilutp]] from
    !! SPARSKIT.
+
+      use dsparskit, only: amudia, dvperm, prtmt, roscal
+
       external :: res
          !! Function that evaluates residuals.
       integer, intent(inout) :: ires
@@ -311,7 +315,7 @@ contains
       integer, intent(inout) :: ipar(*)
          !! Integer array used for communication between the calling program and user routines.
 
-      external :: amudia, roscal, dvperm, prtmt, xerrwd !@todo: replace by module
+      external ::  xerrwd !@todo: replace by module
 
       character(len=8), parameter :: PMETH(4) = [character(len=8) :: 'ILUT', 'ILUTP', 'ILU0', 'MILU0']
       real(rk) :: tolilut, permtol, sqrtn
@@ -471,6 +475,9 @@ contains
    !! This subroutine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
    !! given a vector \(b\), using the LU decomposition produced by [[jac_ilupre]]. The solution
    !! is carried out by [[lusol]] from SPARSKIT.
+
+      use dsparskit, only: lusol, dvperm
+
       integer, intent(in) :: neq
          !! Problem size.
       real(rk), intent(in) :: t
@@ -502,8 +509,6 @@ contains
          !! (not used).
       integer, intent(inout) :: ipar(*)
          !! Integer array used for communication between the calling program and user routines.
-
-      external :: lusol, dvperm
 
       integer :: i, lplu, lju, ljlu, lrownrms, lperm, lqperm, ireorder, isrnorm, ipremeth, &
                  jscalcol
@@ -555,6 +560,9 @@ contains
    !! This subroutine calculates the Jacobian matrix by one-sided finite-differences. Lower and
    !! upper bandwidths are used to select the elements to be computed. The Jacobian is stored
    !! in compressed sparse row format.
+
+      use dsparskit, only: coocsr
+
       integer, intent(in) :: neq
          !! Problem size.
       real(rk), intent(in) :: t
@@ -604,7 +612,7 @@ contains
       integer, intent(out) :: ierr
          !! Error flag.
 
-      external :: xerrwd, coocsr
+      external :: xerrwd
 
       integer :: nnz, i, i1, i2, j, jj, mba, meband, meb1, mband
       real(rk) :: jacelem, squround, del, delinv
@@ -689,6 +697,9 @@ contains
       lfililut, permtol, premeth, iperm, ierr)
    !! This subroutine computes the incomplete LU decomposition of the Jacobian matrix and returns
    !! it in any given storage format.
+
+      use dsparskit, only: ilut, ilutp
+      
       integer, intent(in) :: neq
          !! Problem size.
       integer, intent(in) :: nnzmx
@@ -724,7 +735,7 @@ contains
       integer, intent(out) :: ierr
          !! Error flag (0 means success, else failure).
 
-      external :: ilut, ilutp, xerrwd ! @todo: replace by module
+      external :: xerrwd ! @todo: replace by module
 
       character(len=80) :: msg
       logical :: err
@@ -785,6 +796,9 @@ contains
 
    subroutine jreord(neq, nnzmx, jac, ja, ia, awk, jwk, iwk, perm, qperm, levels, mask)
    !! This subroutine reorders the Jacobian matrix.
+
+      use dsparskit, only: atob, bfs, rversp, dperm
+
       integer, intent(in) :: neq
          !! Problem size.
       integer, intent(in) :: nnzmx
@@ -810,8 +824,6 @@ contains
          !! Work array used by the [[bfs]] reordering subroutine.
       integer, intent(inout) :: mask(neq)
          !! Work array used by the [[bfs]] reordering subroutine.
-
-      external :: atob, bfs, rversp, dperm ! @todo: replace by module
 
       integer :: i, nfirst, nlev, maskval
 
