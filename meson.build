@@ -44,6 +44,7 @@ daskr_source = files(
   'src/daskr_new.f90',
   'src/dlinpack.f',
   'src/dsparskit.f',
+  'src/blas_interfaces.f90',
 )
 
 daskr_lib = static_library(
