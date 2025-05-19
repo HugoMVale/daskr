@@ -6791,3 +6791,355 @@ C-----------------------------------------------------------------------
 C
 C------END OF SUBROUTINE DATV-------------------------------------------
       END
+      SUBROUTINE DORTH (VNEW, V, HES, N, LL, LDHES, KMP, SNORMW)
+C
+C***BEGIN PROLOGUE  DORTH
+C***DATE WRITTEN   890101   (YYMMDD)
+C***REVISION DATE  900926   (YYMMDD)
+C
+C
+C-----------------------------------------------------------------------
+C***DESCRIPTION
+C
+C This routine orthogonalizes the vector VNEW against the previous
+C KMP vectors in the V array.  It uses a modified Gram-Schmidt
+C orthogonalization procedure with conditional reorthogonalization.
+C
+C      On entry
+C
+C         VNEW = The vector of length N containing a scaled product
+C                OF The Jacobian and the vector V(*,LL).
+C
+C         V    = The N x LL array containing the previous LL
+C                orthogonal vectors V(*,1) to V(*,LL).
+C
+C         HES  = An LL x LL upper Hessenberg matrix containing,
+C                in HES(I,K), K.LT.LL, scaled inner products of
+C                A*V(*,K) and V(*,I).
+C
+C        LDHES = The leading dimension of the HES array.
+C
+C         N    = The order of the matrix A, and the length of VNEW.
+C
+C         LL   = The current order of the matrix HES.
+C
+C          KMP = The number of previous vectors the new vector VNEW
+C                must be made orthogonal to (KMP .LE. MAXL).
+C
+C
+C      On return
+C
+C         VNEW = The new vector orthogonal to V(*,I0),
+C                where I0 = MAX(1, LL-KMP+1).
+C
+C         HES  = Upper Hessenberg matrix with column LL filled in with
+C                scaled inner products of A*V(*,LL) and V(*,I).
+C
+C       SNORMW = L-2 norm of VNEW.
+C
+C-----------------------------------------------------------------------
+C***ROUTINES CALLED
+C   DDOT, DNRM2, DAXPY 
+C
+C***END PROLOGUE  DORTH
+C
+      INTEGER N, LL, LDHES, KMP
+      DOUBLE PRECISION VNEW, V, HES, SNORMW
+      DIMENSION VNEW(*), V(N,*), HES(LDHES,*)
+      INTEGER I, I0
+      DOUBLE PRECISION ARG, DDOT, DNRM2, SUMDSQ, TEM, VNRM
+C
+C-----------------------------------------------------------------------
+C Get norm of unaltered VNEW for later use.
+C-----------------------------------------------------------------------
+      VNRM = DNRM2 (N, VNEW, 1)
+C-----------------------------------------------------------------------
+C Do Modified Gram-Schmidt on VNEW = A*V(LL).
+C Scaled inner products give new column of HES.
+C Projections of earlier vectors are subtracted from VNEW.
+C-----------------------------------------------------------------------
+      I0 = MAX0(1,LL-KMP+1)
+      DO 10 I = I0,LL
+        HES(I,LL) = DDOT (N, V(1,I), 1, VNEW, 1)
+        TEM = -HES(I,LL)
+        CALL DAXPY (N, TEM, V(1,I), 1, VNEW, 1)
+ 10     CONTINUE
+C-----------------------------------------------------------------------
+C Compute SNORMW = norm of VNEW.
+C If VNEW is small compared to its input value (in norm), then
+C Reorthogonalize VNEW to V(*,1) through V(*,LL).
+C Correct if relative correction exceeds 1000*(unit roundoff).
+C Finally, correct SNORMW using the dot products involved.
+C-----------------------------------------------------------------------
+      SNORMW = DNRM2 (N, VNEW, 1)
+      IF (VNRM + 0.001D0*SNORMW .NE. VNRM) RETURN
+      SUMDSQ = 0.0D0
+      DO 30 I = I0,LL
+        TEM = -DDOT (N, V(1,I), 1, VNEW, 1)
+        IF (HES(I,LL) + 0.001D0*TEM .EQ. HES(I,LL)) GO TO 30
+        HES(I,LL) = HES(I,LL) - TEM
+        CALL DAXPY (N, TEM, V(1,I), 1, VNEW, 1)
+        SUMDSQ = SUMDSQ + TEM**2
+ 30     CONTINUE
+      IF (SUMDSQ .EQ. 0.0D0) RETURN
+      ARG = MAX(0.0D0,SNORMW**2 - SUMDSQ)
+      SNORMW = SQRT(ARG)
+      RETURN
+C
+C------END OF SUBROUTINE DORTH------------------------------------------
+      END
+      SUBROUTINE DHEQR (A, LDA, N, Q, INFO, IJOB)
+C
+C***BEGIN PROLOGUE  DHEQR
+C***DATE WRITTEN   890101   (YYMMDD)
+C***REVISION DATE  900926   (YYMMDD)
+C
+C-----------------------------------------------------------------------
+C***DESCRIPTION
+C
+C     This routine performs a QR decomposition of an upper
+C     Hessenberg matrix A.  There are two options available:
+C
+C          (1)  performing a fresh decomposition
+C          (2)  updating the QR factors by adding a row and A
+C               column to the matrix A.
+C
+C     DHEQR decomposes an upper Hessenberg matrix by using Givens
+C     rotations.
+C
+C     On entry
+C
+C        A       DOUBLE PRECISION(LDA, N)
+C                The matrix to be decomposed.
+C
+C        LDA     INTEGER
+C                The leading dimension of the array A.
+C
+C        N       INTEGER
+C                A is an (N+1) by N Hessenberg matrix.
+C
+C        IJOB    INTEGER
+C                = 1     Means that a fresh decomposition of the
+C                        matrix A is desired.
+C                .GE. 2  Means that the current decomposition of A
+C                        will be updated by the addition of a row
+C                        and a column.
+C     On return
+C
+C        A       The upper triangular matrix R.
+C                The factorization can be written Q*A = R, where
+C                Q is a product of Givens rotations and R is upper
+C                triangular.
+C
+C        Q       DOUBLE PRECISION(2*N)
+C                The factors C and S of each Givens rotation used
+C                in decomposing A.
+C
+C        INFO    INTEGER
+C                = 0  normal value.
+C                = K  If  A(K,K) .EQ. 0.0.  This is not an error
+C                     condition for this subroutine, but it does
+C                     indicate that DHELS will divide by zero
+C                     if called.
+C
+C     Modification of LINPACK.
+C     Peter Brown, Lawrence Livermore Natl. Lab.
+C
+C-----------------------------------------------------------------------
+C***ROUTINES CALLED (NONE)
+C
+C***END PROLOGUE  DHEQR
+C
+      INTEGER LDA, N, INFO, IJOB
+      DOUBLE PRECISION A(LDA,*), Q(*)
+      INTEGER I, IQ, J, K, KM1, KP1, NM1
+      DOUBLE PRECISION C, S, T, T1, T2
+C
+      IF (IJOB .GT. 1) GO TO 70
+C-----------------------------------------------------------------------
+C A new factorization is desired.
+C-----------------------------------------------------------------------
+C
+C     QR decomposition without pivoting.
+C
+      INFO = 0
+      DO 60 K = 1, N
+         KM1 = K - 1
+         KP1 = K + 1
+C
+C           Compute Kth column of R.
+C           First, multiply the Kth column of A by the previous
+C           K-1 Givens rotations.
+C
+            IF (KM1 .LT. 1) GO TO 20
+            DO 10 J = 1, KM1
+              I = 2*(J-1) + 1
+              T1 = A(J,K)
+              T2 = A(J+1,K)
+              C = Q(I)
+              S = Q(I+1)
+              A(J,K) = C*T1 - S*T2
+              A(J+1,K) = S*T1 + C*T2
+   10         CONTINUE
+C
+C           Compute Givens components C and S.
+C
+   20       CONTINUE
+            IQ = 2*KM1 + 1
+            T1 = A(K,K)
+            T2 = A(KP1,K)
+            IF (T2 .NE. 0.0D0) GO TO 30
+              C = 1.0D0
+              S = 0.0D0
+              GO TO 50
+   30       CONTINUE
+            IF (ABS(T2) .LT. ABS(T1)) GO TO 40
+              T = T1/T2
+              S = -1.0D0/SQRT(1.0D0+T*T)
+              C = -S*T
+              GO TO 50
+   40       CONTINUE
+              T = T2/T1
+              C = 1.0D0/SQRT(1.0D0+T*T)
+              S = -C*T
+   50       CONTINUE
+            Q(IQ) = C
+            Q(IQ+1) = S
+            A(K,K) = C*T1 - S*T2
+            IF (A(K,K) .EQ. 0.0D0) INFO = K
+   60 CONTINUE
+      RETURN
+C-----------------------------------------------------------------------
+C The old factorization of A will be updated.  A row and a column
+C has been added to the matrix A.
+C N by N-1 is now the old size of the matrix.
+C-----------------------------------------------------------------------
+  70  CONTINUE
+      NM1 = N - 1
+C-----------------------------------------------------------------------
+C Multiply the new column by the N previous Givens rotations.
+C-----------------------------------------------------------------------
+      DO 100 K = 1,NM1
+        I = 2*(K-1) + 1
+        T1 = A(K,N)
+        T2 = A(K+1,N)
+        C = Q(I)
+        S = Q(I+1)
+        A(K,N) = C*T1 - S*T2
+        A(K+1,N) = S*T1 + C*T2
+ 100    CONTINUE
+C-----------------------------------------------------------------------
+C Complete update of decomposition by forming last Givens rotation,
+C and multiplying it times the column vector (A(N,N),A(NP1,N)).
+C-----------------------------------------------------------------------
+      INFO = 0
+      T1 = A(N,N)
+      T2 = A(N+1,N)
+      IF (T2 .NE. 0.0D0) GO TO 110
+        C = 1.0D0
+        S = 0.0D0
+        GO TO 130
+ 110  CONTINUE
+      IF (ABS(T2) .LT. ABS(T1)) GO TO 120
+        T = T1/T2
+        S = -1.0D0/SQRT(1.0D0+T*T)
+        C = -S*T
+        GO TO 130
+ 120  CONTINUE
+        T = T2/T1
+        C = 1.0D0/SQRT(1.0D0+T*T)
+        S = -C*T
+ 130  CONTINUE
+      IQ = 2*N - 1
+      Q(IQ) = C
+      Q(IQ+1) = S
+      A(N,N) = C*T1 - S*T2
+      IF (A(N,N) .EQ. 0.0D0) INFO = N
+      RETURN
+C
+C------END OF SUBROUTINE DHEQR------------------------------------------
+      END
+      SUBROUTINE DHELS (A, LDA, N, Q, B)
+C
+C***BEGIN PROLOGUE  DHELS
+C***DATE WRITTEN   890101   (YYMMDD)
+C***REVISION DATE  900926   (YYMMDD)
+C
+C
+C-----------------------------------------------------------------------
+C***DESCRIPTION
+C
+C This is similar to the LINPACK routine DGESL except that
+C A is an upper Hessenberg matrix.
+C
+C     DHELS solves the least squares problem
+C
+C           MIN (B-A*X,B-A*X)
+C
+C     using the factors computed by DHEQR.
+C
+C     On entry
+C
+C        A       DOUBLE PRECISION (LDA, N)
+C                The output from DHEQR which contains the upper
+C                triangular factor R in the QR decomposition of A.
+C
+C        LDA     INTEGER
+C                The leading dimension of the array  A .
+C
+C        N       INTEGER
+C                A is originally an (N+1) by N matrix.
+C
+C        Q       DOUBLE PRECISION(2*N)
+C                The coefficients of the N givens rotations
+C                used in the QR factorization of A.
+C
+C        B       DOUBLE PRECISION(N+1)
+C                The right hand side vector.
+C
+C
+C     On return
+C
+C        B       The solution vector X.
+C
+C
+C     Modification of LINPACK.
+C     Peter Brown, Lawrence Livermore Natl. Lab.
+C
+C-----------------------------------------------------------------------
+C***ROUTINES CALLED
+C   DAXPY 
+C
+C***END PROLOGUE  DHELS
+C
+      INTEGER LDA, N
+      DOUBLE PRECISION A(LDA,*), B(*), Q(*)
+      INTEGER IQ, K, KB, KP1
+      DOUBLE PRECISION C, S, T, T1, T2
+C
+C        Minimize (B-A*X,B-A*X).
+C        First form Q*B.
+C
+         DO 20 K = 1, N
+            KP1 = K + 1
+            IQ = 2*(K-1) + 1
+            C = Q(IQ)
+            S = Q(IQ+1)
+            T1 = B(K)
+            T2 = B(KP1)
+            B(K) = C*T1 - S*T2
+            B(KP1) = S*T1 + C*T2
+   20    CONTINUE
+C
+C        Now solve R*X = Q*B.
+C
+         DO 40 KB = 1, N
+            K = N + 1 - KB
+            B(K) = B(K)/A(K,K)
+            T = -B(K)
+            CALL DAXPY (K-1, T, A(1,K), 1, B(1), 1)
+   40    CONTINUE
+      RETURN
+C
+C------END OF SUBROUTINE DHELS------------------------------------------
+      END

@@ -32,6 +32,7 @@ contains
       ! If Y is less than or equal to zero, this is invalid input.
       if (y(1) <= zero) then
          ires = -1
+         return
       else
          call f(t, y, delta)
          delta = ydot - delta
