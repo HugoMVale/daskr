@@ -1,3 +1,5 @@
+      module dlinpack
+      contains
       subroutine dgefa(a,lda,n,ipvt,info)
       integer lda,n,ipvt(1),info
       double precision a(lda,1)
@@ -527,3 +529,4 @@ c
   100 continue
       return
       end
+      end module dlinpack

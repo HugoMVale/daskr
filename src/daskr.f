@@ -4978,6 +4978,7 @@ C
 C***END PROLOGUE  DMATD
 C
 C
+      use dlinpack, only: dgefa, dgbfa
       IMPLICIT DOUBLE PRECISION(A-H,O-Z)
       DIMENSION Y(*),YPRIME(*),DELTA(*),EWT(*),E(*)
       DIMENSION WM(*),IWM(*), RPAR(*),IPAR(*)
@@ -5119,6 +5120,7 @@ C
 C***END PROLOGUE  DSLVD
 C
 C
+      use dlinpack, only: dgbsl, dgesl
       IMPLICIT DOUBLE PRECISION(A-H,O-Z)
       DIMENSION DELTA(*),WM(*),IWM(*)
 C

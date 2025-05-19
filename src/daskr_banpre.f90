@@ -70,6 +70,9 @@ contains
    !! routine and forming difference quotients, exactly as in the banded direct method option
    !! of [[daskr]]. Afterwards, this matrix is LU factorized by [[dgbfa]] from LINPACK and the
    !! factors are stored in the work arrays `rwp` and `iwp`.
+
+      use dlinpack, only: dgbfa
+
       external :: res
       integer, intent(out) :: ires
         !! Error flag set by `res`.
@@ -104,8 +107,6 @@ contains
       integer, intent(inout) :: ipar(*)
         !! Integer array used for communication between the calling program and external user
         !! routines. `ipar(1)` and `ipar(2)` must contain `ml` and `mu`, respectively.
-
-      external :: dgbfa !@todo: replace by module
 
       real(rk) :: del, delinv, squround
       integer :: i, i1, i2, ii, ipsave, isave, j, k, lenp, mba, mband, meb1, meband, ml, &
@@ -182,6 +183,9 @@ contains
    !! This routine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
    !! given a vector \(b\), using the LU decomposition produced by [[jac_banpre]]. The solution
    !! is carried out by [[dgbsl]] from LINPACK.
+
+      use dlinpack, only: dgbsl
+
       integer, intent(in) :: neq
         !! Problem size.
       real(rk), intent(in) :: t
@@ -214,8 +218,6 @@ contains
       integer, intent(inout) :: ipar(*)
         !! Integer array used for communication between the calling program and user routines 
         !! (not used).
-
-      external :: dgbsl !@todo: replace by module
       
       integer :: meband, ml, mu
 
