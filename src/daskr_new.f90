@@ -1,10 +1,11 @@
 
-subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
+pure subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
 !! This routine orthogonalizes the vector `vnew` against the previous `kmp` vectors in the
 !! `v` matrix. It uses a modified Gram-Schmidt orthogonalization procedure with conditional
 !! reorthogonalization.
 
    use daskr_kinds, only: rk, zero
+   use blas_interfaces, only: daxpy, ddot, dnrm2
    implicit none
 
    real(rk), intent(inout) :: vnew(*)
@@ -30,9 +31,6 @@ subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
       !! (`kmp <= maxl`).
    real(rk), intent(out) :: snormw
       !! L-2 norm of `vnew`.
-
-   external :: daxpy 
-   real(rk), external :: ddot, dnrm2 !@todo: replace by module
 
    integer :: i, i0
    real(rk) :: arg, sumdsq, tem, vnrm
@@ -208,7 +206,7 @@ pure subroutine dheqr(a, lda, n, q, info, ijob)
 
 end subroutine dheqr
 
-subroutine dhels(a, lda, n, q, b)
+pure subroutine dhels(a, lda, n, q, b)
 !! This routine solves the least squares problem
 !!
 !!       MIN (b - a*x, b - a*x)
@@ -217,6 +215,7 @@ subroutine dhels(a, lda, n, q, b)
 !! except that `a` is an upper Hessenberg matrix.
 
    use daskr_kinds, only: rk
+   use blas_interfaces, only: daxpy
    implicit none
 
    real(rk), intent(in) :: a(lda, *)
@@ -231,7 +230,6 @@ subroutine dhels(a, lda, n, q, b)
    real(rk), intent(inout) :: b(*)
       !! On entry, the right hand side vector. On return, the solution vector x. Shape: `b(n+1)`.
 
-   external :: daxpy
    integer :: iq, k, kb, kp1
    real(rk) :: c, s, t, t1, t2
 
