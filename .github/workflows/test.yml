@@ -23,17 +23,17 @@ jobs:
           compiler: gcc
           version: 11 # 13 fails during gcov 
         
-    #   - name: Install OpenBLAS
-    #     if: contains(matrix.os, 'ubuntu')
-    #     run: |
-    #       sudo apt-get update 
-    #       sudo apt-get install libopenblas-dev
+      - name: Install OpenBLAS
+        if: contains(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update 
+          sudo apt-get install libopenblas-dev
 
       - name: Install fpm
-        uses: fortran-lang/setup-fpm@v5
+        uses: fortran-lang/setup-fpm@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          fpm-version: "v0.10.1"
+          fpm-version: "latest"
 
       - name: Build and test
         run: |
