@@ -1,3 +1,99 @@
+!----------------------------------------------------------------------------------------------
+! Adapted from original Fortran code in `original/solver/ddaskr.f`
+!----------------------------------------------------------------------------------------------
+
+subroutine datv( &
+   neq, y, t, ydot, savr, v, wght, ydottemp, res, &
+   ires, psol, z, vtemp, rwp, iwp, cj, epslin, ierr, nres, npsol, rpar, ipar)
+!! This routine computes the matrix-vector product:
+!!
+!! $$ z = D^{-1} P^{-1} (\partial F / \partial y) D v $$
+!!
+!! where \(F = G(t, y, c_J(y - a))\), \(c_J\) is a scalar proportional to \(1/h\), and \(a\)
+!! involves the past history of \(y\). The quantity \(c_J(y - a)\) is an approximation to 
+!! the first derivative of \(y\) and is stored in \(\dot{y}\). 
+!!
+!! \(D\) is a diagonal scaling matrix, and \(P\) is the left preconditioning matrix. \(v\)
+!! is assumed to have L-2 norm equal to 1. The product is stored in `z` and is computed by
+!! means of a difference quotient, a call to `res`, and one call to `psol`.
+
+   use daskr_kinds, only: rk
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(in) :: y(neq)
+      !! Current dependent variables.
+   real(rk), intent(in) :: t
+      !! Current time.
+   real(rk), intent(in) :: ydot(neq)
+      !! Current derivatives of dependent variables.
+   real(rk), intent(in) :: savr(neq)
+      !! Current residual evaluated at `(t, y, ydot)`.
+   real(rk), intent(in) :: v(neq)
+      !! Orthonormal vector (can be the same as `z`).  
+   real(rk), intent(in) :: wght(neq)
+      !! Scaling factors. `1/wght(i)` are the diagonal elements of the matrix `D`.
+   real(rk), intent(out) :: ydottemp(neq)
+      !! Work array used to store the incremented value of `ydot`.
+   external :: res
+      !! Residuals routine. 
+   integer, intent(out) :: ires
+      !! Error flag from `res`.
+   external :: psol
+      !! Preconditioner routine.
+   real(rk), intent(out) :: z(neq)
+      !! Desired scaled matrix-vector product.
+   real(rk), intent(out) :: vtemp(neq)
+      !! Work array used to store the unscaled version of `v`.
+   real(rk), intent(inout) :: rwp(*)
+      !! Real work array used by preconditioner `psol`.
+   integer, intent(inout) :: iwp(*)
+      !! Integer work array used by preconditioner `psol`.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: epslin
+      !! Tolerance for linear system.
+   integer, intent(out) :: ierr
+      !! Error flag from `psol`.
+   integer, intent(inout) :: nres
+      !! Number of calls to `res`.
+   integer, intent(inout) :: npsol
+      !! Number of calls to `psol`.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+
+   ires = 0
+   ierr = 0
+
+   ! Set VTEM = D * V.
+   vtemp = v/wght
+
+   ! Store Y in Z and increment Z by VTEMP.
+   ! Store YDOT in YDOTTEMP and increment YDOTTEMP by VTEM*CJ.
+   ydottemp = ydot + vtemp*cj
+   z = y + vtemp
+
+   ! Call RES with incremented Y, YDOT arguments
+   ! stored in Z, YDOTTEMP. VTEMP is overwritten with new residual.
+   call res(t, z, ydottemp, cj, vtemp, ires, rpar, ipar)
+   nres = nres + 1
+   if (ires .lt. 0) return
+
+   ! Set Z = (dF/dY) * VBAR using difference quotient.
+   ! (VBAR is old value of VTEMP before calling RES)
+   z = vtemp - savr
+
+   ! Apply inverse of left preconditioner to Z.
+   call psol(neq, t, y, ydot, savr, ydottemp, cj, wght, rwp, iwp, z, epslin, ierr, rpar, ipar)
+   npsol = npsol + 1
+   if (ierr .ne. 0) return
+
+   ! Apply D-inverse to Z
+   z = z * wght
+
+end subroutine datv
 
 pure subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
 !! This routine orthogonalizes the vector `vnew` against the previous `kmp` vectors in the
@@ -8,20 +104,18 @@ pure subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
    use blas_interfaces, only: daxpy, ddot, dnrm2
    implicit none
 
-   real(rk), intent(inout) :: vnew(*)
-      !! On entry, vector of length `n` containing a scaled product of the Jacobian and the
-      !! vector `v(*,ll)`.
+   real(rk), intent(inout) :: vnew(n)
+      !! On entry, vector containing a scaled product of the Jacobian and the vector `v(*,ll)`.
       !! On return, the new vector orthogonal to `v(*,i0)`, where `i0 = max(1, ll - kmp + 1)`.
-   real(rk), intent(in) :: v(n, *)
-      !! Array of shape `(n, ll)` containing the previous `ll` orthogonal vectors `v(*,1)`
-      !! to `v(*,ll)`.
-   real(rk), intent(inout) :: hes(ldhes, *)
+   real(rk), intent(in) :: v(n, ll)
+      !! Matrix containing the previous `ll` orthogonal vectors `v(*,1)` to `v(*,ll)`.
+   real(rk), intent(inout) :: hes(ldhes, ll)
       !! On entry, an upper Hessenberg matrix of shape `(ll, ll)` containing in `hes(i,k)`,
-      !! for `k < ll`, scaled inner products of `a*v(*,k)` and `v(*,i)`.
+      !! for `k < ll`, the scaled inner products of `a*v(*,k)` and `v(*,i)`.
       !! On return, an upper Hessenberg matrix with column `ll` filled in with the scaled
       !! inner products of `a*v(*,ll)` and `v(*,i)`.
    integer, intent(in) :: n
-      !! Order of the matrix `a`, and the length of `vnew`.
+      !! Order of the matrix `a`.
    integer, intent(in) :: ll
       !! Current order of the matrix `hes`.
    integer, intent(in) :: ldhes
@@ -41,7 +135,7 @@ pure subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
    ! Do Modified Gram-Schmidt on VNEW = A*V(LL).
    ! Scaled inner products give new column of HES.
    ! Projections of earlier vectors are subtracted from VNEW.
-   i0 = max0(1, ll - kmp + 1)
+   i0 = max(1, ll - kmp + 1)
    do i = i0, ll
       hes(i, ll) = ddot(n, v(1, i), 1, vnew, 1)
       tem = -hes(i, ll)
@@ -72,24 +166,24 @@ pure subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
 end subroutine dorth
 
 pure subroutine dheqr(a, lda, n, q, info, ijob)
-!! This routine performs a QR decomposition of an upper Hessenberg matrix A using Givens
+!! This routine performs a QR decomposition of an upper Hessenberg matrix `a` using Givens
 !! rotations. There are two options available:
 !!
 !! 1. performing a fresh decomposition;
-!! 2. updating the QR factors by adding a row and a column to the matrix A.
+!! 2. updating the QR factors by adding a row and a column to the matrix `a`.
 
    use daskr_kinds, only: rk, zero, one
    implicit none
 
-   real(rk), intent(inout) :: a(lda, *)
+   real(rk), intent(inout) :: a(lda, n)
       !! On entry, the Hessenberg matrix to be decomposed. On return, the upper triangular
       !! matrix R from the QR decomposition of `a`.
    integer, intent(in) :: lda
       !! Leading dimension of `a`.
    integer, intent(in) :: n
       !! Number of columns in `a` (originally a matrix with shape `(n+1, n)`).
-   real(rk), intent(out) :: q(*)
-      !! Coefficients of the Givens rotations used in decomposing `a`. Shape: `(2*n)`.
+   real(rk), intent(out) :: q(2*n)
+      !! Coefficients of the Givens rotations used in decomposing `a`.
    integer, intent(out) :: info
       !! Info flag.
       !! `info = 0`, if successful.
@@ -209,7 +303,7 @@ end subroutine dheqr
 pure subroutine dhels(a, lda, n, q, b)
 !! This routine solves the least squares problem
 !!
-!!       MIN (b - a*x, b - a*x)
+!!       $$ min (b - a x, b - a x) $$
 !!
 !! using the factors computed by [[dheqr]]. This is similar to the LINPACK routine [[DGESL]]
 !! except that `a` is an upper Hessenberg matrix.
@@ -218,17 +312,17 @@ pure subroutine dhels(a, lda, n, q, b)
    use blas_interfaces, only: daxpy
    implicit none
 
-   real(rk), intent(in) :: a(lda, *)
+   real(rk), intent(in) :: a(lda, n)
       !! Output from [[dheqr]] which contains the upper triangular factor R in the QR
       !! decomposition of `a`.
    integer, intent(in) :: lda
       !! Leading dimension of `a`.
    integer, intent(in) :: n
       !! Number of columns in `a` (originally a matrix with shape `(n+1, n)`).
-   real(rk), intent(in) :: q(*)
-      !! Coefficients of the Givens rotations used in decomposing `a`. Shape: `(2*n)`.
-   real(rk), intent(inout) :: b(*)
-      !! On entry, the right hand side vector. On return, the solution vector x. Shape: `b(n+1)`.
+   real(rk), intent(in) :: q(2*n)
+      !! Coefficients of the Givens rotations used in decomposing `a`.
+   real(rk), intent(inout) :: b(n+1)
+      !! On entry, the right hand side vector. On return, the solution vector x.
 
    integer :: iq, k, kb, kp1
    real(rk) :: c, s, t, t1, t2
