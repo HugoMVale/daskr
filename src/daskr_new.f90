@@ -303,10 +303,10 @@ end subroutine dheqr
 pure subroutine dhels(a, lda, n, q, b)
 !! This routine solves the least squares problem
 !!
-!!       $$ min (b - a x, b - a x) $$
+!!       $$ \min \| b - A x \|^2 $$
 !!
 !! using the factors computed by [[dheqr]]. This is similar to the LINPACK routine [[DGESL]]
-!! except that `a` is an upper Hessenberg matrix.
+!! except that \(A\) is an upper Hessenberg matrix.
 
    use daskr_kinds, only: rk
    use blas_interfaces, only: daxpy
