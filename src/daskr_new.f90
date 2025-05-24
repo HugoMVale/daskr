@@ -275,7 +275,7 @@ subroutine datv( &
 !! the first derivative of \(y\) and is stored in \(\dot{y}\). 
 !!
 !! \(D\) is a diagonal scaling matrix, and \(P\) is the left preconditioning matrix. \(v\)
-!! is assumed to have L-2 norm equal to 1. The product is stored in `z` and is computed by
+!! is assumed to have L-2 norm equal to 1. The product is stored in \(z\) and is computed by
 !! means of a difference quotient, a call to `res`, and one call to `psol`.
 
    use daskr_kinds, only: rk
@@ -430,8 +430,8 @@ pure subroutine dheqr(a, lda, n, q, info, ijob)
 !! This routine performs a QR decomposition of an upper Hessenberg matrix `a` using Givens
 !! rotations. There are two options available:
 !!
-!! 1. performing a fresh decomposition;
-!! 2. updating the QR factors by adding a row and a column to the matrix `a`.
+!! 1. Performing a fresh decomposition;
+!! 2. Updating the QR factors by adding a row and a column to the matrix `a`.
 
    use daskr_kinds, only: rk, zero, one
    implicit none
@@ -562,11 +562,11 @@ pure subroutine dheqr(a, lda, n, q, info, ijob)
 end subroutine dheqr
 
 pure subroutine dhels(a, lda, n, q, b)
-!! This routine solves the least squares problem
-!!
-!!       $$ \min \| b - A x \|^2 $$
-!!
-!! using the factors computed by [[dheqr]]. This is similar to the LINPACK routine [[DGESL]]
+!! This routine solves the least squares problem:
+!! 
+!!  $$ \min{\| b - A x \|^2} $$
+!! 
+!! using the factors computed by [[dheqr]]. This is similar to the LINPACK routine [[dgesl]]
 !! except that \(A\) is an upper Hessenberg matrix.
 
    use daskr_kinds, only: rk
@@ -583,7 +583,7 @@ pure subroutine dhels(a, lda, n, q, b)
    real(rk), intent(in) :: q(2*n)
       !! Coefficients of the Givens rotations used in decomposing `a`.
    real(rk), intent(inout) :: b(n+1)
-      !! On entry, the right hand side vector. On return, the solution vector x.
+      !! On entry, the right hand side vector. On return, the solution vector \(x\).
 
    integer :: iq, k, kb, kp1
    real(rk) :: c, s, t, t1, t2
