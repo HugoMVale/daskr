@@ -2,6 +2,140 @@
 ! Adapted from original Fortran code in `original/solver/ddaskr.f`
 !----------------------------------------------------------------------------------------------
 
+subroutine dslvk( &
+   neq, y, t, ydot, savr, x, ewt, rwm, iwm, res, ires, psol, &
+   iersl, cj, epslin, sqrtn, rsqrtn, rhok, rpar, ipar)
+!! This routine uses a restart algorithm and interfaces to [[dspigm]] for
+!! the solution of the linear system arising from a Newton iteration.
+
+   use daskr_kinds, only: rk, zero
+   use blas_interfaces, only: dscal, dcopy
+   implicit none
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(in) :: y(neq)
+      !! Current dependent variables.
+   real(rk), intent(in) :: t
+      !! Current time.
+   real(rk), intent(in) :: ydot(neq)
+      !! Current derivatives of dependent variables.
+   real(rk), intent(in) :: savr(neq)
+      !! Current residual evaluated at `(t, y, ydot)`.
+   real(rk), intent(inout) :: x(neq)
+      !! On entry, the right-hand side vector of the linear system to be solved,
+      !! and on exit, the solution vector.
+   real(rk), intent(inout) :: ewt(neq) ! @todo: harmonize names
+      !! Nonzero elements of the diagonal scaling matrix.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real work space containing data for the algorithm (Krylov basis vectors,
+      !! Hessenberg matrix, etc.).
+   integer, intent(inout) :: iwm(*)
+      !! Integer work space containing data for the algorithm.
+   external :: res
+      !! Residuals routine.
+   integer, intent(out) :: ires
+      !! Error flag from `res`.
+   external :: psol
+      !! Preconditioner routine.
+   integer, intent(out) :: iersl
+      !! Error flag.
+      !! `iersl = 0` means no trouble occurred (or user `res` routine returned `ires < 0`).
+      !! `iersl = 1` means the iterative method failed to converge ([[dspigm]] returned `iflag > 0`).
+      !! `iersl = -1` means there was a nonrecoverable error in the iterative solver, and an error exit will occur.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: epslin
+      !! Tolerance for linear system solver.
+   real(rk), intent(in) :: sqrtn
+      !! Square root of `neq`.
+   real(rk), intent(in) :: rsqrtn
+      !! Reciprocal of square root of `neq`.
+   real(rk), intent(out) :: rhok
+      !! Weighted norm of the final preconditioned residual.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+
+   integer, parameter :: lnre = 12, lncfl = 16, lnli = 20, lnps = 21, &
+                         llocwp = 29, llciwp = 30, &
+                         lmiter = 23, lmaxl = 24, lkmp = 25, lnrmax = 26
+
+   integer, save :: irst = 1
+   integer :: i, iflag, kmp, ldl, lhes, lgmr, liwp, lq, lr, lv, lwk, lwp, lz, &
+              maxl, maxlp1, miter, ncfl, nli, nps, npsol, nre, nres, nrmax, nrsts
+
+   liwp = iwm(llciwp)
+   nli = iwm(lnli)
+   nps = iwm(lnps)
+   ncfl = iwm(lncfl)
+   nre = iwm(lnre)
+   lwp = iwm(llocwp)
+   maxl = iwm(lmaxl)
+   kmp = iwm(lkmp)
+   nrmax = iwm(lnrmax)
+   miter = iwm(lmiter)
+   iersl = 0
+   ires = 0
+
+   ! Use a restarting strategy to solve the linear system P*X = -F. Parse the work vector,
+   ! and perform initializations. Note that zero is the initial guess for X.
+   maxlp1 = maxl + 1
+   lv = 1
+   lr = lv + neq*maxl
+   lhes = lr + neq + 1
+   lq = lhes + maxl*maxlp1
+   lwk = lq + 2*maxl
+   ldl = lwk + min(1, maxl - kmp)*neq
+   lz = ldl + neq
+   call dscal(neq, rsqrtn, ewt, 1)
+   call dcopy(neq, x, 1, rwm(lr), 1)
+   x = zero
+
+   ! Top of loop for the restart algorithm. Initial pass approximates X and sets up a
+   ! transformed system to perform subsequent restarts to update X. NRSTS is initialized
+   ! to -1, because restarting does not occur until after the first pass.
+   ! Update NRSTS; conditionally copy DL to R; call the DSPIGM algorithm to solve A*Z = R;
+   ! updated counters; update X with the residual solution.
+   ! Note: if convergence is not achieved after NRMAX restarts, then the linear solver is
+   ! considered to have failed.
+   iflag = 1
+   nrsts = -1
+   do while ((iflag .eq. 1) .and. (nrsts .lt. nrmax) .and. (ires .eq. 0))
+      nrsts = nrsts + 1
+      if (nrsts .gt. 0) call dcopy(neq, rwm(ldl), 1, rwm(lr), 1)
+      call dspigm(neq, t, y, ydot, savr, rwm(lr), ewt, maxl, &
+                  kmp, epslin, cj, res, ires, nres, psol, npsol, rwm(lz), rwm(lv), &
+                  rwm(lhes), rwm(lq), lgmr, rwm(lwp), iwm(liwp), rwm(lwk), &
+                  rwm(ldl), rhok, iflag, irst, nrsts, rpar, ipar)
+      nli = nli + lgmr
+      nps = nps + npsol
+      nre = nre + nres
+      do i = 1, neq
+         x(i) = x(i) + rwm(lz + i - 1)
+      end do
+   end do
+
+   ! The restart scheme is finished. Test IRES and IFLAG to see if convergence was not
+   ! achieved, and set flags accordingly.
+   if (ires .lt. 0) then
+      ncfl = ncfl + 1
+   elseif (iflag .ne. 0) then
+      ncfl = ncfl + 1
+      if (iflag .gt. 0) iersl = 1
+      if (iflag .lt. 0) iersl = -1
+   end if
+
+   ! Update IWM with counters, rescale EWT, and return.
+   iwm(lnli) = nli
+   iwm(lnps) = nps
+   iwm(lncfl) = ncfl
+   iwm(lnre) = nre
+   call dscal(neq, sqrtn, ewt, 1)
+
+end subroutine dslvk
+
 subroutine dspigm( &
    neq, t, y, ydot, savr, r, wght, maxl, &
    kmp, epslin, cj, res, ires, nres, psol, npsol, z, v, &
