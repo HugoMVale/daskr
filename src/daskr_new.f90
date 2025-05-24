@@ -2,6 +2,267 @@
 ! Adapted from original Fortran code in `original/solver/ddaskr.f`
 !----------------------------------------------------------------------------------------------
 
+subroutine dspigm( &
+   neq, t, y, ydot, savr, r, wght, maxl, &
+   kmp, epslin, cj, res, ires, nres, psol, npsol, z, v, &
+   hes, q, lgmr, rwp, iwp, wk, dl, rhok, iflag, irst, nrsts, &
+   rpar, ipar)
+!! This routine solves the linear system \(A z = r\) using a scaled preconditioned version
+!! of the generalized minimum residual method. An initial guess of \(z=0\) is assumed.
+
+   use daskr_kinds, only: rk, zero, one
+   use blas_interfaces, only: dnrm2, dcopy, dscal, daxpy
+   implicit none
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(in) :: t
+      !! Current time.
+   real(rk), intent(in) :: y(neq)
+      !! Current dependent variables.
+   real(rk), intent(in) :: ydot(neq)
+      !! Current derivatives of dependent variables.
+   real(rk), intent(in) :: savr(neq)
+      !! Current residual evaluated at `(t, y, ydot)`.
+   real(rk), intent(inout) :: r(neq)
+      !! On entry, the right hand side vector. Also used as work space when computing
+      !! the final approximation and will therefore be destroyed. `r` is the same as
+      !! `v(:,maxl+1)` in the call to this routine.
+   real(rk), intent(in) :: wght(neq)
+      !! Nonzero elements of the diagonal scaling matrix.
+   integer, intent(in) :: maxl
+      !! Maximum allowable order of the matrix `hes`.
+   integer, intent(in) :: kmp
+      !! Number of previous vectors the new vector `vnew` must be made orthogonal to
+      !! (`kmp <= maxl`).
+   real(rk), intent(in) :: epslin
+      !! Tolerance on residuals \(Az - r\) in weighted rms norm.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   external :: res
+      !! Residuals routine.
+   integer, intent(out) :: ires
+      !! Error flag from `res`.
+   integer, intent(inout) :: nres
+      !! Number of calls to `res`.
+   external :: psol
+      !! Preconditioner routine.
+   integer, intent(inout) :: npsol
+      !! Number of calls to `psol`.
+   real(rk), intent(out) :: z(neq)
+      !! Final computed approximation to the solution of the system \(Az = r\).
+   real(rk), intent(out) :: v(neq, *)
+      !! Matrix of shape `(neq,lgmr+1)` containing the `lgmr` orthogonal vectors `v(:,1)`
+      !! to `v(:,lgmr)`.
+   real(rk), intent(out) :: hes(maxl+1, maxl)
+      !! Upper triangular factor of the QR decomposition of the upper Hessenberg matrix
+      !! whose entries are the scaled inner-products of `A*v(:,i)` and `v(:,k)`.
+   real(rk), intent(out) :: q(2*maxl)
+      !! Components of the Givens rotations used in the QR decomposition of `hes`. It is
+      !! loaded in [[dheqr]] and used in [[dhels]].
+   integer, intent(out) :: lgmr
+      !! The number of iterations performed and the current order of the upper
+      !! Hessenberg matrix `hes`.
+   real(rk), intent(inout) :: rwp(*)
+      !! Real work array used by preconditioner `psol`.
+   integer, intent(inout) :: iwp(*)
+      !! Integer work array used by preconditioner `psol`.
+   real(rk), intent(inout) :: wk(*)
+      !! Real work array used by [[datv]] and `psol`.
+   real(rk), intent(inout) :: dl(*)
+      !! Real work array used for calculation of the residual norm `rhok` when the
+      !! method is incomplete (`kmp < maxl`) and/or when using restarting.
+   real(rk), intent(out) :: rhok
+      !! Weighted norm of the final preconditioned residual.
+   integer, intent(out) :: iflag
+      !! Error flag.
+      !! 0 means convergence in `lgmr` iterations, `lgmr <= maxl`.
+      !! 1 means the convergence test did not pass in `maxl` iterations, but the new
+      !! residual norm (`rho`) is less than the old residual norm (`rnrm`), and so `z`
+      !! is computed.
+      !! 2 means the convergence test did not pass in `maxl` iterations, new residual
+      !! norm (`rho`) is greater than or equal to old residual norm (`rnrm`), and the
+      !! initial guess, `z = 0`, is returned.
+      !! 3 means there was a recoverable error in `psol` caused by the preconditioner
+      !! being out of date.
+      !! -1 means there was an unrecoverable error in `psol`.
+   integer, intent(in) :: irst
+      !! Restarting flag. If `irst > 0`, then restarting is being performed.
+   integer, intent(in) :: nrsts
+      !! Number of restarts on the current call to [[dspigm]]. If `nrsts > 0`, then the
+      !! residual `r` is already scaled, and so scaling of `r` is not necessary.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+
+   integer :: i, ierr, info, ip1, i2, k, ll, llp1, maxlm1, maxlp1
+   real(rk) :: c, dlnrm, prod, rho, rnrm, s, snormw, tem
+
+   ierr = 0
+   iflag = 0
+   lgmr = 0
+   npsol = 0
+   nres = 0
+
+   ! The initial guess for Z is 0. The initial residual is therefore
+   ! the vector R. Initialize Z to 0.
+   z = zero
+
+   ! Apply inverse of left preconditioner to vector R if NRSTS .EQ. 0.
+   ! Form V(*,1), the scaled preconditioned right hand side.
+   if (nrsts .eq. 0) then
+      call psol(neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, r, epslin, ierr, rpar, ipar)
+      npsol = 1
+      if (ierr .ne. 0) goto 300
+      v(:, 1) = r*wght
+   else
+      v(:, 1) = r
+   end if
+
+   ! Calculate norm of scaled vector V(*,1) and normalize it
+   ! If, however, the norm of V(*,1) (i.e. the norm of the preconditioned
+   ! residual) is .le. EPLIN, then return with Z=0.
+   rnrm = dnrm2(neq, v, 1)
+   if (rnrm .le. epslin) then
+      rhok = rnrm
+      return
+   end if
+   tem = one/rnrm
+   call dscal(neq, tem, v(1, 1), 1)
+
+   ! Zero out the HES array.
+   hes = zero
+
+   ! Main loop to compute the vectors V(*,2) to V(*,MAXL).
+   ! The running product PROD is needed for the convergence test.
+   prod = one
+   maxlp1 = maxl + 1
+   do ll = 1, maxl
+      lgmr = ll
+
+      ! Call routine DATV to compute VNEW = ABAR*V(LL), where ABAR is
+      ! the matrix A with scaling and inverse preconditioner factors applied.
+      call datv(neq, y, t, ydot, savr, v(1, ll), wght, z, &
+                res, ires, psol, v(1, ll + 1), wk, rwp, iwp, cj, epslin, &
+                ierr, nres, npsol, rpar, ipar)
+      if (ires .lt. 0) return
+      if (ierr .ne. 0) goto 300
+
+      ! Call routine DORTH to orthogonalize the new vector VNEW = V(*,LL+1).
+      call dorth(v(1, ll + 1), v, hes, neq, ll, maxlp1, kmp, snormw)
+      hes(ll + 1, ll) = snormw
+
+      ! Call routine DHEQR to update the factors of HES.
+      call dheqr(hes, maxlp1, ll, q, info, ll)
+      if (info .eq. ll) goto 120
+
+      ! Update RHO, the estimate of the norm of the residual R - A*ZL.
+      ! If KMP .LT. MAXL, then the vectors V(*,1),...,V(*,LL+1) are not
+      ! necessarily orthogonal for LL .GT. KMP.  The vector DL must then
+      ! be computed, and its norm used in the calculation of RHO.
+      prod = prod*q(2*ll)
+      rho = abs(prod*rnrm)
+      if ((ll .gt. kmp) .and. (kmp .lt. maxl)) then
+         if (ll .eq. kmp + 1) then
+            call dcopy(neq, v(1, 1), 1, dl, 1)
+            do i = 1, kmp
+               ip1 = i + 1
+               i2 = i*2
+               s = q(i2)
+               c = q(i2 - 1)
+               do k = 1, neq
+                  dl(k) = s*dl(k) + c*v(k, ip1)
+               end do
+            end do
+         end if
+         s = q(2*ll)
+         c = q(2*ll - 1)/snormw
+         llp1 = ll + 1
+         do k = 1, neq
+            dl(k) = s*dl(k) + c*v(k, llp1)
+         end do
+         dlnrm = dnrm2(neq, dl, 1)
+         rho = rho*dlnrm
+      end if
+
+      ! Test for convergence. If passed, compute approximation ZL.
+      ! If failed and LL .LT. MAXL, then continue iterating.
+      if (rho .le. epslin) goto 200
+      if (ll .eq. maxl) goto 100
+
+      ! Rescale so that the norm of V(1,LL+1) is one.
+      tem = one/snormw
+      call dscal(neq, tem, v(1, ll + 1), 1)
+
+   end do
+
+100 continue
+   if (rho .lt. rnrm) goto 150
+
+120 continue
+   iflag = 2
+   z = zero
+   return
+
+150 continue
+   ! The tolerance was not met, but the residual norm was reduced.
+   ! If performing restarting (IRST .gt. 0) calculate the residual vector
+   ! RL and store it in the DL array.  If the incomplete version is
+   ! being used (KMP .lt. MAXL) then DL has already been calculated.
+   iflag = 1
+   if (irst .gt. 0) then
+
+      if (kmp .eq. maxl) then
+         !  Calculate DL from the V(I)'s.
+         call dcopy(neq, v(1, 1), 1, dl, 1)
+         maxlm1 = maxl - 1
+         do i = 1, maxlm1
+            ip1 = i + 1
+            i2 = i*2
+            s = q(i2)
+            c = q(i2 - 1)
+            do k = 1, neq
+               dl(k) = s*dl(k) + c*v(k, ip1)
+            end do
+         end do
+         s = q(2*maxl)
+         c = q(2*maxl - 1)/snormw
+         do k = 1, neq
+            dl(k) = s*dl(k) + c*v(k, maxlp1)
+         end do
+      end if
+
+      ! Scale DL by RNRM*PROD to obtain the residual RL.
+      tem = rnrm*prod
+      call dscal(neq, tem, dl, 1)
+   end if
+
+   ! Compute the approximation ZL to the solution.
+   ! Since the vector Z was used as work space, and the initial guess
+   ! of the Newton correction is zero, Z must be reset to zero.
+200 continue
+   ll = lgmr
+   llp1 = ll + 1
+   r(1:llp1) = zero
+   r(1) = rnrm
+   call dhels(hes, maxlp1, ll, q, r)
+   z = zero
+   do i = 1, ll
+      call daxpy(neq, r(i), v(1, i), 1, z, 1)
+   end do
+   z = z/wght
+   ! Load RHO into RHOK.
+   rhok = rho
+   return
+
+   ! This block handles error returns forced by routine PSOL.
+300 continue
+   if (ierr .lt. 0) iflag = -1
+   if (ierr .gt. 0) iflag = 3
+
+end subroutine dspigm
+
 subroutine datv( &
    neq, y, t, ydot, savr, v, wght, ydottemp, res, &
    ires, psol, z, vtemp, rwp, iwp, cj, epslin, ierr, nres, npsol, rpar, ipar)
