@@ -27,7 +27,7 @@ subroutine dnsk( &
       !! Residuals routine.
    external :: psol
       !! Preconditioner routine.
-   real(rk), intent(in) :: wt(neq) ! ?? confusing notation: wt = ewt = whgt ?
+   real(rk), intent(inout) :: wt(neq) ! ?? confusing notation: wt = ewt = whgt ?
       !! Weights for error control.
    real(rk), intent(inout) :: rpar(*)
       !! User real workspace.
@@ -82,7 +82,7 @@ subroutine dnsk( &
    integer, parameter :: lnni = 19, lnre = 12
 
    integer :: m
-   real(rk) :: ddwnrm, delnrm, oldnrm, psol, rate, rhok
+   real(rk) :: ddwnrm, delnrm, oldnrm, rate, rhok
    logical :: converged
 
    ! Initialize Newton counter M and accumulation vector E.
