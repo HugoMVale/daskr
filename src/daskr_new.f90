@@ -2,11 +2,163 @@
 ! Adapted from original Fortran code in `original/solver/ddaskr.f`
 !----------------------------------------------------------------------------------------------
 
+subroutine dnsk( &
+   t, y, ydot, neq, res, psol, wt, rpar, ipar, &
+   savr, delta, e, rwm, iwm, cj, sqrtn, rsqrtn, epslin, epscon, &
+   s, confac, tolnew, muldel, maxit, ires, iersl, iernew)
+!! This routines solves a nonlinear system of algebraic equations of the form:
+!!
+!!  $$ G(t, y, \dot{y}) = 0 $$
+!!
+!! for the unknown \(y\). The method used is a modified Newton scheme.
+
+   use daskr_kinds, only: rk, zero, one
+   implicit none
+
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(inout) :: ydot(neq)
+      !! Derivative of solution vector.
+   integer, intent(in) :: neq
+      !! Problem size.
+   external :: res
+      !! Residuals routine.
+   external :: psol
+      !! Preconditioner routine.
+   real(rk), intent(in) :: wt(neq) ! ?? confusing notation: wt = ewt = whgt ?
+      !! Weights for error control.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+   real(rk), intent(out) :: savr(neq)
+      !! Saved residual vector.
+   real(rk), intent(inout) :: delta(neq)
+      !! Real workspace.
+   real(rk), intent(out) :: e(neq)
+      !! Error accumulation vector.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: sqrtn
+      !! Square root of `neq`.
+   real(rk), intent(in) :: rsqrtn
+      !! Reciprocal of square root of `neq`.
+   real(rk), intent(in) :: epslin
+      !! Tolerance for linear system solver.
+   real(rk), intent(in) :: epscon
+      !! Tolerance for convergence of the Newton iteration.
+   real(rk), intent(out) :: s
+      !! Convergence factor for the Newton iteration. `s=rate/(1 - rate)`, where
+      !! `rate` is the estimated rate of convergence of the Newton iteration.
+      !! The closer `rate` is to 0, the faster the Newton iteration is converging.
+      !! the closer `rate` is to 1, the slower the Newton iteration is converging.
+   real(rk), intent(in) :: confac
+      !! Residual scale factor to improve convergence.
+   real(rk), intent(in) :: tolnew
+      !! Tolerance on the norm of the Newton correction in the alternative Newton
+      !! convergence test.
+   integer, intent(in) :: muldel ! @todo: convert to logical
+      !! Flag indicating whether or not to multiply `delta` by `confac`.
+   integer, intent(in) :: maxit
+      !! Maximum number of Newton iterations allowed.
+   integer, intent(out) :: ires
+      !! Error flag from `res`. If `ires < -1`, then `iernew = -1`.
+   integer, intent(out) :: iersl
+      !! Error flag from the linear system solver. See [[dslvk]] for details.
+      !! If `iersl < 0`, then `iernew = -1`.
+      !! If `iersl = 1`, then `iernew = 1`.
+   integer, intent(out) :: iernew
+      !! Error flag for the Newton iteration.
+      !!  `0`: the Newton iteration converged.
+      !!  `1`: recoverable error inside Newton iteration.
+      !! `-1`: unrecoverable error inside Newton iteration.
+
+   integer, parameter :: lnni = 19, lnre = 12
+
+   integer :: m
+   real(rk) :: ddwnrm, delnrm, oldnrm, psol, rate, rhok
+   logical :: converged
+
+   ! Initialize Newton counter M and accumulation vector E.
+   m = 0
+   e = zero
+
+   ! Corrector loop.
+   converged = .false.
+   do
+      iwm(lnni) = iwm(lnni) + 1
+
+      ! If necessary, multiply residual by convergence factor.
+      if (muldel .eq. 1) then
+         delta = delta*confac
+      end if
+
+      ! Save residual in SAVR.
+      savr = delta
+
+      ! Compute a new iterate. Store the correction in DELTA.
+      call dslvk(neq, y, t, ydot, savr, delta, wt, rwm, iwm, &
+                 res, ires, psol, iersl, cj, epslin, sqrtn, rsqrtn, rhok, &
+                 rpar, ipar)
+      if ((ires .ne. 0) .or. (iersl .ne. 0)) exit
+
+      ! Update Y, E, and YPRIME.
+      y = y - delta
+      e = e - delta
+      ydot = ydot - cj*delta
+
+      ! Test for convergence of the iteration.
+      delnrm = ddwnrm(neq, delta, wt, rpar, ipar)
+      if (m .eq. 0) then
+         oldnrm = delnrm
+         if (delnrm .le. tolnew) then
+            converged = .true.
+            exit
+         end if
+      else
+         rate = (delnrm/oldnrm)**(one/m)
+         if (rate .gt. 0.9_rk) exit
+         s = rate/(one - rate)
+      end if
+
+      if (s*delnrm .le. epscon) then
+         converged = .true.
+         exit
+      end if
+      
+      ! The corrector has not yet converged. Update M and test whether
+      ! the maximum number of iterations have been tried.
+      m = m + 1
+      if (m .ge. maxit) exit
+
+      ! Evaluate the residual, and go back to do another iteration.
+      iwm(lnre) = iwm(lnre) + 1
+      call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+      if (ires .lt. 0) exit
+
+   end do
+
+   if (.not. converged) then
+      if ((ires .le. -2) .or. (iersl .lt. 0)) then
+         iernew = -1
+      else
+         iernew = 1
+      end if
+   end if
+
+end subroutine dnsk
+
 subroutine dslvk( &
    neq, y, t, ydot, savr, x, ewt, rwm, iwm, res, ires, psol, &
    iersl, cj, epslin, sqrtn, rsqrtn, rhok, rpar, ipar)
-!! This routine uses a restart algorithm and interfaces to [[dspigm]] for
-!! the solution of the linear system arising from a Newton iteration.
+!! This routine uses a restart algorithm and interfaces to [[dspigm]] for the solution of
+!! the linear system arising from a Newton iteration.
 
    use daskr_kinds, only: rk, zero
    use blas_interfaces, only: dscal, dcopy
@@ -17,15 +169,15 @@ subroutine dslvk( &
    real(rk), intent(in) :: y(neq)
       !! Current dependent variables.
    real(rk), intent(in) :: t
-      !! Current time.
+      !! Current independent variable.
    real(rk), intent(in) :: ydot(neq)
       !! Current derivatives of dependent variables.
    real(rk), intent(in) :: savr(neq)
       !! Current residual evaluated at `(t, y, ydot)`.
    real(rk), intent(inout) :: x(neq)
       !! On entry, the right-hand side vector of the linear system to be solved,
-      !! and on exit, the solution vector.
-   real(rk), intent(inout) :: ewt(neq) ! @todo: harmonize names
+      !! and, on exit, the solution vector.
+   real(rk), intent(inout) :: ewt(neq)
       !! Nonzero elements of the diagonal scaling matrix.
    real(rk), intent(inout) :: rwm(*)
       !! Real work space containing data for the algorithm (Krylov basis vectors,
@@ -40,9 +192,9 @@ subroutine dslvk( &
       !! Preconditioner routine.
    integer, intent(out) :: iersl
       !! Error flag.
-      !! `iersl = 0` means no trouble occurred (or user `res` routine returned `ires < 0`).
-      !! `iersl = 1` means the iterative method failed to converge ([[dspigm]] returned `iflag > 0`).
-      !! `iersl = -1` means there was a nonrecoverable error in the iterative solver, and an error exit will occur.
+      !!  `0`: no trouble occurred (or user `res` routine returned `ires < 0`).
+      !!  `1`: iterative method failed to converge ([[dspigm]] returned `iflag > 0`).
+      !! `-1`: nonrecoverable error in the iterative solver, and an error exit will occur.
    real(rk), intent(in) :: cj
       !! Scalar used in forming the system Jacobian.
    real(rk), intent(in) :: epslin
@@ -151,7 +303,7 @@ subroutine dspigm( &
    integer, intent(in) :: neq
       !! Problem size.
    real(rk), intent(in) :: t
-      !! Current time.
+      !! Current independent variable.
    real(rk), intent(in) :: y(neq)
       !! Current dependent variables.
    real(rk), intent(in) :: ydot(neq)
@@ -159,7 +311,7 @@ subroutine dspigm( &
    real(rk), intent(in) :: savr(neq)
       !! Current residual evaluated at `(t, y, ydot)`.
    real(rk), intent(inout) :: r(neq)
-      !! On entry, the right hand side vector. Also used as work space when computing
+      !! On entry, the right hand side vector. Also used as workspace when computing
       !! the final approximation and will therefore be destroyed. `r` is the same as
       !! `v(:,maxl+1)` in the call to this routine.
    real(rk), intent(in) :: wght(neq)
@@ -210,16 +362,15 @@ subroutine dspigm( &
       !! Weighted norm of the final preconditioned residual.
    integer, intent(out) :: iflag
       !! Error flag.
-      !! 0 means convergence in `lgmr` iterations, `lgmr <= maxl`.
-      !! 1 means the convergence test did not pass in `maxl` iterations, but the new
+      !! `0`: convergence in `lgmr` iterations, `lgmr <= maxl`.
+      !! `1`: convergence test did not pass in `maxl` iterations, but the new
       !! residual norm (`rho`) is less than the old residual norm (`rnrm`), and so `z`
       !! is computed.
-      !! 2 means the convergence test did not pass in `maxl` iterations, new residual
+      !! `2`: convergence test did not pass in `maxl` iterations, new residual
       !! norm (`rho`) is greater than or equal to old residual norm (`rnrm`), and the
       !! initial guess, `z = 0`, is returned.
-      !! 3 means there was a recoverable error in `psol` caused by the preconditioner
-      !! being out of date.
-      !! -1 means there was an unrecoverable error in `psol`.
+      !! `3`: recoverable error in `psol` caused by the preconditioner being out of date.
+      !! `-1`: unrecoverable error in `psol`.
    integer, intent(in) :: irst
       !! Restarting flag. If `irst > 0`, then restarting is being performed.
    integer, intent(in) :: nrsts
@@ -244,7 +395,7 @@ subroutine dspigm( &
    z = zero
 
    ! Apply inverse of left preconditioner to vector R if NRSTS .EQ. 0.
-   ! Form V(*,1), the scaled preconditioned right hand side.
+   ! Form V(:,1), the scaled preconditioned right hand side.
    if (nrsts .eq. 0) then
       call psol(neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, r, epslin, ierr, rpar, ipar)
       npsol = 1
@@ -254,8 +405,8 @@ subroutine dspigm( &
       v(:, 1) = r
    end if
 
-   ! Calculate norm of scaled vector V(*,1) and normalize it
-   ! If, however, the norm of V(*,1) (i.e. the norm of the preconditioned
+   ! Calculate norm of scaled vector V(:,1) and normalize it
+   ! If, however, the norm of V(:,1) (i.e. the norm of the preconditioned
    ! residual) is .le. EPLIN, then return with Z=0.
    rnrm = dnrm2(neq, v, 1)
    if (rnrm .le. epslin) then
@@ -268,7 +419,7 @@ subroutine dspigm( &
    ! Zero out the HES array.
    hes = zero
 
-   ! Main loop to compute the vectors V(*,2) to V(*,MAXL).
+   ! Main loop to compute the vectors V(:,2) to V(:,MAXL).
    ! The running product PROD is needed for the convergence test.
    prod = one
    maxlp1 = maxl + 1
@@ -283,7 +434,7 @@ subroutine dspigm( &
       if (ires .lt. 0) return
       if (ierr .ne. 0) goto 300
 
-      ! Call routine DORTH to orthogonalize the new vector VNEW = V(*,LL+1).
+      ! Call routine DORTH to orthogonalize the new vector VNEW = V(:,LL+1).
       call dorth(v(1, ll + 1), v, hes, neq, ll, maxlp1, kmp, snormw)
       hes(ll + 1, ll) = snormw
 
@@ -292,7 +443,7 @@ subroutine dspigm( &
       if (info .eq. ll) goto 120
 
       ! Update RHO, the estimate of the norm of the residual R - A*ZL.
-      ! If KMP .LT. MAXL, then the vectors V(*,1),...,V(*,LL+1) are not
+      ! If KMP .LT. MAXL, then the vectors V(:,1),...,V(:,LL+1) are not
       ! necessarily orthogonal for LL .GT. KMP.  The vector DL must then
       ! be computed, and its norm used in the calculation of RHO.
       prod = prod*q(2*ll)
@@ -419,7 +570,7 @@ subroutine datv( &
    real(rk), intent(in) :: y(neq)
       !! Current dependent variables.
    real(rk), intent(in) :: t
-      !! Current time.
+      !! Current independent variable.
    real(rk), intent(in) :: ydot(neq)
       !! Current derivatives of dependent variables.
    real(rk), intent(in) :: savr(neq)
@@ -427,7 +578,7 @@ subroutine datv( &
    real(rk), intent(in) :: v(neq)
       !! Orthonormal vector (can be the same as `z`).  
    real(rk), intent(in) :: wght(neq)
-      !! Scaling factors. `1/wght(i)` are the diagonal elements of the matrix `D`.
+      !! Scaling factors. `1/wght(i)` are the diagonal elements of the matrix \(D\).
    real(rk), intent(out) :: ydottemp(neq)
       !! Work array used to store the incremented value of `ydot`.
    external :: res
@@ -500,15 +651,15 @@ pure subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
    implicit none
 
    real(rk), intent(inout) :: vnew(n)
-      !! On entry, vector containing a scaled product of the Jacobian and the vector `v(*,ll)`.
-      !! On return, the new vector orthogonal to `v(*,i0)`, where `i0 = max(1, ll - kmp + 1)`.
+      !! On entry, vector containing a scaled product of the Jacobian and the vector `v(:,ll)`.
+      !! On return, the new vector orthogonal to `v(:,i0)`, where `i0 = max(1, ll - kmp + 1)`.
    real(rk), intent(in) :: v(n, ll)
-      !! Matrix containing the previous `ll` orthogonal vectors `v(*,1)` to `v(*,ll)`.
+      !! Matrix containing the previous `ll` orthogonal vectors `v(:,1)` to `v(:,ll)`.
    real(rk), intent(inout) :: hes(ldhes, ll)
       !! On entry, an upper Hessenberg matrix of shape `(ll, ll)` containing in `hes(i,k)`,
-      !! for `k < ll`, the scaled inner products of `a*v(*,k)` and `v(*,i)`.
+      !! for `k < ll`, the scaled inner products of `a*v(:,k)` and `v(:,i)`.
       !! On return, an upper Hessenberg matrix with column `ll` filled in with the scaled
-      !! inner products of `a*v(*,ll)` and `v(*,i)`.
+      !! inner products of `a*v(:,ll)` and `v(:,i)`.
    integer, intent(in) :: n
       !! Order of the matrix `a`.
    integer, intent(in) :: ll
