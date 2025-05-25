@@ -1,6 +1,299 @@
 !----------------------------------------------------------------------------------------------
 ! Adapted from original Fortran code in `original/solver/ddaskr.f`
 !----------------------------------------------------------------------------------------------
+module daskr
+
+   use daskr_kinds, only: rk
+   implicit none
+   
+   abstract interface
+      subroutine res_t(t, y, ydot, cj, delta, ires, rpar, ipar)
+         import :: rk
+         real(rk), intent(in) :: t
+         real(rk), intent(in) :: y(*)
+         real(rk), intent(in) :: ydot(*)
+         real(rk), intent(in) :: cj
+         real(rk), intent(out) :: delta(*)
+         integer, intent(out) :: ires
+         real(rk), intent(inout) :: rpar(*)
+         integer, intent(inout) :: ipar(*)
+      end subroutine res_t
+
+      subroutine jacd_t(t, y, ydot, pd, cj, rpar, ipar)
+         import :: rk
+         procedure(res_t) :: res
+         real(rk), intent(in) :: t
+         real(rk), intent(in) :: y(*)
+         real(rk), intent(in) :: ydot(*)
+         real(rk), intent(out) :: pd(:,:)
+         real(rk), intent(in) :: cj
+         real(rk), intent(inout) :: rpar(*)
+         integer, intent(inout) :: ipar(*)
+      end subroutine jacd_t
+
+      subroutine jack_t(res, ires, neq, t, y, ydot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
+         import :: rk
+         procedure(res_t) :: res
+         integer, intent(out) :: ires
+         integer, intent(in) :: neq
+         real(rk), intent(in) :: t
+         real(rk), intent(inout) :: y(*)
+         real(rk), intent(inout) :: ydot(*)
+         real(rk), intent(in) :: rewt(*)
+         real(rk), intent(inout) :: savr(*)
+         real(rk), intent(inout) :: wk(*) !(neq)
+         real(rk), intent(in) :: h
+         real(rk), intent(in) :: cj
+         real(rk), intent(inout) :: rwp(*)
+         integer, intent(inout) :: iwp(*)
+         integer, intent(out) :: ierr
+         real(rk), intent(inout) :: rpar(*)
+         integer, intent(inout) :: ipar(*)
+      end subroutine jack_t
+
+      subroutine psol_t(neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
+         import :: rk
+         integer, intent(in) :: neq
+         real(rk), intent(in) :: t
+         real(rk), intent(in) :: y(*)
+         real(rk), intent(in) :: ydot(*)
+         real(rk), intent(in) :: savr(*)
+         real(rk), intent(inout) :: wk(*)
+         real(rk), intent(in) :: cj
+         real(rk), intent(in) :: wght(*)
+         real(rk), intent(inout) :: rwp(*)
+         integer, intent(inout) :: iwp(*)
+         real(rk), intent(inout) :: b(*)
+         real(rk), intent(in) :: epslin
+         integer, intent(out) :: ierr
+         real(rk), intent(inout) :: rpar(*)
+         integer, intent(inout) :: ipar(*)
+      end subroutine psol_t
+   end interface
+
+end module daskr
+
+subroutine dnedk( &
+   t, y, ydot, neq, res, jac, psol, &
+   h, wt, jstart, idid, rpar, ipar, phi, gama, savr, delta, e, &
+   rwm, iwm, cj, cjold, cjlast, s, uround, epli, sqrtn, rsqrtn, &
+   epscon, jcalc, jflag, kp1, nonneg, ntype, iernls)
+!! This routine solves a nonlinear system of algebraic equations of the form:
+!!
+!!  $$ G(t, y, \dot{y}) = 0 $$
+!!
+!! for the unknown \(y\). The method used is a matrix-free Newton scheme.
+
+   use daskr_kinds, only: rk, zero, one
+   use daskr, only: res_t, jack_t, psol_t
+   implicit none
+
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(inout) :: ydot(neq)
+      !! Derivative of solution vector after successful step.
+   integer, intent(in) :: neq
+      !! Problem size.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   procedure(jack_t) :: jac
+      !! User-defined Jacobian routine.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
+   real(rk), intent(in) :: h
+      !! Step size.
+   real(rk), intent(inout) :: wt(neq) ! @todo: confusing notation: wt ?= ewt ?= whgt
+      !! Weights for error control.
+   integer, intent(in) :: jstart ! @todo: ? convert to logical
+      !! Flag indicating whether this is the first call to this routine.
+      !! If `jstart = 0`, then this is the first call, otherwise it is not.
+   integer, intent(out) :: idid
+      !! Completion flag.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+   real(rk), intent(in) :: phi(neq, kp1)
+      !! Array of divided differences used by the Newton iteration.
+   real(rk), intent(in) :: gama(kp1)
+      !! Array used to predict `y` and `ydot`.
+   real(rk), intent(out) :: savr(neq)
+      !! Saved residual vector.
+   real(rk), intent(inout) :: delta(neq)
+      !! Real workspace.
+   real(rk), intent(out) :: e(neq)
+      !! Error accumulation vector.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(out) :: cjold
+      !! Value of `cj` as of the last call to [[ditmd]]. Accounts for changes in `cj`
+      !! needed to decide whether to call [[ditmd]].
+   real(rk), intent(in) :: cjlast
+      !! Previous value of `cj`.
+   real(rk), intent(out) :: s
+      !! Convergence factor for the Newton iteration. See [[dnsk]] for details. On the
+      !! first Newton iteration with an updated preconditioner, `s = 100`. The value of
+      !! `s` is preserved from call to call so that the rate estimate from a previous
+      !! step can be applied to the current step.
+   real(rk), intent(in) :: uround ! @todo: ? remove
+      !! Unit roundoff (not used).
+   real(rk), intent(in) :: epli ! @note: not the same as 'epslin'!
+      !! Convergence test constant for the iterative solution of linear systems. See
+      !! [[daskr]] for details.
+   real(rk), intent(in) :: sqrtn
+      !! Square root of `neq`.
+   real(rk), intent(in) :: rsqrtn
+      !! Reciprocal of square root of `neq`.
+   real(rk), intent(in) :: epscon
+      !! Tolerance for convergence of the Newton iteration.
+   integer, intent(out) :: jcalc
+      !! Flag indicating whether the Jacobian matrix needs to be updated.
+      !! `-1`: call [[ditmd]] to update the Jacobian matrix.
+      !!  `0`: Jacobian matrix is up-to-date.
+      !!  `1`: Jacobian matrix is outdated, but [[ditmd]] will not be called unless `jcalc` is set to `-1`.
+   integer, intent(in) :: jflag
+      !! Flag indicating whether a `jac` routine is supplied by the user.
+   integer, intent(in) :: kp1
+      !! The current order + 1. Updated across calls.
+   integer, intent(in) :: nonneg
+      !! Flag indicating whether nonnegativity constraints are imposed on the solution.
+      !! `0`: no nonnegativity constraints.
+      !! `1`: nonnegativity constraints are imposed.
+   integer, intent(in) :: ntype
+      !! Type of the nonlinear solver.
+      !! `1`: modified Newton with iterative linear solver.
+      !! `2`: modified Newton with user-supplied linear solver.
+   integer, intent(out) :: iernls
+      !! Error flag for the nonlinear solver.
+      !!  `0`: nonlinear solver converged.
+      !!  `1`: recoverable error inside non-linear solver.
+      !! `-1`: unrecoverable error inside non-linear solver.
+
+   integer, parameter :: lnre = 12, lnje = 13, llocwp = 29, llciwp = 30, &
+                         muldel = 0, maxit = 4
+   real(rk), parameter :: xrate = 0.25_rk
+
+   integer :: iernew, ierpj, iersl, iertyp, ires, j, liwp, lwp
+   real(rk) :: ddwnrm, delnrm, epslin, temp1, temp2, tolnew
+
+   ! Verify that this is the correct subroutine.
+   iertyp = 0
+   if (ntype .ne. 1) then
+      iertyp = 1
+      goto 380
+   end if
+
+   ! If this is the first step, perform initializations.
+   if (jstart .eq. 0) then
+      cjold = cj
+      jcalc = -1
+      s = 1e2_rk
+   end if
+
+   ! Perform all other initializations.
+   iernls = 0
+   lwp = iwm(llocwp)
+   liwp = iwm(llciwp)
+
+   ! Decide whether to update the preconditioner.
+   if (jflag .ne. 0) then
+      temp1 = (one - xrate)/(one + xrate)
+      temp2 = one/temp1
+      if ((cj/cjold .lt. temp1) .or. (cj/cjold .gt. temp2)) jcalc = -1
+      if (cj .ne. cjlast) s = 1e2_rk
+   else
+      jcalc = 0
+   end if
+
+   ! Looping point for updating preconditioner with current stepsize.
+300 continue
+
+   ! Initialize all error flags to zero.
+   ierpj = 0
+   ires = 0
+   iersl = 0
+   iernew = 0
+
+   ! Predict the solution and derivative and compute the tolerance for the Newton iteration.
+   y = phi(:, 1)
+   ydot = zero
+   do j = 2, kp1
+      y = y + phi(:, j)
+      ydot = ydot + gama(j)*phi(:, j)
+   end do
+
+330 continue
+   epslin = epli*epscon
+   tolnew = epslin
+
+   ! Call RES to initialize DELTA.
+   iwm(lnre) = iwm(lnre) + 1
+   call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+   if (ires .lt. 0) goto 380
+
+   ! If indicated, update the preconditioner.
+   ! Set JCALC to 0 as an indicator that this has been done.
+   if (jcalc .eq. -1) then
+      iwm(lnje) = iwm(lnje) + 1
+      jcalc = 0
+      call jac(res, ires, neq, t, y, ydot, wt, delta, e, h, cj, rwm(lwp), iwm(liwp), ierpj, rpar, ipar)
+      cjold = cj
+      s = 1e2_rk
+      if (ires .lt. 0) goto 380
+      if (ierpj .ne. 0) goto 380
+   end if
+
+   ! Call the nonlinear Newton solver.
+
+   call dnsk(t, y, ydot, neq, res, psol, wt, rpar, ipar, savr, &
+             delta, e, rwm, iwm, cj, sqrtn, rsqrtn, epslin, epscon, &
+             s, temp1, tolnew, muldel, maxit, ires, iersl, iernew)
+
+   if (iernew .gt. 0 .and. jcalc .ne. 0) then
+      ! The Newton iteration had a recoverable failure with an old
+      ! preconditioner. Retry the step with a new preconditioner.
+      jcalc = -1
+      goto 300
+   end if
+
+   if (iernew .ne. 0) goto 380
+
+   ! The Newton iteration has converged. If nonnegativity of solution is required, set
+   ! the solution nonnegative, if the perturbation to do it is small enough. If the
+   ! change is too large, then consider the corrector iteration to have failed.
+   if (nonneg .eq. 0) goto 390
+   delta = min(y, zero)
+   delnrm = ddwnrm(neq, delta, wt, rpar, ipar)
+   if (delnrm .gt. epscon) goto 380
+   e = e - delta
+   goto 390
+
+   ! Exits from nonlinear solver.
+   ! No convergence with current preconditioner.
+   ! Compute IERNLS and IDID accordingly.
+380 continue
+   if ((ires .le. -2) .or. (iersl .lt. 0) .or. (iertyp .ne. 0)) then
+      iernls = -1
+      if (ires .le. -2) idid = -11
+      if (iersl .lt. 0) idid = -13
+      if (iertyp .ne. 0) idid = -15
+   else
+      iernls = 1
+      if (ires .eq. -1) idid = -10
+      if (ierpj .ne. 0) idid = -5
+      if (iersl .gt. 0) idid = -14
+   end if
+
+390 continue
+   jcalc = 1
+
+end subroutine dnedk
 
 subroutine dnsk( &
    t, y, ydot, neq, res, psol, wt, rpar, ipar, &
@@ -13,6 +306,7 @@ subroutine dnsk( &
 !! for the unknown \(y\). The method used is a modified Newton scheme.
 
    use daskr_kinds, only: rk, zero, one
+   use daskr, only: res_t, psol_t
    implicit none
 
    real(rk), intent(in) :: t
@@ -23,11 +317,11 @@ subroutine dnsk( &
       !! Derivative of solution vector.
    integer, intent(in) :: neq
       !! Problem size.
-   external :: res
-      !! Residuals routine.
-   external :: psol
-      !! Preconditioner routine.
-   real(rk), intent(inout) :: wt(neq) ! ?? confusing notation: wt = ewt = whgt ?
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
+   real(rk), intent(inout) :: wt(neq) ! @todo: confusing notation: wt ?= ewt ?= whgt
       !! Weights for error control.
    real(rk), intent(inout) :: rpar(*)
       !! User real workspace.
@@ -108,7 +402,7 @@ subroutine dnsk( &
                  rpar, ipar)
       if ((ires .ne. 0) .or. (iersl .ne. 0)) exit
 
-      ! Update Y, E, and YPRIME.
+      ! Update Y, E, and YDOT.
       y = y - delta
       e = e - delta
       ydot = ydot - cj*delta
@@ -161,6 +455,7 @@ subroutine dslvk( &
 !! the linear system arising from a Newton iteration.
 
    use daskr_kinds, only: rk, zero
+   use daskr, only: res_t, psol_t
    use blas_interfaces, only: dscal, dcopy
    implicit none
 
@@ -184,12 +479,12 @@ subroutine dslvk( &
       !! Hessenberg matrix, etc.).
    integer, intent(inout) :: iwm(*)
       !! Integer work space containing data for the algorithm.
-   external :: res
-      !! Residuals routine.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
    integer, intent(out) :: ires
       !! Error flag from `res`.
-   external :: psol
-      !! Preconditioner routine.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
    integer, intent(out) :: iersl
       !! Error flag.
       !!  `0`: no trouble occurred (or user `res` routine returned `ires < 0`).
@@ -297,6 +592,7 @@ subroutine dspigm( &
 !! of the generalized minimum residual method. An initial guess of \(z=0\) is assumed.
 
    use daskr_kinds, only: rk, zero, one
+   use daskr, only: res_t, psol_t
    use blas_interfaces, only: dnrm2, dcopy, dscal, daxpy
    implicit none
 
@@ -325,14 +621,14 @@ subroutine dspigm( &
       !! Tolerance on residuals \(Az - r\) in weighted rms norm.
    real(rk), intent(in) :: cj
       !! Scalar used in forming the system Jacobian.
-   external :: res
-      !! Residuals routine.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
    integer, intent(out) :: ires
       !! Error flag from `res`.
    integer, intent(inout) :: nres
       !! Number of calls to `res`.
-   external :: psol
-      !! Preconditioner routine.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
    integer, intent(inout) :: npsol
       !! Number of calls to `psol`.
    real(rk), intent(out) :: z(neq)
@@ -564,6 +860,7 @@ subroutine datv( &
 !! means of a difference quotient, a call to `res`, and one call to `psol`.
 
    use daskr_kinds, only: rk
+   use daskr, only: res_t, psol_t
 
    integer, intent(in) :: neq
       !! Problem size.
@@ -581,12 +878,12 @@ subroutine datv( &
       !! Scaling factors. `1/wght(i)` are the diagonal elements of the matrix \(D\).
    real(rk), intent(out) :: ydottemp(neq)
       !! Work array used to store the incremented value of `ydot`.
-   external :: res
-      !! Residuals routine. 
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
    integer, intent(out) :: ires
       !! Error flag from `res`.
-   external :: psol
-      !! Preconditioner routine.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
    real(rk), intent(out) :: z(neq)
       !! Desired scaled matrix-vector product.
    real(rk), intent(out) :: vtemp(neq)
