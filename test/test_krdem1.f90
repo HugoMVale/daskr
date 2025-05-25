@@ -25,8 +25,8 @@ contains
       real(rk), intent(in):: cj
       real(rk), intent(out):: delta(neq)
       integer, intent(out) :: ires
-      real(rk), intent(in):: rpar
-      integer, intent(in) :: ipar
+      real(rk), intent(inout):: rpar
+      integer, intent(inout) :: ipar
 
       ! Check Y to make sure that it is valid input.
       ! If Y is less than or equal to zero, this is invalid input.
