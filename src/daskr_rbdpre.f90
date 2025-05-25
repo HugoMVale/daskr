@@ -118,7 +118,7 @@ contains
          !! Flag indicating whether to load the ID array in `iwork`. If `lid > 0`, set the ID 
          !! array in `iwork`, indicating which components are differential and which are algebraic.
          !! This value is required if either `info(11) = 1` or `info(16) = 1`, in which case
-         !! set `lid = 40` or `40 + neq`, depending on the value of the constraint option
+         !! set `lid = 40` or `lid = 40 + neq`, depending on the value of the constraint option
          !! `info(10)`. Otherwise, set `lid = 0`.
       integer, intent(inout) :: iwork(*)
          !! Integer work array.
@@ -199,9 +199,10 @@ contains
       integer, intent(out) :: ipbd(*)
          !! Pivots for the LU factorizations.
       integer, intent(out) :: ierr
-         !! Error flag. If no error occurred, `ierr = 0`; if a zero pivot was found at the k-th
-         !! stage in one of the LU factorizations, this routine returns `ierr = k > 0`.
-
+         !! Error flag.
+         !! `0`: no error occurred;
+         !! `k > 0`: a zero pivot was found at the `k`-th stage in one of the LU factorizations.
+      
       real(rk) :: del, dfac, fac, uj
       integer :: i, ibd, idiag, iip, j, j0, js, jx, jy
 
@@ -259,9 +260,9 @@ contains
       real(rk), intent(inout) :: b(*)
          !! Right-hand side vector on entry and solution vector on return.
       real(rk), intent(in) :: bd(*)
-         !! LU factors of the diagonal blocks. `bd` is the segment `rwp` of `rwork`.
+         !! LU factors of the diagonal blocks. `bd` corresponds to the segment `rwp` of `rwork`.
       integer, intent(in) :: ipbd(*)
-         !! Pivots for the LU factorizations. `ipbd` is the segment `iwp` of `iwork`.
+         !! Pivots for the LU factorizations. `ipbd` corresponds to the segment `iwp` of `iwork`.
 
       integer :: ib, ibd, jx, jy
 
