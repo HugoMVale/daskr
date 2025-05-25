@@ -18,9 +18,12 @@ contains
 
    pure subroutine uinit(u, udot, rpar, ipar)
    !! This routine computes and loads the vector of initial values.
-   !! The initial `u` values are given by the polynomial `u = 16*x*(1-x)*y*(1-y)`.
-   !! The initial `udot` values are set to zero ([[daskr]] corrects these during the first 
-   !! time step).
+   !! The initial \(u\) values are given by the polynomial:
+   !!
+   !! $$ u = 16 x (1-x) y (1-y) $$
+   !!
+   !! The initial \(\dot{u}\) values are set to zero; ([[daskr]] corrects these during the  
+   !! first time step).
 
       real(rk), intent(out) :: u(:)
       real(rk), intent(out) :: udot(:)
@@ -48,7 +51,7 @@ contains
    end subroutine uinit
 
    pure subroutine res(t, u, udot, cj, delta, ires, rpar, ipar)
-   !! User-supplied residuals subroutine.
+   !! User-defined residuals routine.
    !! It computes the residuals for the 2D discretized heat equation, with zero boundary values.
 
       real(rk), intent(in) :: t
@@ -86,7 +89,7 @@ contains
    end subroutine res
 
    pure subroutine rt(neq, t, u, udot, nrt, rval, rpar, ipar)
-   !! Roots routine.
+   !! User-defined roots routine.
    
       integer, intent(in) :: neq
       real(rk), intent(in) :: t

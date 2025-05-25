@@ -473,9 +473,9 @@ contains
 
    subroutine psol_ilupre( &
       neq, t, y, ydot, r0, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
-   !! This subroutine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
-   !! given a vector \(b\), using the LU decomposition produced by [[jac_ilupre]]. The solution
-   !! is carried out by [[lusol]] from SPARSKIT.
+   !! This subroutine solves the linear system \(P x = b\) for the sparse preconditioner \(P\),
+   !! given a vector \(b\), using the incomplete LU decomposition produced by [[jac_ilupre]].
+   !! The solution is carried out by [[lusol]] from SPARSKIT.
 
       use dsparskit, only: lusol, dvperm
 
