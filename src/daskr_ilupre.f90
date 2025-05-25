@@ -289,7 +289,7 @@ contains
       integer, intent(in) :: neq
          !! Problem size.
       real(rk), intent(in) :: t
-         !! Independent variable.
+         !! Current independent variable.
       real(rk), intent(inout) :: y(neq)
          !! Current dependent variables.
       real(rk), intent(inout) :: ydot(neq)
@@ -481,7 +481,7 @@ contains
       integer, intent(in) :: neq
          !! Problem size.
       real(rk), intent(in) :: t
-         !! Independent variable (not used).
+         !! Current independent variable (not used).
       real(rk), intent(in) :: y(*)
          !! Current dependent variables (not used).
       real(rk), intent(in) :: ydot(*)
@@ -566,7 +566,7 @@ contains
       integer, intent(in) :: neq
          !! Problem size.
       real(rk), intent(in) :: t
-         !! Independent variable.
+         !! Current independent variable.
       real(rk), intent(inout) :: y(neq)
          !! Current dependent variables.
       real(rk), intent(inout) :: ydot(neq)

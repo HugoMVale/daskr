@@ -167,7 +167,7 @@ contains
       use dlinpack, only: dgefa
 
       real(rk), intent(in) :: t
-         !! Independent variable.
+         !! Current independent variable.
       real(rk), intent(inout) :: u(*)
          !! Current dependent variables.
       real(rk), intent(in) :: r0(*)
