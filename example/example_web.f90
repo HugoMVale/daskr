@@ -198,9 +198,9 @@ contains
       real(rk), intent(in) :: cdot(*)
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
-      integer, intent(in) :: ires
+      integer, intent(out) :: ires
       real(rk), intent(inout) :: rpar(*)
-      integer, intent(in) :: ipar(*)
+      integer, intent(inout) :: ipar(*)
 
       integer :: i, ic0, ici, iyoff, jx, jy
 
@@ -298,7 +298,7 @@ contains
 
    end subroutine rates
 
-   subroutine jac(res_, ires, neq, t, c, cdot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
+   subroutine jac(res, ires, neq, t, c, cdot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
    !! This routine interfaces to subroutines [[jac_rbdpre]] or [[jac_rbgpre]], depending on the 
    !! flag `jbg = ipar(2)`, to generate and preprocess the block-diagonal Jacobian corresponding
    !! to the reaction term.
@@ -313,23 +313,24 @@ contains
 
       use daskr_rbdpre, only: jac_rbdpre
       use daskr_rbgpre, only: jac_rbgpre
+      use daskr, only: res_t
       
-      external :: res_
-      integer, intent(in) :: ires
+      procedure(res_t) :: res
+      integer, intent(out) :: ires
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(inout) :: c(*)
       real(rk), intent(in) :: cdot(*)
       real(rk), intent(in) :: rewt(*)
-      real(rk), intent(in) :: savr(*)
+      real(rk), intent(inout) :: savr(*)
       real(rk), intent(inout) :: wk(*)
       real(rk), intent(in) :: h
       real(rk), intent(in) :: cj
       real(rk), intent(inout) :: rwp(*)
       integer, intent(inout) :: iwp(*)
-      integer, intent(inout) :: ierr
-      real(rk), intent(in) :: rpar(*)
-      integer, intent(in) :: ipar(*)
+      integer, intent(out) :: ierr
+      real(rk), intent(inout) :: rpar(*)
+      integer, intent(inout) :: ipar(*)
 
       integer :: jbg
 
@@ -342,7 +343,7 @@ contains
 
    end subroutine jac
 
-   subroutine psol(neq, t, c, cdot, savr, wk, cj, wt, rwp, iwp, b, epslin, ierr, rpar, ipar)
+   subroutine psol(neq, t, c, cdot, savr, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This routine applies the inverse of a product preconditioner matrix to the vector in the
    !! array `b`. Depending on the flag `jpre`, this involves a call to `gauss_seidel`, for the
    !! inverse of the spatial factor, and/or a call to [[psol_rbdpre]] or [[psol_rbgpre]] for the
@@ -361,14 +362,14 @@ contains
       real(rk), intent(in) :: savr(*)
       real(rk), intent(inout) :: wk(*)
       real(rk), intent(in) :: cj
-      real(rk), intent(in) :: wt(*)
-      real(rk), intent(in) :: rwp(*)
-      integer, intent(in) :: iwp(*)
+      real(rk), intent(in) :: wght(*)
+      real(rk), intent(inout) :: rwp(*)
+      integer, intent(inout) :: iwp(*)
       real(rk), intent(inout) :: b(*)
       real(rk), intent(in) :: epslin
-      integer, intent(inout) :: ierr
+      integer, intent(out) :: ierr
       real(rk), intent(inout) :: rpar(*)
-      integer, intent(in) :: ipar(*)
+      integer, intent(inout) :: ipar(*)
 
       integer :: jbg, jpre
       real(rk) :: hl0
