@@ -56,8 +56,8 @@ contains
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
       integer, intent(out) :: ires
-      real(rk), intent(in) :: rpar(*)
-      integer, intent(in) :: ipar(*)
+      real(rk), intent(inout) :: rpar(*)
+      integer, intent(inout) :: ipar(*)
 
       integer :: i, ioff, j, k, m, m2, neq
       real(rk) :: coeff, temx, temy
