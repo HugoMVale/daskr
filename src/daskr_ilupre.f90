@@ -90,6 +90,7 @@ module daskr_ilupre
 !! The program [[example_heatilu]] demonstrates the use of this preconditioner.
 
    use daskr_kinds, only: rk, zero, one
+   use daskr, only: res_t
    implicit none
    private
 
@@ -282,9 +283,9 @@ contains
 
       use dsparskit, only: amudia, dvperm, prtmt, roscal
 
-      external :: res
-         !! Function that evaluates residuals.
-      integer, intent(inout) :: ires
+      procedure(res_t) :: res
+         !! User-defined residuals routine.
+      integer, intent(out) :: ires
          !! Error flag set by `res`.
       integer, intent(in) :: neq
          !! Problem size.
@@ -304,9 +305,9 @@ contains
          !! Current step size.
       real(rk), intent(in) :: cj
          !! Scalar used in forming the system Jacobian.
-      real(rk), intent(out) :: rwp(*)
+      real(rk), intent(inout) :: rwp(*)
          !! Matrix elements of ILU.
-      integer, intent(out) :: iwp(*)
+      integer, intent(inout) :: iwp(*)
          !! Array indices for elements of ILU.
       integer, intent(out) :: ierr
          !! Error flag (0 means success, else failure).
@@ -581,8 +582,8 @@ contains
          !! Real work space available to this subroutine.
       real(rk), intent(in) :: rewt(neq)
          !! Reciprocal error weights for scaling `y` and `ydot`.
-      external :: res
-         !! Function that evaluates residuals.
+      procedure(res_t) :: res
+         !! User-defined residuals routine.
       real(rk), intent(in) ::  h
          !! Current step size.
       real(rk), intent(in) :: cj

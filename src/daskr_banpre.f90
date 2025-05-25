@@ -55,6 +55,7 @@ module daskr_banpre
 !! The program [[example_heat]] demonstrates the use of this preconditioner.  
 
    use daskr_kinds, only: rk, one
+   use daskr, only: res_t
    implicit none
    private
 
@@ -63,7 +64,7 @@ module daskr_banpre
 contains
 
    subroutine jac_banpre( &
-      res, ires, neq, t, y, ydot, rewt, savres, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
+      res, ires, neq, t, y, ydot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
    !! This routine generates a banded preconditioner matrix \(P\) that approximates the Jacobian
    !! matrix \(J\). The banded matrix \(P\) has half-bandwidths \(\mathrm{ml}\) and \(\mathrm{mu}\),
    !! and is computed by making \(\mathrm{ml} + \mathrm{mu} + 1\) calls to the user's `res`
@@ -73,7 +74,8 @@ contains
 
       use dlinpack, only: dgbfa
 
-      external :: res
+      procedure(res_t) :: res
+        !! User-defined residuals routine.
       integer, intent(out) :: ires
         !! Error flag set by `res`.
       integer, intent(in) :: neq
@@ -86,9 +88,9 @@ contains
         !! Current derivatives of dependent variables.
       real(rk), intent(in) :: rewt(*)
         !! Reciprocal error weights for scaling `y` and `ydot`.
-      real(rk), intent(in) :: savres(*)
+      real(rk), intent(inout) :: savr(*)
         !! Current residual evaluated at `(t, y, ydot)`.
-      real(rk), intent(in) :: wk(*)
+      real(rk), intent(inout) :: wk(*)
         !! Real work space available to this subroutine.
       real(rk), intent(in) :: h
         !! Current step size.
@@ -167,7 +169,7 @@ contains
             i2 = min(neq, n + ml)
             ii = n*meb1 - ml
             do i = i1, i2
-               rwp(ii + i) = (wk(i) - savres(i))*delinv
+               rwp(ii + i) = (wk(i) - savr(i))*delinv
             end do
          end do
       
@@ -179,7 +181,7 @@ contains
    end subroutine jac_banpre
 
    subroutine psol_banpre( &
-      neq, t, y, ydot, savres, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
+      neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This routine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
    !! given a vector \(b\), using the LU decomposition produced by [[jac_banpre]]. The solution
    !! is carried out by [[dgbsl]] from LINPACK.
@@ -194,7 +196,7 @@ contains
         !! Current dependent variables (not used).
       real(rk), intent(in) :: ydot(*)
         !! Current derivatives of dependent variables (not used).
-      real(rk), intent(in) :: savres(*)
+      real(rk), intent(in) :: savr(*)
         !! Current residual evaluated at `(t, y, ydot)` (not used).
       real(rk), intent(in) :: wk(*)
         !! Real work space available to this subroutine (not used).
