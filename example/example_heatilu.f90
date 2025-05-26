@@ -58,7 +58,7 @@ contains
       real(rk), intent(in) :: udot(*)
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
-      integer, intent(out) :: ires
+      integer, intent(inout) :: ires
       real(rk), intent(inout) :: rpar(*)
       integer, intent(inout) :: ipar(*)
 

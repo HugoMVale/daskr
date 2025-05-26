@@ -101,7 +101,7 @@ contains
         !! banded approximation \(P\).
       integer, intent(inout) :: iwp(*)
         !! Integer work space for matrix pivot information.
-      integer, intent(out) :: ierr
+      integer, intent(inout) :: ierr
         !! Error flag: `ierr > 0` if \(P\) is singular, and `ierr = 0` otherwise.
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
@@ -212,8 +212,8 @@ contains
         !! Right-hand side vector on input; solution on output.
       real(rk), intent(in) :: epslin
         !! Tolerance for linear system (not used).
-      integer, intent(out) :: ierr
-        !! Error flag (not used).
+      integer, intent(inout) :: ierr
+        !! Error flag.
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and user routines
         !! (not used).
@@ -226,6 +226,8 @@ contains
       ml = ipar(1)
       mu = ipar(2)
       meband = 2*ml + mu + 1
+      
+      ierr = 0
       call dgbsl(rwp, meband, neq, ml, mu, iwp, b, 0)
 
    end subroutine psol_banpre

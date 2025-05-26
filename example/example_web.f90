@@ -198,7 +198,7 @@ contains
       real(rk), intent(in) :: cdot(*)
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
-      integer, intent(out) :: ires
+      integer, intent(inout) :: ires
       real(rk), intent(inout) :: rpar(*)
       integer, intent(inout) :: ipar(*)
 
@@ -328,7 +328,7 @@ contains
       real(rk), intent(in) :: cj
       real(rk), intent(inout) :: rwp(*)
       integer, intent(inout) :: iwp(*)
-      integer, intent(out) :: ierr
+      integer, intent(inout) :: ierr
       real(rk), intent(inout) :: rpar(*)
       integer, intent(inout) :: ipar(*)
 
@@ -367,7 +367,7 @@ contains
       integer, intent(inout) :: iwp(*)
       real(rk), intent(inout) :: b(*)
       real(rk), intent(in) :: epslin
-      integer, intent(out) :: ierr
+      integer, intent(inout) :: ierr
       real(rk), intent(inout) :: rpar(*)
       integer, intent(inout) :: ipar(*)
 

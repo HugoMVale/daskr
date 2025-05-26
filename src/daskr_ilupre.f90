@@ -309,7 +309,7 @@ contains
          !! Matrix elements of ILU.
       integer, intent(inout) :: iwp(*)
          !! Array indices for elements of ILU.
-      integer, intent(out) :: ierr
+      integer, intent(inout) :: ierr
          !! Error flag (0 means success, else failure).
       real(rk), intent(inout) :: rpar(*)
          !! Real array used for communication between the calling program and user routines.
@@ -503,7 +503,7 @@ contains
          !! Right-hand side vector on input; solution on output.
       real(rk), intent(in) :: epslin
          !! Tolerance for linear system (not used).
-      integer, intent(out) :: ierr
+      integer, intent(inout) :: ierr
          !! Error flag (not used).
       real(rk), intent(inout) :: rpar(*)
          !! Real array used for communication between the calling program and user routines

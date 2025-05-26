@@ -198,7 +198,7 @@ contains
          !! LU factors of the diagonal blocks.
       integer, intent(out) :: ipbd(*)
          !! Pivots for the LU factorizations.
-      integer, intent(out) :: ierr
+      integer, intent(inout) :: ierr
          !! Error flag.
          !! `0`: no error occurred;
          !! `k > 0`: a zero pivot was found at the `k`-th stage in one of the LU factorizations.
