@@ -14,7 +14,7 @@ module daskr
          real(rk), intent(in) :: ydot(*)
          real(rk), intent(in) :: cj
          real(rk), intent(out) :: delta(*)
-         integer, intent(out) :: ires
+         integer, intent(inout) :: ires
          real(rk), intent(inout) :: rpar(*)
          integer, intent(inout) :: ipar(*)
       end subroutine res_t
@@ -46,7 +46,7 @@ module daskr
          real(rk), intent(in) :: cj
          real(rk), intent(inout) :: rwp(*)
          integer, intent(inout) :: iwp(*)
-         integer, intent(out) :: ierr
+         integer, intent(inout) :: ierr
          real(rk), intent(inout) :: rpar(*)
          integer, intent(inout) :: ipar(*)
       end subroutine jack_t
@@ -65,7 +65,7 @@ module daskr
          integer, intent(inout) :: iwp(*)
          real(rk), intent(inout) :: b(*)
          real(rk), intent(in) :: epslin
-         integer, intent(out) :: ierr
+         integer, intent(inout) :: ierr
          real(rk), intent(inout) :: rpar(*)
          integer, intent(inout) :: ipar(*)
       end subroutine psol_t
@@ -180,7 +180,8 @@ subroutine dnedk( &
    real(rk), parameter :: xrate = 0.25_rk
 
    integer :: iernew, ierpj, iersl, iertyp, ires, j, liwp, lwp
-   real(rk) :: ddwnrm, delnrm, epslin, temp1, temp2, tolnew
+   real(rk) :: delnrm, epslin, temp1, temp2, tolnew
+   real(rk) :: ddwnrm ! @todo: remove this once inside module
 
    ! Verify that this is the correct subroutine.
    iertyp = 0
@@ -376,7 +377,8 @@ subroutine dnsk( &
    integer, parameter :: lnni = 19, lnre = 12
 
    integer :: m
-   real(rk) :: ddwnrm, delnrm, oldnrm, rate, rhok
+   real(rk) :: delnrm, oldnrm, rate, rhok
+   real(rk) :: ddwnrm ! @todo: remove this once inside module
    logical :: converged
 
    ! Initialize Newton counter M and accumulation vector E.
