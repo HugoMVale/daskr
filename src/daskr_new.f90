@@ -73,6 +73,95 @@ module daskr
 
 end module daskr
 
+subroutine dfnrmk( &
+   neq, y, t, ydot, savr, r, cj, tscale, wght, &
+   sqrtn, rsqrtn, res, ires, psol, irin, ierr, &
+   fnorm, epslin, rwp, iwp, wk, rpar, ipar)
+!! This routine calculates the scaled preconditioned norm of the nonlinear function used
+!! in the nonlinear iteration for obtaining consistent initial conditions. Specifically,
+!! it calculates the weighted root-mean-square norm of the vector:
+!!
+!! $$  r = P^{-1} G(t,y,\dot{y}) $$
+!!
+!! where \(P\) is the preconditioner matrix and $G$ is the DAE equation.
+   
+   use daskr_kinds, only: rk, zero
+   use daskr, only: res_t, psol_t
+   implicit none
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(in) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(in) :: ydot(neq)
+      !! Derivative of solution vector after successful step.
+   real(rk), intent(inout) :: savr(neq)
+      !! Saved residual vector.
+   real(rk), intent(out) :: r(neq)
+      !! Result vector.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: tscale
+      !! Scale factor in `t`; used for stopping tests if nonzero. ! @todo: what is "t?
+   real(rk), intent(inout) :: wght(neq)
+      !! Scaling factors.
+   real(rk), intent(in) :: sqrtn
+      !! Square root of `neq`.
+   real(rk), intent(in) :: rsqrtn
+      !! Reciprocal of square root of `neq`.   
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   integer, intent(out) :: ires
+      !! Error flag from `res`.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
+   integer, intent(in) :: irin
+      !! Flag indicating whether the current residual vector is input in `savr`.
+      !! `0`: it is not.
+      !! `1`: it is.
+   integer, intent(out) :: ierr
+      !! Error flag from `psol`.
+   real(rk), intent(out) :: fnorm
+      !! Weighted root-mean-square norm of `r`.
+   real(rk), intent(in) :: epslin
+      !! Tolerance for linear system.
+   real(rk), intent(inout) :: rwp(*)
+      !! Real work array used by preconditioner `psol`.
+   integer, intent(inout) :: iwp(*)
+      !! Integer work array used by preconditioner `psol`.
+   real(rk), intent(inout) :: wk(neq)
+      !! Real work array used by `psol`.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+
+   real(rk) :: ddwnrm ! @todo: remove this once inside module
+
+   ! Call RES routine if IRIN = 0.
+   if (irin .eq. 0) then
+      ires = 0
+      call res(t, y, ydot, cj, savr, ires, rpar, ipar)
+      if (ires .lt. 0) return
+   end if
+
+   ! Apply inverse of left preconditioner to vector R.
+   ! First scale WT array by 1/sqrt(N), and undo scaling afterward.
+   call dcopy(neq, savr, 1, r, 1)
+   call dscal(neq, rsqrtn, wght, 1)
+   ierr = 0
+   call psol(neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, r, epslin, ierr, rpar, ipar)
+   call dscal(neq, sqrtn, wght, 1)
+   if (ierr .ne. 0) return
+
+   ! Calculate norm of R.
+   fnorm = ddwnrm(neq, r, wght, rpar, ipar)
+   if (tscale .gt. zero) fnorm = fnorm*tscale*abs(cj)
+
+end subroutine dfnrmk
+
 subroutine dnedk( &
    t, y, ydot, neq, res, jac, psol, &
    h, wt, jstart, idid, rpar, ipar, phi, gama, savr, delta, e, &
