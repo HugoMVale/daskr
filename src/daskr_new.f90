@@ -76,14 +76,14 @@ end module daskr
 subroutine dfnrmk( &
    neq, y, t, ydot, savr, r, cj, tscale, wght, &
    sqrtn, rsqrtn, res, ires, psol, irin, ierr, &
-   fnorm, epslin, rwp, iwp, wk, rpar, ipar)
+   rnorm, epslin, rwp, iwp, wk, rpar, ipar)
 !! This routine calculates the scaled preconditioned norm of the nonlinear function used
 !! in the nonlinear iteration for obtaining consistent initial conditions. Specifically,
 !! it calculates the weighted root-mean-square norm of the vector:
 !!
 !! $$  r = P^{-1} G(t,y,\dot{y}) $$
 !!
-!! where \(P\) is the preconditioner matrix and $G$ is the DAE equation.
+!! where \(P\) is the preconditioner matrix and \(G\) is the DAE equation vector.
    
    use daskr_kinds, only: rk, zero
    use daskr, only: res_t, psol_t
@@ -103,8 +103,8 @@ subroutine dfnrmk( &
       !! Result vector.
    real(rk), intent(in) :: cj
       !! Scalar used in forming the system Jacobian.
-   real(rk), intent(in) :: tscale
-      !! Scale factor in `t`; used for stopping tests if nonzero. ! @todo: what is "t?
+   real(rk), intent(in) :: tscale ! @todo: what is "t?
+      !! Scale factor in `t`; used for stopping tests if nonzero. 
    real(rk), intent(inout) :: wght(neq)
       !! Scaling factors.
    real(rk), intent(in) :: sqrtn
@@ -123,7 +123,7 @@ subroutine dfnrmk( &
       !! `1`: it is.
    integer, intent(out) :: ierr
       !! Error flag from `psol`.
-   real(rk), intent(out) :: fnorm
+   real(rk), intent(out) :: rnorm
       !! Weighted root-mean-square norm of `r`.
    real(rk), intent(in) :: epslin
       !! Tolerance for linear system.
@@ -157,8 +157,8 @@ subroutine dfnrmk( &
    if (ierr .ne. 0) return
 
    ! Calculate norm of R.
-   fnorm = ddwnrm(neq, r, wght, rpar, ipar)
-   if (tscale .gt. zero) fnorm = fnorm*tscale*abs(cj)
+   rnorm = ddwnrm(neq, r, wght, rpar, ipar)
+   if (tscale .gt. zero) rnorm = rnorm*tscale*abs(cj)
 
 end subroutine dfnrmk
 
