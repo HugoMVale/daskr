@@ -83,12 +83,12 @@ subroutine dlinsk( &
 !!
 !!   $$ f(y_{new},\dot{y}_{new}) \leq (1 - 2 \alpha \lambda) f(y,\dot{y})$$
 !!
-!! where \(0 < \lambda <= 1\), and \( f(y,\dot{y}) \) is defined as:
+!! where \(0 < \lambda \le 1\), and \( f(y,\dot{y}) \) is defined as:
 !!
 !! $$ f(y,\dot{y}) = (1/2) \| (P^{-1} G(t,y,\dot{y}) \|^2 $$
 !!
-!! where the norm is the weighted RMS vector norm, \(G\) is the DAE system residual function,
-!! and \(P\) is the preconditioner used in the Krylov iteration.
+!! where the norm is the weighted root mean square vector norm, \(G\) is the DAE system
+!! residual function, and \(P\) is the preconditioner used in the Krylov iteration.
 
    use daskr_kinds, only: rk, one, two
    use daskr, only: res_t, psol_t
@@ -143,7 +143,7 @@ subroutine dlinsk( &
    real(rk), intent(in) :: rhok
       !! Weighted norm of preconditioned Krylov residual (not used).
    real(rk), intent(inout) :: fnorm
-      !! Value of \( \sqrt{2*f} \) for the current \( (y,\dot{y}) \) on input and output.
+      !! Value of \( \sqrt{2f} \) for the current \( (y,\dot{y}) \) on input and output.
    integer, intent(in) :: icopt
       !! Initial condition flag.
    integer, intent(in) :: id(neq)
