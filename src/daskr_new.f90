@@ -73,6 +73,210 @@ module daskr
 
 end module daskr
 
+subroutine dlinsk( &
+   neq, y, t, ydot, savr, cj, tscale, p, pnorm, &
+   wght, sqrtn, rsqrtn, lsoff, stptol, iret, res, ires, psol, &
+   rwm, iwm, rhok, fnorm, icopt, id, rwp, iwp, r, epslin, ynew, ydotnew, &
+   pwk, icnflg, icnstr, rlx, rpar, ipar)
+!! This routine uses a linesearch algorithm to calculate a new \( (y,\dot{y}) \) pair,
+!! denoted \( (y_{new},\dot{y}_{new}) \), such that:
+!!
+!!   $$ f(y_{new},\dot{y}_{new}) \leq (1 - 2 \alpha \lambda) f(y,\dot{y})$$
+!!
+!! where \(0 < \lambda <= 1\), and \( f(y,\dot{y}) \) is defined as:
+!!
+!! $$ f(y,\dot{y}) = (1/2) \| (P^{-1} G(t,y,\dot{y}) \|^2 $$
+!!
+!! where the norm is the weighted RMS vector norm, \(G\) is the DAE system residual function,
+!! and \(P\) is the preconditioner used in the Krylov iteration.
+
+   use daskr_kinds, only: rk, one, two
+   use daskr, only: res_t, psol_t
+   external :: xerrwd
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(inout) :: y(neq)
+      !! On entry, the current solution vector. On return, the new solution vector.
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: ydot(neq)
+      !! On entry, the current derivative vector. On return, the new derivative vector.
+   real(rk), intent(out) :: savr(neq)
+      !! New residual vector.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: tscale ! @todo: what is "t"?
+      !! Scale factor in `t`; used for stopping tests if nonzero.
+   real(rk), intent(inout) :: p(neq)
+      !! Approximate Newton step used in backtracking.
+   real(rk), intent(inout) :: pnorm
+      !! Weighted root mean square norm of `p`.
+   real(rk), intent(inout) :: wght(neq)
+      !! Scaling factors.
+   real(rk), intent(in) :: sqrtn
+      !! Square root of `neq`.
+   real(rk), intent(in) :: rsqrtn
+      !! Reciprocal of square root of `neq`.
+   integer, intent(in) :: lsoff ! @todo: convert to logical
+      !! Flag showing whether the linesearch algorithm is to be invoked.
+      !! `0`: do the linesearch.
+      !! `1`: turn off linesearch.
+   real(rk), intent(in) :: stptol
+      !! Tolerance used in calculating the minimum lambda (`rl`) value allowed.
+   integer, intent(out) :: iret
+      !! Return flag.
+      !! `0`: a satisfactory (y,y') was found.
+      !! `1`: the routine failed to find a new (y,y') pair that was sufficiently distinct
+      !! from the current one.
+      !! `2`: a failure in `res` or `psol`.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   integer, intent(out) :: ires
+      !! Error flag from `res`.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(in) :: rhok
+      !! Weighted norm of preconditioned Krylov residual (not used).
+   real(rk), intent(inout) :: fnorm
+      !! Value of \( \sqrt{2*f} \) for the current \( (y,\dot{y}) \) on input and output.
+   integer, intent(in) :: icopt
+      !! Initial condition flag.
+   integer, intent(in) :: id(neq)
+      !! Array indicating which variables are differential and which are algebraic.
+   real(rk), intent(inout) :: rwp(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwp(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(out) :: r(neq)
+      !! Work space for  the residual vector.
+   real(rk), intent(in) :: epslin
+      !! Tolerance for linear system.
+   real(rk), intent(out) :: ynew(neq)
+      !! New solution vector.
+   real(rk), intent(out) :: ydotnew(neq)
+      !! New derivative of solution vector.
+   real(rk), intent(inout) :: pwk(*)
+      !! Real work array used by `psol`.
+   integer, intent(in) :: icnflg
+      !! Constraint flag. If nonzero, then constraint violations in the proposed new
+      !! approximate solution will be checked for, and the maximum step length will be
+      !! adjusted accordingly.
+   integer, intent(out) :: icnstr(neq)
+      !! Flags for checking constraints.
+   real(rk), intent(in) :: rlx
+      !! Factor for restricting update size in [[dcnstr]].
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+
+   integer, parameter :: lnres = 12, lnpsol = 21, lkprint = 31
+   real(rk), parameter :: alpha = 1e-4_rk
+   integer :: ierr, ivar, kprint
+   real(rk) :: f1norm, f1normp, fnormp, ratio, ratio1, rl, rlmin, slpi, tau
+   character(len=80) :: msg
+
+   kprint = iwm(lkprint)
+   f1norm = (fnorm**2)/2
+   ratio = one
+
+   if (kprint .ge. 2) then
+      msg = '------ IN ROUTINE DLINSK-- PNRM = (R1)'
+      call xerrwd(msg, 38, 921, 0, 0, 0, 0, 1, pnorm, zero)
+   end if
+   tau = pnorm
+   rl = one
+
+   ! Check for violations of the constraints, if any are imposed.
+   ! If any violations are found, the step vector P is rescaled, and the
+   ! constraint check is repeated, until no violations are found.
+   if (icnflg .ne. 0) then
+      do
+         call dyypnw(neq, y, ydot, cj, rl, p, icopt, id, ynew, ydotnew)
+         call dcnstr(neq, y, ynew, icnstr, tau, rlx, iret, ivar)
+         if (iret .ne. 1) exit
+         ratio1 = tau/pnorm
+         ratio = ratio*ratio1
+         p = p*ratio1
+         pnorm = tau
+         if (kprint .ge. 2) then
+            msg = '------ CONSTRAINT VIOL., PNRM = (R1), INDEX = (I1)'
+            call xerrwd(msg, 50, 922, 0, 1, ivar, 0, 1, pnorm, zero)
+         end if
+         if (pnorm .le. stptol) then
+            iret = 1
+            return
+         end if
+      end do
+   end if
+
+   slpi = -two*f1norm*ratio
+   rlmin = stptol/pnorm
+   if ((lsoff .eq. 0) .and. (kprint .ge. 2)) then
+      msg = '------ MIN. LAMBDA = (R1)'
+      call xerrwd(msg, 25, 923, 0, 0, 0, 0, 1, rlmin, zero)
+   end if
+
+   ! Begin iteration to find RL value satisfying alpha-condition.
+   ! Update YNEW and YDOTNEW, then compute norm of new scaled residual and
+   ! perform alpha condition test.
+   do
+      call dyypnw(neq, y, ydot, cj, rl, p, icopt, id, ynew, ydotnew)
+      call dfnrmk(neq, ynew, t, ydotnew, savr, r, cj, tscale, wght, &
+                  sqrtn, rsqrtn, res, ires, psol, 0, ierr, fnormp, epslin, &
+                  rwp, iwp, pwk, rpar, ipar)
+      iwm(lnres) = iwm(lnres) + 1
+      if (ires .ge. 0) iwm(lnpsol) = iwm(lnpsol) + 1
+      if (ires .ne. 0 .or. ierr .ne. 0) then
+         iret = 2
+         return
+      end if
+
+      if (lsoff .eq. 1) goto 150
+
+      f1normp = (fnormp**2)/2
+      if (kprint .ge. 2) then
+         msg = '------ LAMBDA = (R1)'
+         call xerrwd(msg, 20, 924, 0, 0, 0, 0, 1, rl, zero)
+         msg = '------ NORM(F1) = (R1),  NORM(F1NEW) = (R2)'
+         call xerrwd(msg, 43, 925, 0, 0, 0, 0, 2, f1norm, f1normp)
+      end if
+
+      if (f1normp .gt. f1norm + alpha*slpi*rl) goto 200
+
+      ! Alpha-condition is satisfied, or linesearch is turned off.
+      ! Copy YNEW,YPNEW to Y,YPRIME and return.
+150   continue
+      iret = 0
+      y = ynew
+      ydot = ydotnew
+      fnorm = fnormp
+      if (kprint .ge. 1) then
+         msg = '------ LEAVING ROUTINE DLINSK, FNRM = (R1)'
+         call xerrwd(msg, 42, 926, 0, 0, 0, 0, 1, fnorm, zero)
+      end if
+      return
+
+      ! Alpha-condition not satisfied.  Perform backtrack to compute new RL
+      ! value.  If RL is less than RLMIN, i.e. no satisfactory YNEW,YPNEW can
+      ! be found sufficiently distinct from Y,YPRIME, then return IRET = 1.
+200   continue
+      if (rl .lt. rlmin) then
+         iret = 1
+         return
+      end if
+
+      rl = rl/2
+   end do
+
+end subroutine dlinsk
+
+
 subroutine dfnrmk( &
    neq, y, t, ydot, savr, r, cj, tscale, wght, &
    sqrtn, rsqrtn, res, ires, psol, irin, ierr, &
