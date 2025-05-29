@@ -185,7 +185,7 @@ subroutine dlinsk( &
    f1norm = (fnorm**2)/2
    ratio = one
 
-   if (kprint .ge. 2) then
+   if (kprint >= 2) then
       msg = '------ IN ROUTINE DLINSK-- PNRM = (R1)'
       call xerrwd(msg, 38, 921, 0, 0, 0, 0, 1, pnorm, zero)
    end if
@@ -195,20 +195,20 @@ subroutine dlinsk( &
    ! Check for violations of the constraints, if any are imposed.
    ! If any violations are found, the step vector P is rescaled, and the
    ! constraint check is repeated, until no violations are found.
-   if (icnflg .ne. 0) then
+   if (icnflg /= 0) then
       do
          call dyypnw(neq, y, ydot, cj, rl, p, icopt, id, ynew, ydotnew)
          call dcnstr(neq, y, ynew, icnstr, tau, rlx, iret, ivar)
-         if (iret .ne. 1) exit
+         if (iret /= 1) exit
          ratio1 = tau/pnorm
          ratio = ratio*ratio1
          p = p*ratio1
          pnorm = tau
-         if (kprint .ge. 2) then
+         if (kprint >= 2) then
             msg = '------ CONSTRAINT VIOL., PNRM = (R1), INDEX = (I1)'
             call xerrwd(msg, 50, 922, 0, 1, ivar, 0, 1, pnorm, zero)
          end if
-         if (pnorm .le. stptol) then
+         if (pnorm <= stptol) then
             iret = 1
             return
          end if
@@ -217,7 +217,7 @@ subroutine dlinsk( &
 
    slpi = -two*f1norm*ratio
    rlmin = stptol/pnorm
-   if ((lsoff .eq. 0) .and. (kprint .ge. 2)) then
+   if ((lsoff == 0) .and. (kprint >= 2)) then
       msg = '------ MIN. LAMBDA = (R1)'
       call xerrwd(msg, 25, 923, 0, 0, 0, 0, 1, rlmin, zero)
    end if
@@ -231,23 +231,23 @@ subroutine dlinsk( &
                   sqrtn, rsqrtn, res, ires, psol, 0, ierr, fnormp, epslin, &
                   rwp, iwp, pwk, rpar, ipar)
       iwm(lnres) = iwm(lnres) + 1
-      if (ires .ge. 0) iwm(lnpsol) = iwm(lnpsol) + 1
-      if (ires .ne. 0 .or. ierr .ne. 0) then
+      if (ires >= 0) iwm(lnpsol) = iwm(lnpsol) + 1
+      if (ires /= 0 .or. ierr /= 0) then
          iret = 2
          return
       end if
 
-      if (lsoff .eq. 1) goto 150
+      if (lsoff == 1) goto 150
 
       f1normp = (fnormp**2)/2
-      if (kprint .ge. 2) then
+      if (kprint >= 2) then
          msg = '------ LAMBDA = (R1)'
          call xerrwd(msg, 20, 924, 0, 0, 0, 0, 1, rl, zero)
          msg = '------ NORM(F1) = (R1),  NORM(F1NEW) = (R2)'
          call xerrwd(msg, 43, 925, 0, 0, 0, 0, 2, f1norm, f1normp)
       end if
 
-      if (f1normp .gt. f1norm + alpha*slpi*rl) goto 200
+      if (f1normp > f1norm + alpha*slpi*rl) goto 200
 
       ! Alpha-condition is satisfied, or linesearch is turned off.
       ! Copy YNEW,YPNEW to Y,YPRIME and return.
@@ -256,7 +256,7 @@ subroutine dlinsk( &
       y = ynew
       ydot = ydotnew
       fnorm = fnormp
-      if (kprint .ge. 1) then
+      if (kprint >= 1) then
          msg = '------ LEAVING ROUTINE DLINSK, FNRM = (R1)'
          call xerrwd(msg, 42, 926, 0, 0, 0, 0, 1, fnorm, zero)
       end if
@@ -266,7 +266,7 @@ subroutine dlinsk( &
       ! value.  If RL is less than RLMIN, i.e. no satisfactory YNEW,YPNEW can
       ! be found sufficiently distinct from Y,YPRIME, then return IRET = 1.
 200   continue
-      if (rl .lt. rlmin) then
+      if (rl < rlmin) then
          iret = 1
          return
       end if
@@ -345,10 +345,10 @@ subroutine dfnrmk( &
    real(rk) :: ddwnrm ! @todo: remove this once inside module
 
    ! Call RES routine if IRIN = 0.
-   if (irin .eq. 0) then
+   if (irin == 0) then
       ires = 0
       call res(t, y, ydot, cj, savr, ires, rpar, ipar)
-      if (ires .lt. 0) return
+      if (ires < 0) return
    end if
 
    ! Apply inverse of left preconditioner to vector R.
@@ -358,11 +358,11 @@ subroutine dfnrmk( &
    ierr = 0
    call psol(neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, r, epslin, ierr, rpar, ipar)
    call dscal(neq, sqrtn, wght, 1)
-   if (ierr .ne. 0) return
+   if (ierr /= 0) return
 
    ! Calculate norm of R.
    rnorm = ddwnrm(neq, r, wght, rpar, ipar)
-   if (tscale .gt. zero) rnorm = rnorm*tscale*abs(cj)
+   if (tscale > zero) rnorm = rnorm*tscale*abs(cj)
 
 end subroutine dfnrmk
 
@@ -478,13 +478,13 @@ subroutine dnedk( &
 
    ! Verify that this is the correct subroutine.
    iertyp = 0
-   if (ntype .ne. 1) then
+   if (ntype /= 1) then
       iertyp = 1
       goto 380
    end if
 
    ! If this is the first step, perform initializations.
-   if (jstart .eq. 0) then
+   if (jstart == 0) then
       cjold = cj
       jcalc = -1
       s = 1e2_rk
@@ -496,11 +496,11 @@ subroutine dnedk( &
    liwp = iwm(llciwp)
 
    ! Decide whether to update the preconditioner.
-   if (jflag .ne. 0) then
+   if (jflag /= 0) then
       temp1 = (one - xrate)/(one + xrate)
       temp2 = one/temp1
-      if ((cj/cjold .lt. temp1) .or. (cj/cjold .gt. temp2)) jcalc = -1
-      if (cj .ne. cjlast) s = 1e2_rk
+      if ((cj/cjold < temp1) .or. (cj/cjold > temp2)) jcalc = -1
+      if (cj /= cjlast) s = 1e2_rk
    else
       jcalc = 0
    end if
@@ -529,18 +529,18 @@ subroutine dnedk( &
    ! Call RES to initialize DELTA.
    iwm(lnre) = iwm(lnre) + 1
    call res(t, y, ydot, cj, delta, ires, rpar, ipar)
-   if (ires .lt. 0) goto 380
+   if (ires < 0) goto 380
 
    ! If indicated, update the preconditioner.
    ! Set JCALC to 0 as an indicator that this has been done.
-   if (jcalc .eq. -1) then
+   if (jcalc == -1) then
       iwm(lnje) = iwm(lnje) + 1
       jcalc = 0
       call jac(res, ires, neq, t, y, ydot, wt, delta, e, h, cj, rwm(lwp), iwm(liwp), ierpj, rpar, ipar)
       cjold = cj
       s = 1e2_rk
-      if (ires .lt. 0) goto 380
-      if (ierpj .ne. 0) goto 380
+      if (ires < 0) goto 380
+      if (ierpj /= 0) goto 380
    end if
 
    ! Call the nonlinear Newton solver.
@@ -549,22 +549,22 @@ subroutine dnedk( &
              delta, e, rwm, iwm, cj, sqrtn, rsqrtn, epslin, epscon, &
              s, temp1, tolnew, muldel, maxit, ires, iersl, iernew)
 
-   if (iernew .gt. 0 .and. jcalc .ne. 0) then
+   if (iernew > 0 .and. jcalc /= 0) then
       ! The Newton iteration had a recoverable failure with an old
       ! preconditioner. Retry the step with a new preconditioner.
       jcalc = -1
       goto 300
    end if
 
-   if (iernew .ne. 0) goto 380
+   if (iernew /= 0) goto 380
 
    ! The Newton iteration has converged. If nonnegativity of solution is required, set
    ! the solution nonnegative, if the perturbation to do it is small enough. If the
    ! change is too large, then consider the corrector iteration to have failed.
-   if (nonneg .eq. 0) goto 390
+   if (nonneg == 0) goto 390
    delta = min(y, zero)
    delnrm = ddwnrm(neq, delta, wt, rpar, ipar)
-   if (delnrm .gt. epscon) goto 380
+   if (delnrm > epscon) goto 380
    e = e - delta
    goto 390
 
@@ -572,16 +572,16 @@ subroutine dnedk( &
    ! No convergence with current preconditioner.
    ! Compute IERNLS and IDID accordingly.
 380 continue
-   if ((ires .le. -2) .or. (iersl .lt. 0) .or. (iertyp .ne. 0)) then
+   if ((ires <= -2) .or. (iersl < 0) .or. (iertyp /= 0)) then
       iernls = -1
-      if (ires .le. -2) idid = -11
-      if (iersl .lt. 0) idid = -13
-      if (iertyp .ne. 0) idid = -15
+      if (ires <= -2) idid = -11
+      if (iersl < 0) idid = -13
+      if (iertyp /= 0) idid = -15
    else
       iernls = 1
-      if (ires .eq. -1) idid = -10
-      if (ierpj .ne. 0) idid = -5
-      if (iersl .gt. 0) idid = -14
+      if (ires == -1) idid = -10
+      if (ierpj /= 0) idid = -5
+      if (iersl > 0) idid = -14
    end if
 
 390 continue
@@ -684,7 +684,7 @@ subroutine dnsk( &
       iwm(lnni) = iwm(lnni) + 1
 
       ! If necessary, multiply residual by convergence factor.
-      if (muldel .eq. 1) then
+      if (muldel == 1) then
          delta = delta*confac
       end if
 
@@ -695,7 +695,7 @@ subroutine dnsk( &
       call dslvk(neq, y, t, ydot, savr, delta, wt, rwm, iwm, &
                  res, ires, psol, iersl, cj, epslin, sqrtn, rsqrtn, rhok, &
                  rpar, ipar)
-      if ((ires .ne. 0) .or. (iersl .ne. 0)) exit
+      if ((ires /= 0) .or. (iersl /= 0)) exit
 
       ! Update Y, E, and YDOT.
       y = y - delta
@@ -704,19 +704,19 @@ subroutine dnsk( &
 
       ! Test for convergence of the iteration.
       delnrm = ddwnrm(neq, delta, wt, rpar, ipar)
-      if (m .eq. 0) then
+      if (m == 0) then
          oldnrm = delnrm
-         if (delnrm .le. tolnew) then
+         if (delnrm <= tolnew) then
             converged = .true.
             exit
          end if
       else
          rate = (delnrm/oldnrm)**(one/m)
-         if (rate .gt. 0.9_rk) exit
+         if (rate > 0.9_rk) exit
          s = rate/(one - rate)
       end if
 
-      if (s*delnrm .le. epscon) then
+      if (s*delnrm <= epscon) then
          converged = .true.
          exit
       end if
@@ -724,17 +724,17 @@ subroutine dnsk( &
       ! The corrector has not yet converged. Update M and test whether
       ! the maximum number of iterations have been tried.
       m = m + 1
-      if (m .ge. maxit) exit
+      if (m >= maxit) exit
 
       ! Evaluate the residual, and go back to do another iteration.
       iwm(lnre) = iwm(lnre) + 1
       call res(t, y, ydot, cj, delta, ires, rpar, ipar)
-      if (ires .lt. 0) exit
+      if (ires < 0) exit
 
    end do
 
    if (.not. converged) then
-      if ((ires .le. -2) .or. (iersl .lt. 0)) then
+      if ((ires <= -2) .or. (iersl < 0)) then
          iernew = -1
       else
          iernew = 1
@@ -844,9 +844,9 @@ subroutine dslvk( &
    ! considered to have failed.
    iflag = 1
    nrsts = -1
-   do while ((iflag .eq. 1) .and. (nrsts .lt. nrmax) .and. (ires .eq. 0))
+   do while ((iflag == 1) .and. (nrsts < nrmax) .and. (ires == 0))
       nrsts = nrsts + 1
-      if (nrsts .gt. 0) call dcopy(neq, rwm(ldl), 1, rwm(lr), 1)
+      if (nrsts > 0) call dcopy(neq, rwm(ldl), 1, rwm(lr), 1)
       call dspigm(neq, t, y, ydot, savr, rwm(lr), ewt, maxl, &
                   kmp, epslin, cj, res, ires, nres, psol, npsol, rwm(lz), rwm(lv), &
                   rwm(lhes), rwm(lq), lgmr, rwm(lwp), iwm(liwp), rwm(lwk), &
@@ -861,12 +861,12 @@ subroutine dslvk( &
 
    ! The restart scheme is finished. Test IRES and IFLAG to see if convergence was not
    ! achieved, and set flags accordingly.
-   if (ires .lt. 0) then
+   if (ires < 0) then
       ncfl = ncfl + 1
-   elseif (iflag .ne. 0) then
+   elseif (iflag /= 0) then
       ncfl = ncfl + 1
-      if (iflag .gt. 0) iersl = 1
-      if (iflag .lt. 0) iersl = -1
+      if (iflag > 0) iersl = 1
+      if (iflag < 0) iersl = -1
    end if
 
    ! Update IWM with counters, rescale EWT, and return.
@@ -985,12 +985,12 @@ subroutine dspigm( &
    ! the vector R. Initialize Z to 0.
    z = zero
 
-   ! Apply inverse of left preconditioner to vector R if NRSTS .EQ. 0.
+   ! Apply inverse of left preconditioner to vector R if NRSTS == 0.
    ! Form V(:,1), the scaled preconditioned right hand side.
-   if (nrsts .eq. 0) then
+   if (nrsts == 0) then
       call psol(neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, r, epslin, ierr, rpar, ipar)
       npsol = 1
-      if (ierr .ne. 0) goto 300
+      if (ierr /= 0) goto 300
       v(:, 1) = r*wght
    else
       v(:, 1) = r
@@ -998,9 +998,9 @@ subroutine dspigm( &
 
    ! Calculate norm of scaled vector V(:,1) and normalize it
    ! If, however, the norm of V(:,1) (i.e. the norm of the preconditioned
-   ! residual) is .le. EPLIN, then return with Z=0.
+   ! residual) is <= EPLIN, then return with Z=0.
    rnrm = dnrm2(neq, v, 1)
-   if (rnrm .le. epslin) then
+   if (rnrm <= epslin) then
       rhok = rnrm
       return
    end if
@@ -1022,8 +1022,8 @@ subroutine dspigm( &
       call datv(neq, y, t, ydot, savr, v(1, ll), wght, z, &
                 res, ires, psol, v(1, ll + 1), wk, rwp, iwp, cj, epslin, &
                 ierr, nres, npsol, rpar, ipar)
-      if (ires .lt. 0) return
-      if (ierr .ne. 0) goto 300
+      if (ires < 0) return
+      if (ierr /= 0) goto 300
 
       ! Call routine DORTH to orthogonalize the new vector VNEW = V(:,LL+1).
       call dorth(v(1, ll + 1), v, hes, neq, ll, maxlp1, kmp, snormw)
@@ -1031,16 +1031,16 @@ subroutine dspigm( &
 
       ! Call routine DHEQR to update the factors of HES.
       call dheqr(hes, maxlp1, ll, q, info, ll)
-      if (info .eq. ll) goto 120
+      if (info == ll) goto 120
 
       ! Update RHO, the estimate of the norm of the residual R - A*ZL.
-      ! If KMP .LT. MAXL, then the vectors V(:,1),...,V(:,LL+1) are not
-      ! necessarily orthogonal for LL .GT. KMP.  The vector DL must then
+      ! If KMP < MAXL, then the vectors V(:,1),...,V(:,LL+1) are not
+      ! necessarily orthogonal for LL > KMP.  The vector DL must then
       ! be computed, and its norm used in the calculation of RHO.
       prod = prod*q(2*ll)
       rho = abs(prod*rnrm)
-      if ((ll .gt. kmp) .and. (kmp .lt. maxl)) then
-         if (ll .eq. kmp + 1) then
+      if ((ll > kmp) .and. (kmp < maxl)) then
+         if (ll == kmp + 1) then
             call dcopy(neq, v(1, 1), 1, dl, 1)
             do i = 1, kmp
                ip1 = i + 1
@@ -1063,9 +1063,9 @@ subroutine dspigm( &
       end if
 
       ! Test for convergence. If passed, compute approximation ZL.
-      ! If failed and LL .LT. MAXL, then continue iterating.
-      if (rho .le. epslin) goto 200
-      if (ll .eq. maxl) goto 100
+      ! If failed and LL < MAXL, then continue iterating.
+      if (rho <= epslin) goto 200
+      if (ll == maxl) goto 100
 
       ! Rescale so that the norm of V(1,LL+1) is one.
       tem = one/snormw
@@ -1074,7 +1074,7 @@ subroutine dspigm( &
    end do
 
 100 continue
-   if (rho .lt. rnrm) goto 150
+   if (rho < rnrm) goto 150
 
 120 continue
    iflag = 2
@@ -1083,13 +1083,13 @@ subroutine dspigm( &
 
 150 continue
    ! The tolerance was not met, but the residual norm was reduced.
-   ! If performing restarting (IRST .gt. 0) calculate the residual vector
+   ! If performing restarting (IRST > 0) calculate the residual vector
    ! RL and store it in the DL array.  If the incomplete version is
-   ! being used (KMP .lt. MAXL) then DL has already been calculated.
+   ! being used (KMP < MAXL) then DL has already been calculated.
    iflag = 1
-   if (irst .gt. 0) then
+   if (irst > 0) then
 
-      if (kmp .eq. maxl) then
+      if (kmp == maxl) then
          !  Calculate DL from the V(I)'s.
          call dcopy(neq, v(1, 1), 1, dl, 1)
          maxlm1 = maxl - 1
@@ -1134,8 +1134,8 @@ subroutine dspigm( &
 
    ! This block handles error returns forced by routine PSOL.
 300 continue
-   if (ierr .lt. 0) iflag = -1
-   if (ierr .gt. 0) iflag = 3
+   if (ierr < 0) iflag = -1
+   if (ierr > 0) iflag = 3
 
 end subroutine dspigm
 
@@ -1217,7 +1217,7 @@ subroutine datv( &
    ! stored in Z, YDOTTEMP. VTEMP is overwritten with new residual.
    call res(t, z, ydottemp, cj, vtemp, ires, rpar, ipar)
    nres = nres + 1
-   if (ires .lt. 0) return
+   if (ires < 0) return
 
    ! Set Z = (dF/dY) * VBAR using difference quotient.
    ! (VBAR is old value of VTEMP before calling RES)
@@ -1226,7 +1226,7 @@ subroutine datv( &
    ! Apply inverse of left preconditioner to Z.
    call psol(neq, t, y, ydot, savr, ydottemp, cj, wght, rwp, iwp, z, epslin, ierr, rpar, ipar)
    npsol = npsol + 1
-   if (ierr .ne. 0) return
+   if (ierr /= 0) return
 
    ! Apply D-inverse to Z
    z = z * wght
@@ -1286,17 +1286,17 @@ pure subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
    ! Correct if relative correction exceeds 1000*(unit roundoff).
    ! Finally, correct SNORMW using the dot products involved.
    snormw = dnrm2(n, vnew, 1)
-   if (vnrm + snormw/1000 .ne. vnrm) return ! @todo: fix this comparison
+   if (vnrm + snormw/1000 /= vnrm) return ! @todo: fix this comparison
 
    sumdsq = zero
    do i = i0, ll
       tem = -ddot(n, v(1, i), 1, vnew, 1)
-      if (hes(i, ll) + tem/1000 .eq. hes(i, ll)) cycle ! @todo: fix this comparison
+      if (hes(i, ll) + tem/1000 == hes(i, ll)) cycle ! @todo: fix this comparison
       hes(i, ll) = hes(i, ll) - tem
       call daxpy(n, tem, v(1, i), 1, vnew, 1)
       sumdsq = sumdsq + tem**2
    end do
-   if (sumdsq .eq. zero) return
+   if (sumdsq == zero) return
 
    arg = max(zero, snormw**2 - sumdsq)
    snormw = sqrt(arg)
@@ -1347,7 +1347,7 @@ pure subroutine dheqr(a, lda, n, q, info, ijob)
 
          ! Compute Kth column of R.
          ! First, multiply the Kth column of A by the previous K-1 Givens rotations.
-         if (km1 .lt. 1) goto 20
+         if (km1 < 1) goto 20
          do j = 1, km1
             i = 2*(j - 1) + 1
             t1 = a(j, k)
@@ -1363,13 +1363,13 @@ pure subroutine dheqr(a, lda, n, q, info, ijob)
          iq = 2*km1 + 1
          t1 = a(k, k)
          t2 = a(kp1, k)
-         if (t2 .ne. zero) goto 30
+         if (t2 /= zero) goto 30
          c = one
          s = zero
          goto 50
 
 30       continue
-         if (abs(t2) .lt. abs(t1)) goto 40
+         if (abs(t2) < abs(t1)) goto 40
          t = t1/t2
          s = -one/sqrt(one + t*t)
          c = -s*t
@@ -1384,7 +1384,7 @@ pure subroutine dheqr(a, lda, n, q, info, ijob)
          q(iq) = c
          q(iq + 1) = s
          a(k, k) = c*t1 - s*t2
-         if (a(k, k) .eq. zero) info = k
+         if (a(k, k) == zero) info = k
       end do
 
       ! The old factorization of A will be updated.  A row and a column
@@ -1410,13 +1410,13 @@ pure subroutine dheqr(a, lda, n, q, info, ijob)
       info = 0
       t1 = a(n, n)
       t2 = a(n + 1, n)
-      if (t2 .ne. zero) goto 110
+      if (t2 /= zero) goto 110
       c = one
       s = zero
       goto 130
 
 110   continue
-      if (abs(t2) .lt. abs(t1)) goto 120
+      if (abs(t2) < abs(t1)) goto 120
       t = t1/t2
       s = -one/sqrt(one + t*t)
       c = -s*t
@@ -1432,7 +1432,7 @@ pure subroutine dheqr(a, lda, n, q, info, ijob)
       q(iq) = c
       q(iq + 1) = s
       a(n, n) = c*t1 - s*t2
-      if (a(n, n) .eq. zero) info = n
+      if (a(n, n) == zero) info = n
 
    end if
 
