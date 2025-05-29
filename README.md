@@ -10,7 +10,7 @@ Modernized version of DASKR, a differential-algebraic system solver with rootfin
   <img src="./example/example_heat_c.gif" width="500" alt="Solution of food web problem">
 </p>
 
-[!NOTE]
+> [!NOTE]
 > This is a work in progress. I've modernized the examples and the preconditioners, and I'm now working on the library code itself.
 
 ## Description
