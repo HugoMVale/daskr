@@ -73,10 +73,201 @@ module daskr
 
 end module daskr
 
+subroutine dnsik( &
+   t, y, ydot, neq, icopt, idy, res, psol, wt, rpar, ipar, &
+   savr, delta, r, yic, ydotic, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, epslin, &
+   epscon, ratemx, maxit, stptol, icnflg, icnstr, iernew)
+!! This routine solves a nonlinear system of algebraic equations of the form:
+!!
+!!  $$ G(t, y, \dot{y}) = 0 $$
+!!
+!! for the unknown parts of \(y\) and \(\dot{y}\) in the initial conditions. The method
+!! used is a Newton scheme combined with a linesearch algorithm, using Krylov iterative
+!! linear system methods.
+
+   use daskr_kinds, only: rk, zero, one
+   use daskr, only: res_t, psol_t
+   implicit none
+
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(inout) :: ydot(neq)
+      !! Derivative of solution vector after successful step.
+   integer, intent(in) :: neq
+      !! Problem size.
+   integer, intent(in) :: icopt
+      !! Initial condition flag.
+   integer, intent(in) :: idy(neq)
+      !! Array indicating which variables are differential and which are algebraic.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
+   real(rk), intent(inout) :: wt(neq)
+      !! Scaling factors.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+   real(rk), intent(out) :: savr(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: delta(neq)
+      !! Residual vector on entry, and real workspace.
+   real(rk), intent(in) :: r(neq)
+      !! Real work array.
+   real(rk), intent(in) :: yic(neq)
+      !! Real work array.
+   real(rk), intent(in) :: ydotic(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: pwk(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: tscale ! @todo: what is "t"?
+      !! Scale factor in `t`; used for stopping tests if nonzero.
+   real(rk), intent(in) :: sqrtn
+      !! Square root of `neq`.
+   real(rk), intent(in) :: rsqrtn
+      !! Reciprocal of square root of `neq`
+   real(rk), intent(in) :: epslin
+      !! Tolerance for linear system.
+   real(rk), intent(in) :: epscon
+      !! Tolerance for convergence of the Newton iteration.
+   real(rk), intent(in) :: ratemx
+      !! Maximum convergence rate for which Newton iteration is considered converging.
+   integer, intent(in) :: maxit
+      !! Maximum number of Newton iterations allowed.
+   real(rk), intent(in) :: stptol
+      !! Tolerance used in calculating the minimum lambda (`rl`) value allowed.
+   integer, intent(in) :: icnflg
+      !! Constraint flag. If nonzero, then constraint violations in the proposed new
+      !! approximate solution will be checked for, and the maximum step length will be
+      !! adjusted accordingly.
+   integer, intent(out) :: icnstr(neq)
+      !! Flags for checking constraints.
+   integer, intent(out) :: iernew
+      !! Error flag for the Newton iteration.
+      !!  `0`: the Newton iteration converged.
+      !!  `1`: failed to converge, but `rate < 1`, or the residual norm was reduced by a factor of 0.1.
+      !!  `2`: failed to converge, but `rate > ratemx`.
+      !!  `3`: other recoverable error.
+      !! `-1`: unrecoverable error inside Newton iteration.
+
+   integer, parameter :: lnni = 19, lnpsol = 21, llcrwp = 29, llciwp = 30, llsoff = 35, &
+                         lstol = 14
+   integer :: ierr, iersl, ires, iret, liwp, lsoff, lrwp, m
+   real(rk) :: ddwnrm, delnorm, fnorm, fnorm0, oldfnorm, rate, rhok, rlx
+   logical :: iserror, ismaxit
+
+   ! Initializations. 
+   lsoff = iwm(llsoff)
+   lrwp = iwm(llcrwp)
+   liwp = iwm(llciwp)
+   rate = one
+   rlx = 0.4_rk
+   iernew = 0
+
+   ! Save residual in SAVR.
+   savr = delta
+
+   ! Compute norm of (P-inverse)*(residual).
+   call dfnrmk(neq, y, t, ydot, savr, r, cj, tscale, wt, &
+               sqrtn, rsqrtn, res, ires, psol, 1, ierr, fnorm, epslin, &
+               rwm(lrwp), iwm(liwp), pwk, rpar, ipar)
+   iwm(lnpsol) = iwm(lnpsol) + 1
+   if (ierr .ne. 0) then
+      iernew = 3
+      return
+   end if
+
+   ! Return now if residual norm is .le. EPSCON.
+   if (fnorm .le. epscon) return
+
+   ! Newton iteration loop. M is the Newton iteration counter.
+   fnorm0 = fnorm
+   iserror = .false.
+   ismaxit = .false.
+   m = 0
+   do
+
+      iwm(lnni) = iwm(lnni) + 1
+
+      ! Compute a new step vector DELTA.
+      call dslvk(neq, y, t, ydot, savr, delta, wt, rwm, iwm, &
+               res, ires, psol, iersl, cj, epslin, sqrtn, rsqrtn, rhok, &
+               rpar, ipar)
+      if ((ires .ne. 0) .or. (iersl .ne. 0)) then
+         iserror = .true.
+         exit
+      end if
+
+      ! Get norm of DELTA. Return now if DELTA is zero.
+      delnorm = ddwnrm(neq, delta, wt, rpar, ipar)
+      if (delnorm .eq. zero) exit
+
+      ! Call linesearch routine for global strategy and set RATE.
+      oldfnorm = fnorm
+      call dlinsk(neq, y, t, ydot, savr, cj, tscale, delta, delnorm, &
+                  wt, sqrtn, rsqrtn, lsoff, stptol, iret, res, ires, psol, &
+                  rwm, iwm, rhok, fnorm, icopt, idy, rwm(lrwp), iwm(liwp), r, epslin, &
+                  yic, ydotic, pwk, icnflg, icnstr, rlx, rpar, ipar)
+      rate = fnorm/oldfnorm
+
+      ! Check for error condition from linesearch.
+      if (iret .ne. 0) then
+         iserror = .true.
+         exit
+      end if
+
+      ! Test for convergence of the iteration, and return or loop.
+      if (fnorm .le. epscon) exit
+
+      ! The iteration has not yet converged. Update M.
+      ! Test whether the maximum number of iterations have been tried.
+      m = m + 1
+      if (m .ge. maxit) then
+         ismaxit = .true.
+         exit
+      end if
+
+      ! Copy the residual SAVR to DELTA and loop for another iteration.
+      delta = savr
+
+   end do
+
+   ! The maximum number of iterations was done. Set IERNEW and return.
+   if (ismaxit) then 
+      if ((rate .le. ratemx) .or. (fnorm .le. fnorm0/10)) then
+         iernew = 1
+      else
+         iernew = 2
+      end if
+   end if
+
+   ! Errors
+   if (iserror) then
+      if ((ires .le. -2) .or. (iersl .lt. 0)) then
+         iernew = -1
+      else
+         iernew = 3
+         if ((ires .eq. 0) .and. (iersl .eq. 1) .and. (m .ge. 2) .and. (rate .lt. one)) then
+            iernew = 1
+         end if
+      end if
+   end if 
+
+end subroutine dnsik
+
 subroutine dlinsk( &
    neq, y, t, ydot, savr, cj, tscale, p, pnorm, &
    wght, sqrtn, rsqrtn, lsoff, stptol, iret, res, ires, psol, &
-   rwm, iwm, rhok, fnorm, icopt, id, rwp, iwp, r, epslin, ynew, ydotnew, &
+   rwm, iwm, rhok, fnorm, icopt, idy, rwp, iwp, r, epslin, ynew, ydotnew, &
    pwk, icnflg, icnstr, rlx, rpar, ipar)
 !! This routine uses a linesearch algorithm to calculate a new \( (y,\dot{y}) \) pair,
 !! denoted \( (y_{new},\dot{y}_{new}) \), such that:
@@ -146,7 +337,7 @@ subroutine dlinsk( &
       !! Value of \( \sqrt{2f} \) for the current \( (y,\dot{y}) \) on input and output.
    integer, intent(in) :: icopt
       !! Initial condition flag.
-   integer, intent(in) :: id(neq)
+   integer, intent(in) :: idy(neq)
       !! Array indicating which variables are differential and which are algebraic.
    real(rk), intent(inout) :: rwp(*)
       !! Real workspace for the linear system solver.
@@ -197,7 +388,7 @@ subroutine dlinsk( &
    ! constraint check is repeated, until no violations are found.
    if (icnflg /= 0) then
       do
-         call dyypnw(neq, y, ydot, cj, rl, p, icopt, id, ynew, ydotnew)
+         call dyypnw(neq, y, ydot, cj, rl, p, icopt, idy, ynew, ydotnew)
          call dcnstr(neq, y, ynew, icnstr, tau, rlx, iret, ivar)
          if (iret /= 1) exit
          ratio1 = tau/pnorm
@@ -226,7 +417,7 @@ subroutine dlinsk( &
    ! Update YNEW and YDOTNEW, then compute norm of new scaled residual and
    ! perform alpha condition test.
    do
-      call dyypnw(neq, y, ydot, cj, rl, p, icopt, id, ynew, ydotnew)
+      call dyypnw(neq, y, ydot, cj, rl, p, icopt, idy, ynew, ydotnew)
       call dfnrmk(neq, ynew, t, ydotnew, savr, r, cj, tscale, wght, &
                   sqrtn, rsqrtn, res, ires, psol, 0, ierr, fnormp, epslin, &
                   rwp, iwp, pwk, rpar, ipar)
