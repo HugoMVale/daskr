@@ -10,9 +10,8 @@ Modernized version of DASKR, a differential-algebraic system solver with rootfin
   <img src="./example/example_heat_c.gif" width="500" alt="Solution of food web problem">
 </p>
 
-## Status
-
-This is a work in progress. First, I'm modernizing the examples and converting some to unit tests. Then, I'll begin work on the library code itself.
+[!NOTE]
+> This is a work in progress. I've modernized the examples and the preconditioners, and I'm now working on the library code itself.
 
 ## Description
 
@@ -28,7 +27,7 @@ where $G$, $y$, and $\dot{y}$ are $N$-dimensional vectors. The linear systems wh
 
 ## History
 
-The first version of the library, named DASSL [1], solved the linear systems arising from the implicit time integration methods at each time step using direct methods. DASPK [2,3] extended the capabilities of DASSL to include iterative methods, which can be significantly more efficient, especially for large-scale problems. Furthermore, DASPK added the ability to initialize $\dot{y}_0$ in case it is not known. Lastly, DASKR [4] included the ability to find the roots of a given set of functions while integrating the DAE system.
+The first version of the library, named DASSL [^1], solved the linear systems arising from the implicit time integration methods at each time step using direct methods. DASPK [^2][^3] extended the capabilities of DASSL to include iterative methods, which can be significantly more efficient, especially for large-scale problems. Furthermore, DASPK added the ability to initialize $\dot{y}_0$ in case it is not known. Lastly, DASKR [^4] included the ability to find the roots of a given set of functions while integrating the DAE system.
 
 | Version | Date written  | Last update | Direct solver | Iterative solver | Root finding |    Standard   |
 |:-------:|:-------------:|:-----------:|:-------------:|:----------------:|:------------:|:-------------:|
@@ -47,17 +46,6 @@ The first version of the library, named DASSL [1], solved the linear systems ari
 * [ ] Addition of explicit interfaces to BLAS routines.
 * [ ] Implementation of a C API.
 * [ ] Automatic code documentation with FORD.
-
-**References**
-
-[1] L. Petzold, "A Description of DASSL: A Differential/Algebraic System Solver, 1982.
-
-[2] Brown, Peter N., Alan C. Hindmarsh, and Linda R. Petzold. "Using Krylov methods in the solution of large-scale differential-algebraic systems." SIAM Journal on Scientific Computing 15.6 (1994): 1467-1488. https://doi.org/10.1137/0915088
-
-[3] Brown, Peter N., Alan C. Hindmarsh, and Linda R. Petzold. "Consistent initial condition calculation for differential-algebraic systems." SIAM Journal on Scientific Computing 19.5 (1998): 1495-1512.
-https://doi.org/10.1137/S1064827595289996
-
-[4] Original source code from [Netlib](https://www.netlib.org/ode/).
 
 ## Build instructions
 
@@ -107,3 +95,14 @@ meson test -C builddir
 
 * The original `daskr` code is covered by this [license](./original/LICENSE).
 * Modifications introduced in this project are covered under the MIT license.
+
+### References
+
+[^1]: L. Petzold, "A Description of DASSL: A Differential/Algebraic System Solver, 1982.
+
+[^2]: Brown, Peter N., Alan C. Hindmarsh, and Linda R. Petzold. "Using Krylov methods in the solution of large-scale differential-algebraic systems." SIAM Journal on Scientific Computing 15.6 (1994): 1467-1488. https://doi.org/10.1137/0915088
+
+[^3]: Brown, Peter N., Alan C. Hindmarsh, and Linda R. Petzold. "Consistent initial condition calculation for differential-algebraic systems." SIAM Journal on Scientific Computing 19.5 (1998): 1495-1512.
+https://doi.org/10.1137/S1064827595289996
+
+[^4]: Original source code from [Netlib](https://www.netlib.org/ode/).
