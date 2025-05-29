@@ -733,7 +733,9 @@ subroutine dnsk( &
 
    end do
 
-   if (.not. converged) then
+   if (converged) then
+      iernew = 0 
+   else
       if ((ires <= -2) .or. (iersl < 0)) then
          iernew = -1
       else
@@ -973,7 +975,7 @@ subroutine dspigm( &
       !! User integer workspace.
 
    integer :: i, ierr, info, ip1, i2, k, ll, llp1, maxlm1, maxlp1
-   real(rk) :: c, dlnrm, prod, rho, rnrm, s, snormw, tem
+   real(rk) :: c, dlnorm, prod, rho, rnorm, s, snormw, tem
 
    ierr = 0
    iflag = 0
@@ -999,12 +1001,12 @@ subroutine dspigm( &
    ! Calculate norm of scaled vector V(:,1) and normalize it
    ! If, however, the norm of V(:,1) (i.e. the norm of the preconditioned
    ! residual) is <= EPLIN, then return with Z=0.
-   rnrm = dnrm2(neq, v, 1)
-   if (rnrm <= epslin) then
-      rhok = rnrm
+   rnorm = dnrm2(neq, v, 1)
+   if (rnorm <= epslin) then
+      rhok = rnorm
       return
    end if
-   tem = one/rnrm
+   tem = one/rnorm
    call dscal(neq, tem, v(1, 1), 1)
 
    ! Zero out the HES array.
@@ -1038,7 +1040,7 @@ subroutine dspigm( &
       ! necessarily orthogonal for LL > KMP.  The vector DL must then
       ! be computed, and its norm used in the calculation of RHO.
       prod = prod*q(2*ll)
-      rho = abs(prod*rnrm)
+      rho = abs(prod*rnorm)
       if ((ll > kmp) .and. (kmp < maxl)) then
          if (ll == kmp + 1) then
             call dcopy(neq, v(1, 1), 1, dl, 1)
@@ -1058,8 +1060,8 @@ subroutine dspigm( &
          do k = 1, neq
             dl(k) = s*dl(k) + c*v(k, llp1)
          end do
-         dlnrm = dnrm2(neq, dl, 1)
-         rho = rho*dlnrm
+         dlnorm = dnrm2(neq, dl, 1)
+         rho = rho*dlnorm
       end if
 
       ! Test for convergence. If passed, compute approximation ZL.
@@ -1074,7 +1076,7 @@ subroutine dspigm( &
    end do
 
 100 continue
-   if (rho < rnrm) goto 150
+   if (rho < rnorm) goto 150
 
 120 continue
    iflag = 2
@@ -1110,7 +1112,7 @@ subroutine dspigm( &
       end if
 
       ! Scale DL by RNRM*PROD to obtain the residual RL.
-      tem = rnrm*prod
+      tem = rnorm*prod
       call dscal(neq, tem, dl, 1)
    end if
 
@@ -1121,7 +1123,7 @@ subroutine dspigm( &
    ll = lgmr
    llp1 = ll + 1
    r(1:llp1) = zero
-   r(1) = rnrm
+   r(1) = rnorm
    call dhels(hes, maxlp1, ll, q, r)
    z = zero
    do i = 1, ll
@@ -1205,7 +1207,7 @@ subroutine datv( &
    ires = 0
    ierr = 0
 
-   ! Set VTEM = D * V.
+   ! Set VTEMP = D * V.
    vtemp = v/wght
 
    ! Store Y in Z and increment Z by VTEMP.
@@ -1265,10 +1267,10 @@ pure subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
       !! L-2 norm of `vnew`.
 
    integer :: i, i0
-   real(rk) :: arg, sumdsq, tem, vnrm
+   real(rk) :: arg, sumdsq, tem, vnorm
 
    ! Get norm of unaltered VNEW for later use.
-   vnrm = dnrm2(n, vnew, 1)
+   vnorm = dnrm2(n, vnew, 1)
 
    ! Do Modified Gram-Schmidt on VNEW = A*V(LL).
    ! Scaled inner products give new column of HES.
@@ -1286,7 +1288,7 @@ pure subroutine dorth(vnew, v, hes, n, ll, ldhes, kmp, snormw)
    ! Correct if relative correction exceeds 1000*(unit roundoff).
    ! Finally, correct SNORMW using the dot products involved.
    snormw = dnrm2(n, vnew, 1)
-   if (vnrm + snormw/1000 /= vnrm) return ! @todo: fix this comparison
+   if (vnorm + snormw/1000 /= vnorm) return ! @todo: fix this comparison
 
    sumdsq = zero
    do i = i0, ll
