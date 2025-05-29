@@ -94,7 +94,7 @@ subroutine dnsik( &
    real(rk), intent(inout) :: y(neq)
       !! Solution vector.
    real(rk), intent(inout) :: ydot(neq)
-      !! Derivative of solution vector after successful step.
+      !! Derivative of solution vector.
    integer, intent(in) :: neq
       !! Problem size.
    integer, intent(in) :: icopt
@@ -106,7 +106,7 @@ subroutine dnsik( &
    procedure(psol_t) :: psol
       !! User-defined preconditioner routine.
    real(rk), intent(inout) :: wt(neq)
-      !! Scaling factors.
+      !! Weights for error criterion.
    real(rk), intent(inout) :: rpar(*)
       !! User real workspace.
    integer, intent(inout) :: ipar(*)
@@ -115,11 +115,11 @@ subroutine dnsik( &
       !! Real work array.
    real(rk), intent(inout) :: delta(neq)
       !! Residual vector on entry, and real workspace.
-   real(rk), intent(in) :: r(neq)
+   real(rk), intent(out) :: r(neq)
       !! Real work array.
-   real(rk), intent(in) :: yic(neq)
+   real(rk), intent(out) :: yic(neq)
       !! Real work array.
-   real(rk), intent(in) :: ydotic(neq)
+   real(rk), intent(out) :: ydotic(neq)
       !! Real work array.
    real(rk), intent(inout) :: pwk(neq)
       !! Real work array.
