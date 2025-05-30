@@ -1,6 +1,7 @@
 !----------------------------------------------------------------------------------------------
 ! Adapted from original Fortran code in `original/solver/ddaskr.f`
 !----------------------------------------------------------------------------------------------
+
 module daskr
 
    use daskr_kinds, only: rk
@@ -72,6 +73,51 @@ module daskr
    end interface
 
 end module daskr
+
+subroutine dslvd(neq,delta,rwm,iwm)
+!! This routine manages the solution of the linear system arising in the Newton iteration.
+!! Real matrix information and real temporary storage is stored in the array `rwm`, while
+!! integer matrix information is stored in the array `iwm`.
+!! For a dense matrix, the LINPACK routine [[dgesl]] is called. For a banded matrix, the
+!! LINPACK routine [[dgbsl]] is called.
+
+    use daskr, only: rk
+    use dlinpack, only: dgesl, dgbsl
+    implicit none
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(inout) :: delta(neq)
+      !! On entry, the right-hand side vector of the linear system to be solved,
+      !! and, on exit, the solution vector.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+
+   integer, parameter :: lml = 1, lmu = 2, lmtype = 4, llciwp = 30
+   integer :: lipvt, meband, mtype
+
+   lipvt = iwm(llciwp)
+   mtype = iwm(lmtype)
+
+   select case (mtype)
+      case (1, 2)
+         ! dense matrix.
+         call dgesl(rwm, neq, neq, iwm(lipvt), delta, 0)
+      case (3)
+         ! dummy section for mtype=3.
+         error stop "error: mtype=3 not implemented"
+      case (4, 5)
+         ! banded matrix.
+         meband = 2 * iwm(lml) + iwm(lmu) + 1
+         call dgbsl(rwm, meband, neq, iwm(lml), iwm(lmu), iwm(lipvt), delta, 0)
+      case default
+         ! handle unexpected values of mtype (optional)
+         error stop "error: unexpected value for mtype"
+   end select
+
+end subroutine dslvd
 
 subroutine ddasik( &
    t, y, ydot, neq, icopt, idy, res, jack, psol, h, tscale, &
