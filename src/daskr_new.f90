@@ -73,6 +73,177 @@ module daskr
 
 end module daskr
 
+subroutine ddasik( &
+   t, y, ydot, neq, icopt, idy, res, jack, psol, h, tscale, &
+   wt, jskip, rpar, ipar, savr, delta, r, yic, ydotic, pwk, rwm, iwm, cj, uround, &
+   epli, sqrtn, rsqrtn, epscon, ratemx, stptol, jflg, icnflg, icnstr, iernls)
+!! This routine solves a nonlinear system of algebraic equations of the form:
+!!
+!!  $$ G(t, y, \dot{y}) = 0 $$
+!!
+!! for the unknown parts of \(y\) and \(\dot{y}\) in the initial conditions. An initial
+!! value for \(y\) and initial guess for \(\dot{y}\) are input. The method used is a
+!! Newton scheme with Krylov iteration and a linesearch algorithm.
+
+   use daskr_kinds, only: rk, zero, one
+   use daskr, only: res_t, jack_t, psol_t
+   implicit none
+
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(inout) :: ydot(neq)
+      !! Derivative of solution vector.
+   integer, intent(in) :: neq
+      !! Problem size.
+   integer, intent(in) :: icopt
+      !! Initial condition flag.
+   integer, intent(in) :: idy(neq)
+      !! Array indicating which variables are differential and which are algebraic.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   procedure(jack_t) :: jack
+      !! User-supplied routine to update the preconditioner.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
+   real(rk), intent(in) :: h
+      !! Scaling factor for this initial condition calculation.
+   real(rk), intent(in) :: tscale ! @todo: what is "t"?
+      !! Scale factor in `t`; used for stopping tests if nonzero.
+   real(rk), intent(inout) :: wt(neq)
+      !! Weights for error criterion.
+   integer, intent(inout) :: jskip
+      !! Flag to signal if initial `jack` call is to be skipped.
+      !! `1`: skip the call,
+      !! `0`: do not skip call.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+   real(rk), intent(out) :: savr(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: delta(neq)
+      !! Real work array.
+   real(rk), intent(out) :: r(neq)
+      !! Real work array.
+   real(rk), intent(out) :: yic(neq)
+      !! Real work array.
+   real(rk), intent(out) :: ydotic(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: pwk(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: uround
+      !! Unit roundoff (not used).
+   real(rk), intent(in) :: epli ! @note: not the same as 'epslin'!
+      !! Convergence test constant for the iterative solution of linear systems. See
+      !! [[daskr]] for details.
+   real(rk), intent(in) :: sqrtn
+      !! Square root of `neq`.
+   real(rk), intent(in) :: rsqrtn
+      !! Reciprocal of square root of `neq`.
+   real(rk), intent(in) :: epscon
+      !! Tolerance for convergence of the Newton iteration.
+   real(rk), intent(in) :: ratemx
+      !! Maximum convergence rate for which Newton iteration is considered converging.
+   real(rk), intent(in) :: stptol
+      !! Tolerance used in calculating the minimum lambda (`rl`) value allowed.
+   integer, intent(in) :: jflg
+      !! Flag indicating whether a `jac` routine is supplied by the user.
+   integer, intent(in) :: icnflg
+      !! Constraint flag. If nonzero, then constraint violations in the proposed new
+      !! approximate solution will be checked for, and the maximum step length will be
+      !! adjusted accordingly.
+   integer, intent(out) :: icnstr(neq)
+      !! Flags for checking constraints.
+   integer, intent(out) :: iernls
+      !! Error flag for nonlinear solver.
+      !! `0`: nonlinear solver converged.
+      !! `1`, `2`: recoverable error inside nonlinear solver.
+      !! `1`: retry with current (y,y').
+      !! `2`: retry with original (y,y').
+      !! `-1`: unrecoverable error in nonlinear solver.
+
+   integer, parameter :: lnre = 12, lnje = 13, llcrwp = 29, llciwp = 30, &
+                         lmxnit = 32, lmxnj = 33
+
+   integer :: iernew, ierpj, ires, liwp, lrwp, mxnit, mxnj, nj
+   real(rk) :: eplin
+
+   ! Perform initializations.
+   lrwp = iwm(llcrwp)
+   liwp = iwm(llciwp)
+   mxnit = iwm(lmxnit)
+   mxnj = iwm(lmxnj)
+   nj = 0
+   eplin = epli*epscon
+
+   ! Call RES to initialize DELTA.
+   ires = 0
+   iwm(lnre) = iwm(lnre) + 1
+   call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+
+   if (ires .lt. 0) then
+      iernls = 2
+      if (ires .le. -2) iernls = -1
+      return
+   end if
+
+   ! Preconditioner update loop
+   do
+
+      ! Set all error flags to zero.
+      iernls = 0
+      ierpj = 0
+      ires = 0
+      iernew = 0
+
+      ! If a Jacobian routine was supplied, call it.
+      if ((jflg .eq. 1 ).and. (jskip .eq. 0)) then
+         nj = nj + 1
+         iwm(lnje) = iwm(lnje) + 1
+         call jack(res, ires, neq, t, y, ydot, wt, delta, r, h, cj, &
+                   rwm(lrwp), iwm(liwp), ierpj, rpar, ipar)
+         
+         if ((ires .lt. 0) .or. (ierpj .ne. 0)) then
+            iernls = 2
+            if (ires .le. -2) iernls = -1
+            return
+         end if
+      end if
+
+      jskip = 0
+
+      ! Call the nonlinear Newton solver
+      call dnsik(t, y, ydot, neq, icopt, idy, res, psol, wt, rpar, ipar, &
+                 savr, delta, r, yic, ydotic, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, &
+                 eplin, epscon, ratemx, mxnit, stptol, icnflg, icnstr, iernew)
+
+      if ((iernew .eq. 1) .and. (nj .lt. mxnj) .and. (jflg .eq. 1)) then
+      ! Up to MXNIT iterations were done, the convergence rate is < 1,
+      ! a Jacobian routine is supplied, and the number of JACK calls is less than MXNJ.
+      ! Copy the residual SAVR to DELTA, call JACK, and try again.
+         delta = savr
+         cycle
+      else
+         exit ! Either success or unrecoverable failure
+      end if
+   
+   end do
+
+   if (iernew .ne. 0) then
+      iernls = min(iernew, 2)
+      return
+   end if
+
+end subroutine ddasik
+
 subroutine dnsik( &
    t, y, ydot, neq, icopt, idy, res, psol, wt, rpar, ipar, &
    savr, delta, r, yic, ydotic, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, epslin, &
