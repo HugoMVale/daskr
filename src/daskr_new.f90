@@ -96,7 +96,7 @@ subroutine dfnrmd( &
    real(rk), intent(in) :: t
       !! Independent variable.
    real(rk), intent(in) :: ydot(neq)
-      !! Derivative of solution vector after successful step.
+      !! Derivative of solution vector.
    real(rk), intent(out) :: r(neq)
       !! Result vector.
    real(rk), intent(in) :: cj
