@@ -74,6 +74,68 @@ module daskr
 
 end module daskr
 
+subroutine dfnrmd( &
+   neq, y, t, ydot, r, cj, tscale, wt, &
+   res, ires, rnorm, rwm, iwm, rpar, ipar)
+!! This routine calculates the scaled preconditioned norm of the nonlinear function used
+!! in the nonlinear iteration for obtaining consistent initial conditions. Specifically,
+!! it calculates the weighted root-mean-square norm of the vector:
+!!
+!! $$  r = J^{-1} G(t,y,\dot{y}) $$
+!!
+!! where \(J\) is the Jacobian matrix and \(G\) is the DAE equation vector.
+
+   use daskr_kinds, only: rk, zero
+   use daskr, only: res_t, psol_t
+   implicit none
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(in) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(in) :: ydot(neq)
+      !! Derivative of solution vector after successful step.
+   real(rk), intent(out) :: r(neq)
+      !! Result vector.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: tscale ! @todo: what is "t?
+      !! Scale factor in `t`; used for stopping tests if nonzero.
+   real(rk), intent(inout) :: wt(neq)
+      !! Scaling factors.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   integer, intent(out) :: ires
+      !! Error flag from `res`.
+   real(rk), intent(out) :: rnorm
+      !! Weighted root-mean-square norm of `r`.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+
+   real(rk), external :: ddwnrm ! @todo: remove this once inside module
+
+   ! Call RES routine.
+   ires = 0
+   call res(t, y, ydot, cj, r, ires, rpar, ipar)
+   if (ires .lt. 0) return
+
+   ! Apply inverse of Jacobian to vector R.
+   call dslvd(neq, r, rwm, iwm)
+
+   ! Calculate norm of R.
+   rnorm = ddwnrm(neq, r, wt, rpar, ipar)
+   if (tscale .gt. zero) rnorm = rnorm*tscale*abs(cj)
+
+end subroutine dfnrmd
+
 subroutine dnedd( &
    t, y, ydot, neq, res, jac, dum1, &
    h, wt, jstart, idid, rpar, ipar, phi, gama, dum2, delta, e, &
