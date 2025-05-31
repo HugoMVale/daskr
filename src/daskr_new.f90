@@ -26,7 +26,7 @@ module daskr
          real(rk), intent(in) :: t
          real(rk), intent(in) :: y(*)
          real(rk), intent(in) :: ydot(*)
-         real(rk), intent(out) :: pd(:,:)
+         real(rk), intent(out) :: pd(*)
          real(rk), intent(in) :: cj
          real(rk), intent(inout) :: rpar(*)
          integer, intent(inout) :: ipar(*)
@@ -74,7 +74,174 @@ module daskr
 
 end module daskr
 
-subroutine dslvd(neq,delta,rwm,iwm)
+subroutine dmatd( &
+   neq, t, y, ydot, delta, cj, h, ierr, ewt, e, &
+   rwm, iwm, res, ires, uround, jac, rpar, ipar)
+!! This routine computes the iteration matrix:
+!!
+!! $$ J = \partial G/ \partial y + c_J \partial G/ \partial \dot{y} $$
+!!
+!! Here \(J\) is computed by the user-supplied routine `jac` if `mtype` is 1 or 4, or
+!! by numerical difference quotients if `mtype` is 2 or 5.
+
+   use daskr_kinds, only: rk, zero
+   use daskr, only: res_t, jacd_t
+   use dlinpack, only: dgefa, dgbfa
+   implicit none
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(inout) :: ydot(neq)
+      !! Derivative of solution vector.
+   real(rk), intent(inout) :: delta(neq)
+      !! Residual evaluated at (t,y,y').
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: h
+      !! Current stepsize in integration.
+   integer, intent(out) :: ierr
+      !! Error flag returned by [[dgefa]] and [[dgbfa]].
+      !!   `0`: matrix is not singular.
+      !! `k > 0`: matrix is singular.
+   real(rk), intent(inout) :: ewt(neq)
+      !! Vector of error weights for computing norms.
+   real(rk), intent(inout) :: e(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for matrices. On output, it contains the LU decomposition
+      !! of the iteration matrix.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace containing matrix information.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   integer, intent(out) :: ires
+      !! Error flag from `res`.
+   real(rk), intent(in) :: uround ! @todo: remove this
+      !! Unit roundoff error.
+   procedure(jacd_t) :: jac
+      !! User-defined Jacobian routine.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+
+   integer, parameter :: lml = 1, lmu = 2, lmtype = 4, lnre = 12, lnpd = 22, llciwp = 30
+   integer :: i, i1, i2, ii, ipsave, isave, j, k, l, lenpd, lipvt, mba, mband, meb1, &
+              meband, msave, mtype, n, nrow
+   real(rk) :: del, delinv, squr, ypsave, ysave
+   logical :: isdense
+
+   lipvt = iwm(llciwp)
+   mtype = iwm(lmtype)
+   ierr = 0
+
+   select case (mtype)
+   case (1)
+      ! Dense user-supplied matrix.
+      isdense = .true.
+      lenpd = iwm(lnpd)
+      rwm(1:lenpd) = zero
+      call jac(t, y, ydot, rwm, cj, rpar, ipar)
+
+   case (2)
+      ! Dense finite-difference-generated matrix.
+      isdense = .true.
+      ires = 0
+      nrow = 0
+      squr = sqrt(uround)
+      do i = 1, neq
+         del = max(squr*max(abs(y(i)), abs(h*ydot(i))), 1/ewt(i))
+         del = sign(del, h*ydot(i))
+         del = (y(i) + del) - y(i)
+         ysave = y(i)
+         ypsave = ydot(i)
+         y(i) = y(i) + del
+         ydot(i) = ydot(i) + cj*del
+         iwm(lnre) = iwm(lnre) + 1
+         call res(t, y, ydot, cj, e, ires, rpar, ipar)
+         if (ires .lt. 0) return
+         delinv = 1/del
+         do l = 1, neq
+            rwm(nrow + l) = (e(l) - delta(l))*delinv
+         end do
+         nrow = nrow + neq
+         y(i) = ysave
+         ydot(i) = ypsave
+      end do
+
+   case (3)
+      ! dummy section for mtype=3.
+      error stop "error: mtype=3 not implemented"
+
+   case (4)
+      ! Banded user-supplied matrix.
+      isdense = .false.
+      lenpd = iwm(lnpd)
+      rwm(1:lenpd) = zero
+      call jac(t, y, ydot, rwm, cj, rpar, ipar)
+      meband = 2*iwm(lml) + iwm(lmu) + 1
+
+   case (5)
+      ! Banded finite-difference-generated matrix.
+      isdense = .false.
+      mband = iwm(lml) + iwm(lmu) + 1
+      mba = min(mband, neq)
+      meband = mband + iwm(lml)
+      meb1 = meband - 1
+      msave = (neq/mband) + 1
+      isave = iwm(lnpd)
+      ipsave = isave + msave
+      ires = 0
+      squr = sqrt(uround)
+      do j = 1, mba
+         do n = j, neq, mband
+            k = (n - j)/mband + 1
+            rwm(isave + k) = y(n)
+            rwm(ipsave + k) = ydot(n)
+            del = max(squr*max(abs(y(n)), abs(h*ydot(n))), 1/ewt(n))
+            del = sign(del, h*ydot(n))
+            del = (y(n) + del) - y(n)
+            y(n) = y(n) + del
+            ydot(n) = ydot(n) + cj*del
+         end do
+         iwm(lnre) = iwm(lnre) + 1
+         call res(t, y, ydot, cj, e, ires, rpar, ipar)
+         if (ires .lt. 0) return
+         do n = j, neq, mband
+            k = (n - j)/mband + 1
+            y(n) = rwm(isave + k)
+            ydot(n) = rwm(ipsave + k)
+            del = max(squr*max(abs(y(n)), abs(h*ydot(n))), 1/ewt(n))
+            del = sign(del, h*ydot(n))
+            del = (y(n) + del) - y(n)
+            delinv = 1/del
+            i1 = max(1, (n - iwm(lmu)))
+            i2 = min(neq, (n + iwm(lml)))
+            ii = n*meb1 - iwm(lml)
+            do i = i1, i2
+               rwm(ii + i) = (e(i) - delta(i))*delinv
+            end do
+         end do
+      end do
+
+   case default
+      error stop "error: unexpected value for mtype"
+
+   end select
+
+   if (isdense) then
+      call dgefa(rwm, neq, neq, iwm(lipvt), ierr)
+   else
+      call dgbfa(rwm, meband, neq, iwm(lml), iwm(lmu), iwm(lipvt), ierr)
+   end if
+
+end
+
+subroutine dslvd(neq, delta, rwm, iwm)
 !! This routine manages the solution of the linear system arising in the Newton iteration.
 !! Real matrix information and real temporary storage is stored in the array `rwm`, while
 !! integer matrix information is stored in the array `iwm`.
@@ -113,7 +280,6 @@ subroutine dslvd(neq,delta,rwm,iwm)
          meband = 2 * iwm(lml) + iwm(lmu) + 1
          call dgbsl(rwm, meband, neq, iwm(lml), iwm(lmu), iwm(lipvt), delta, 0)
       case default
-         ! handle unexpected values of mtype (optional)
          error stop "error: unexpected value for mtype"
    end select
 
