@@ -6,7 +6,7 @@ module daskr
 
    use daskr_kinds, only: rk
    implicit none
-   
+
    abstract interface
       subroutine res_t(t, y, ydot, cj, delta, ires, rpar, ipar)
          import :: rk
@@ -20,7 +20,7 @@ module daskr
          integer, intent(inout) :: ipar(*)
       end subroutine res_t
 
-      subroutine jacd_t(t, y, ydot, pd, cj, rpar, ipar)
+      subroutine jac_t(t, y, ydot, pd, cj, rpar, ipar)
          import :: rk
          procedure(res_t) :: res
          real(rk), intent(in) :: t
@@ -30,7 +30,7 @@ module daskr
          real(rk), intent(in) :: cj
          real(rk), intent(inout) :: rpar(*)
          integer, intent(inout) :: ipar(*)
-      end subroutine jacd_t
+      end subroutine jac_t
 
       subroutine jack_t(res, ires, neq, t, y, ydot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
          import :: rk
@@ -74,6 +74,157 @@ module daskr
 
 end module daskr
 
+subroutine dnsd( &
+   t, y, ydot, neq, res, dum1, wt, rpar, ipar, &
+   dum2, delta, e, rwm, iwm, cj, dum3, dum4, dum5, epscon, &
+   s, confac, tolnew, muldel, maxit, ires, dum6, iernew)
+!! This routine solves a nonlinear system of algebraic equations of the form:
+!!
+!!  $$ G(t, y, \dot{y}) = 0 $$
+!!
+!! for the unknown \(y\). The method used is a modified Newton scheme.
+!!
+!! All arguments with "dum" in their names are dummy arguments which are not used in
+!! this routine.
+
+   use daskr_kinds, only: rk, zero, one
+   use daskr, only: res_t, psol_t
+   implicit none
+
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(inout) :: ydot(neq)
+      !! Derivative of solution vector.
+   integer, intent(in) :: neq
+      !! Problem size.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   procedure(psol_t) :: dum1
+      !! Dummy argument.
+   real(rk), intent(inout) :: wt(neq)
+      !! Weights for error criterion.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+   real(rk), intent(in) :: dum2(neq)
+      !! Dummy argument.
+   real(rk), intent(inout) :: delta(neq)
+      !! Real work array.
+   real(rk), intent(out) :: e(neq)
+      !! Error accumulation vector.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: dum3
+      !! Dummy argument.
+   real(rk), intent(in) :: dum4
+      !! Dummy argument.
+   real(rk), intent(in) :: dum5
+      !! Dummy argument.
+   real(rk), intent(in) :: epscon
+      !! Tolerance for convergence of the Newton iteration.
+   real(rk), intent(inout) :: s
+      !! Convergence factor for the Newton iteration. `s=rate/(1 - rate)`, where
+      !! `rate` is the estimated rate of convergence of the Newton iteration.
+   real(rk), intent(in) :: confac
+      !! Residual scale factor to improve convergence.
+   real(rk), intent(in) :: tolnew
+      !! Tolerance on the norm of the Newton correction in the alternative Newton
+      !! convergence test.
+   integer, intent(in) :: muldel ! @todo: convert to logical
+      !! Flag indicating whether or not to multiply `delta` by `confac`.
+   integer, intent(in) :: maxit
+      !! Maximum number of Newton iterations allowed.
+   integer, intent(out) :: ires
+      !! Error flag from `res`.
+      !! If `ires == -1`, then `iernew = 1`.
+      !! If `ires < -1`, then `iernew = -1`.
+   integer, intent(in) :: dum6
+      !! Dummy argument.
+   integer, intent(out) :: iernew
+      !! Error flag for the Newton iteration.
+      !!  `0`: the Newton iteration converged.
+      !!  `1`: recoverable error inside Newton iteration.
+      !! `-1`: unrecoverable error inside Newton iteration.
+
+   integer, parameter :: lnre = 12, lnni = 19
+   integer :: m
+   real(rk) :: delnorm, oldnorm, rate
+   real(rk), external :: ddwnrm ! @todo: remove this once inside module
+   logical :: converged
+
+   ! Initialize Newton counter M and accumulation vector E.
+   m = 0
+   e = zero
+
+   ! Corrector loop.
+   converged = .false.
+   do
+
+      iwm(lnni) = iwm(lnni) + 1
+
+      ! If necessary, multiply residual by convergence factor.
+      if (muldel .eq. 1) then
+         delta = delta*confac
+      end if
+
+      ! Compute a new iterate (back-substitution).
+      ! Store the correction in DELTA.
+      call dslvd(neq, delta, rwm, iwm)
+
+      ! Update Y, E, and YDOT.
+      y = y - delta
+      e = e - delta
+      ydot = ydot - cj*delta
+
+      ! Test for convergence of the iteration.
+      delnorm = ddwnrm(neq, delta, wt, rpar, ipar)
+      if (m .eq. 0) then
+         oldnorm = delnorm
+         if (delnorm .le. tolnew) then
+            converged = .true.
+            exit
+         end if
+      else
+         rate = (delnorm/oldnorm)**(one/m)
+         if (rate .gt. 0.9_rk) exit
+         s = rate/(1 - rate)
+      end if
+      if (s*delnorm .le. epscon) then
+         converged = .true.
+         exit
+      end if
+
+      ! The corrector has not yet converged.
+      ! Update M and test whether the maximum number of iterations have been tried.
+      m = m + 1
+      if (m .ge. maxit) exit
+
+      ! Evaluate the residual, and go back to do another iteration.
+      iwm(lnre) = iwm(lnre) + 1
+      call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+      if (ires .lt. 0) exit
+
+   end do
+
+   if (converged) then
+      iernew = 0
+   else
+      if (ires .le. -2) then
+         iernew = -1
+      else
+         iernew = 1
+      end if
+   end if
+
+end subroutine dnsd
+
 subroutine dmatd( &
    neq, t, y, ydot, delta, cj, h, ierr, ewt, e, &
    rwm, iwm, res, ires, uround, jac, rpar, ipar)
@@ -85,7 +236,7 @@ subroutine dmatd( &
 !! by numerical difference quotients if `mtype` is 2 or 5.
 
    use daskr_kinds, only: rk, zero
-   use daskr, only: res_t, jacd_t
+   use daskr, only: res_t, jac_t
    use dlinpack, only: dgefa, dgbfa
    implicit none
 
@@ -105,7 +256,7 @@ subroutine dmatd( &
       !! Current stepsize in integration.
    integer, intent(out) :: ierr
       !! Error flag returned by [[dgefa]] and [[dgbfa]].
-      !!   `0`: matrix is not singular.
+      !!     `0`: matrix is not singular.
       !! `k > 0`: matrix is singular.
    real(rk), intent(inout) :: ewt(neq)
       !! Vector of error weights for computing norms.
@@ -122,7 +273,7 @@ subroutine dmatd( &
       !! Error flag from `res`.
    real(rk), intent(in) :: uround ! @todo: remove this
       !! Unit roundoff error.
-   procedure(jacd_t) :: jac
+   procedure(jac_t) :: jac
       !! User-defined Jacobian routine.
    real(rk), intent(inout) :: rpar(*)
       !! User real workspace.
@@ -248,9 +399,9 @@ subroutine dslvd(neq, delta, rwm, iwm)
 !! For a dense matrix, the LINPACK routine [[dgesl]] is called. For a banded matrix, the
 !! LINPACK routine [[dgbsl]] is called.
 
-    use daskr, only: rk
-    use dlinpack, only: dgesl, dgbsl
-    implicit none
+   use daskr, only: rk
+   use dlinpack, only: dgesl, dgbsl
+   implicit none
 
    integer, intent(in) :: neq
       !! Problem size.
@@ -269,18 +420,18 @@ subroutine dslvd(neq, delta, rwm, iwm)
    mtype = iwm(lmtype)
 
    select case (mtype)
-      case (1, 2)
-         ! dense matrix.
-         call dgesl(rwm, neq, neq, iwm(lipvt), delta, 0)
-      case (3)
-         ! dummy section for mtype=3.
-         error stop "error: mtype=3 not implemented"
-      case (4, 5)
-         ! banded matrix.
-         meband = 2 * iwm(lml) + iwm(lmu) + 1
-         call dgbsl(rwm, meband, neq, iwm(lml), iwm(lmu), iwm(lipvt), delta, 0)
-      case default
-         error stop "error: unexpected value for mtype"
+   case (1, 2)
+      ! dense matrix.
+      call dgesl(rwm, neq, neq, iwm(lipvt), delta, 0)
+   case (3)
+      ! dummy section for mtype=3.
+      error stop "error: mtype=3 not implemented"
+   case (4, 5)
+      ! banded matrix.
+      meband = 2*iwm(lml) + iwm(lmu) + 1
+      call dgbsl(rwm, meband, neq, iwm(lml), iwm(lmu), iwm(lipvt), delta, 0)
+   case default
+      error stop "error: unexpected value for mtype"
    end select
 
 end subroutine dslvd
@@ -417,12 +568,12 @@ subroutine ddasik( &
       iernew = 0
 
       ! If a Jacobian routine was supplied, call it.
-      if ((jflg .eq. 1 ).and. (jskip .eq. 0)) then
+      if ((jflg .eq. 1) .and. (jskip .eq. 0)) then
          nj = nj + 1
          iwm(lnje) = iwm(lnje) + 1
          call jack(res, ires, neq, t, y, ydot, wt, delta, r, h, cj, &
                    rwm(lrwp), iwm(liwp), ierpj, rpar, ipar)
-         
+
          if ((ires .lt. 0) .or. (ierpj .ne. 0)) then
             iernls = 2
             if (ires .le. -2) iernls = -1
@@ -438,15 +589,15 @@ subroutine ddasik( &
                  eplin, epscon, ratemx, mxnit, stptol, icnflg, icnstr, iernew)
 
       if ((iernew .eq. 1) .and. (nj .lt. mxnj) .and. (jflg .eq. 1)) then
-      ! Up to MXNIT iterations were done, the convergence rate is < 1,
-      ! a Jacobian routine is supplied, and the number of JACK calls is less than MXNJ.
-      ! Copy the residual SAVR to DELTA, call JACK, and try again.
+         ! Up to MXNIT iterations were done, the convergence rate is < 1,
+         ! a Jacobian routine is supplied, and the number of JACK calls is less than MXNJ.
+         ! Copy the residual SAVR to DELTA, call JACK, and try again.
          delta = savr
          cycle
       else
          exit ! Either success or unrecoverable failure
       end if
-   
+
    end do
 
    if (iernew .ne. 0) then
@@ -545,10 +696,11 @@ subroutine dnsik( &
    integer, parameter :: lnni = 19, lnpsol = 21, llcrwp = 29, llciwp = 30, llsoff = 35, &
                          lstol = 14
    integer :: ierr, iersl, ires, iret, liwp, lsoff, lrwp, m
-   real(rk) :: ddwnrm, delnorm, fnorm, fnorm0, oldfnorm, rate, rhok, rlx
+   real(rk) :: delnorm, fnorm, fnorm0, oldfnorm, rate, rhok, rlx
    logical :: iserror, ismaxit
+   real(rk), external :: ddwnrm
 
-   ! Initializations. 
+   ! Initializations.
    lsoff = iwm(llsoff)
    lrwp = iwm(llcrwp)
    liwp = iwm(llciwp)
@@ -583,8 +735,8 @@ subroutine dnsik( &
 
       ! Compute a new step vector DELTA.
       call dslvk(neq, y, t, ydot, savr, delta, wt, rwm, iwm, &
-               res, ires, psol, iersl, cj, epslin, sqrtn, rsqrtn, rhok, &
-               rpar, ipar)
+                 res, ires, psol, iersl, cj, epslin, sqrtn, rsqrtn, rhok, &
+                 rpar, ipar)
       if ((ires .ne. 0) .or. (iersl .ne. 0)) then
          iserror = .true.
          exit
@@ -625,7 +777,7 @@ subroutine dnsik( &
    end do
 
    ! The maximum number of iterations was done. Set IERNEW and return.
-   if (ismaxit) then 
+   if (ismaxit) then
       if ((rate .le. ratemx) .or. (fnorm .le. fnorm0/10)) then
          iernew = 1
       else
@@ -643,7 +795,7 @@ subroutine dnsik( &
             iernew = 1
          end if
       end if
-   end if 
+   end if
 
 end subroutine dnsik
 
@@ -850,7 +1002,6 @@ subroutine dlinsk( &
 
 end subroutine dlinsk
 
-
 subroutine dfnrmk( &
    neq, y, t, ydot, savr, r, cj, tscale, wght, &
    sqrtn, rsqrtn, res, ires, psol, irin, ierr, &
@@ -862,7 +1013,7 @@ subroutine dfnrmk( &
 !! $$  r = P^{-1} G(t,y,\dot{y}) $$
 !!
 !! where \(P\) is the preconditioner matrix and \(G\) is the DAE equation vector.
-   
+
    use daskr_kinds, only: rk, zero
    use daskr, only: res_t, psol_t
    implicit none
@@ -882,13 +1033,13 @@ subroutine dfnrmk( &
    real(rk), intent(in) :: cj
       !! Scalar used in forming the system Jacobian.
    real(rk), intent(in) :: tscale ! @todo: what is "t?
-      !! Scale factor in `t`; used for stopping tests if nonzero. 
+      !! Scale factor in `t`; used for stopping tests if nonzero.
    real(rk), intent(inout) :: wght(neq)
       !! Scaling factors.
    real(rk), intent(in) :: sqrtn
       !! Square root of `neq`.
    real(rk), intent(in) :: rsqrtn
-      !! Reciprocal of square root of `neq`.   
+      !! Reciprocal of square root of `neq`.
    procedure(res_t) :: res
       !! User-defined residuals routine.
    integer, intent(out) :: ires
@@ -916,7 +1067,7 @@ subroutine dfnrmk( &
    integer, intent(inout) :: ipar(*)
       !! User integer workspace.
 
-   real(rk) :: ddwnrm ! @todo: remove this once inside module
+   real(rk), external :: ddwnrm ! @todo: remove this once inside module
 
    ! Call RES routine if IRIN = 0.
    if (irin == 0) then
@@ -941,7 +1092,7 @@ subroutine dfnrmk( &
 end subroutine dfnrmk
 
 subroutine dnedk( &
-   t, y, ydot, neq, res, jac, psol, &
+   t, y, ydot, neq, res, jack, psol, &
    h, wt, jstart, idid, rpar, ipar, phi, gama, savr, delta, e, &
    rwm, iwm, cj, cjold, cjlast, s, uround, epli, sqrtn, rsqrtn, &
    epscon, jcalc, jflag, kp1, nonneg, ntype, iernls)
@@ -965,7 +1116,7 @@ subroutine dnedk( &
       !! Problem size.
    procedure(res_t) :: res
       !! User-defined residuals routine.
-   procedure(jack_t) :: jac
+   procedure(jack_t) :: jack
       !! User-defined Jacobian routine.
    procedure(psol_t) :: psol
       !! User-defined preconditioner routine.
@@ -1048,7 +1199,7 @@ subroutine dnedk( &
 
    integer :: iernew, ierpj, iersl, iertyp, ires, j, liwp, lwp
    real(rk) :: delnrm, epslin, temp1, temp2, tolnew
-   real(rk) :: ddwnrm ! @todo: remove this once inside module
+   real(rk), external :: ddwnrm ! @todo: remove this once inside module
 
    ! Verify that this is the correct subroutine.
    iertyp = 0
@@ -1110,7 +1261,7 @@ subroutine dnedk( &
    if (jcalc == -1) then
       iwm(lnje) = iwm(lnje) + 1
       jcalc = 0
-      call jac(res, ires, neq, t, y, ydot, wt, delta, e, h, cj, rwm(lwp), iwm(liwp), ierpj, rpar, ipar)
+      call jack(res, ires, neq, t, y, ydot, wt, delta, e, h, cj, rwm(lwp), iwm(liwp), ierpj, rpar, ipar)
       cjold = cj
       s = 1e2_rk
       if (ires < 0) goto 380
@@ -1234,7 +1385,7 @@ subroutine dnsk( &
    integer, intent(out) :: iersl
       !! Error flag from the linear system solver. See [[dslvk]] for details.
       !! If `iersl < 0`, then `iernew = -1`.
-      !! If `iersl = 1`, then `iernew = 1`.
+      !! If `iersl == 1`, then `iernew = 1`.
    integer, intent(out) :: iernew
       !! Error flag for the Newton iteration.
       !!  `0`: the Newton iteration converged.
@@ -1242,10 +1393,9 @@ subroutine dnsk( &
       !! `-1`: unrecoverable error inside Newton iteration.
 
    integer, parameter :: lnni = 19, lnre = 12
-
    integer :: m
-   real(rk) :: delnrm, oldnrm, rate, rhok
-   real(rk) :: ddwnrm ! @todo: remove this once inside module
+   real(rk) :: delnorm, oldnorm, rate, rhok
+   real(rk), external :: ddwnrm ! @todo: remove this once inside module
    logical :: converged
 
    ! Initialize Newton counter M and accumulation vector E.
@@ -1277,24 +1427,24 @@ subroutine dnsk( &
       ydot = ydot - cj*delta
 
       ! Test for convergence of the iteration.
-      delnrm = ddwnrm(neq, delta, wt, rpar, ipar)
+      delnorm = ddwnrm(neq, delta, wt, rpar, ipar)
       if (m == 0) then
-         oldnrm = delnrm
-         if (delnrm <= tolnew) then
+         oldnorm = delnorm
+         if (delnorm <= tolnew) then
             converged = .true.
             exit
          end if
       else
-         rate = (delnrm/oldnrm)**(one/m)
+         rate = (delnorm/oldnorm)**(one/m)
          if (rate > 0.9_rk) exit
          s = rate/(one - rate)
       end if
 
-      if (s*delnrm <= epscon) then
+      if (s*delnorm <= epscon) then
          converged = .true.
          exit
       end if
-      
+
       ! The corrector has not yet converged. Update M and test whether
       ! the maximum number of iterations have been tried.
       m = m + 1
@@ -1308,7 +1458,7 @@ subroutine dnsk( &
    end do
 
    if (converged) then
-      iernew = 0 
+      iernew = 0
    else
       if ((ires <= -2) .or. (iersl < 0)) then
          iernew = -1
@@ -1507,7 +1657,7 @@ subroutine dspigm( &
    real(rk), intent(out) :: v(neq, *)
       !! Matrix of shape `(neq,lgmr+1)` containing the `lgmr` orthogonal vectors `v(:,1)`
       !! to `v(:,lgmr)`.
-   real(rk), intent(out) :: hes(maxl+1, maxl)
+   real(rk), intent(out) :: hes(maxl + 1, maxl)
       !! Upper triangular factor of the QR decomposition of the upper Hessenberg matrix
       !! whose entries are the scaled inner-products of `A*v(:,i)` and `v(:,k)`.
    real(rk), intent(out) :: q(2*maxl)
@@ -1723,8 +1873,8 @@ subroutine datv( &
 !! $$ z = D^{-1} P^{-1} (\partial F / \partial y) D v $$
 !!
 !! where \(F = G(t, y, c_J(y - a))\), \(c_J\) is a scalar proportional to \(1/h\), and \(a\)
-!! involves the past history of \(y\). The quantity \(c_J(y - a)\) is an approximation to 
-!! the first derivative of \(y\) and is stored in \(\dot{y}\). 
+!! involves the past history of \(y\). The quantity \(c_J(y - a)\) is an approximation to
+!! the first derivative of \(y\) and is stored in \(\dot{y}\).
 !!
 !! \(D\) is a diagonal scaling matrix, and \(P\) is the left preconditioning matrix. \(v\)
 !! is assumed to have L-2 norm equal to 1. The product is stored in \(z\) and is computed by
@@ -1744,7 +1894,7 @@ subroutine datv( &
    real(rk), intent(in) :: savr(neq)
       !! Current residual evaluated at `(t, y, ydot)`.
    real(rk), intent(in) :: v(neq)
-      !! Orthonormal vector (can be the same as `z`).  
+      !! Orthonormal vector (can be the same as `z`).
    real(rk), intent(in) :: wght(neq)
       !! Scaling factors. `1/wght(i)` are the diagonal elements of the matrix \(D\).
    real(rk), intent(out) :: ydottemp(neq)
@@ -1805,7 +1955,7 @@ subroutine datv( &
    if (ierr /= 0) return
 
    ! Apply D-inverse to Z
-   z = z * wght
+   z = z*wght
 
 end subroutine datv
 
@@ -2016,9 +2166,9 @@ end subroutine dheqr
 
 pure subroutine dhels(a, lda, n, q, b)
 !! This routine solves the least squares problem:
-!! 
+!!
 !!  $$ \min{\| b - A x \|^2} $$
-!! 
+!!
 !! using the factors computed by [[dheqr]]. This is similar to the LINPACK routine [[dgesl]]
 !! except that \(A\) is an upper Hessenberg matrix.
 
@@ -2035,7 +2185,7 @@ pure subroutine dhels(a, lda, n, q, b)
       !! Number of columns in `a` (originally a matrix with shape `(n+1, n)`).
    real(rk), intent(in) :: q(2*n)
       !! Coefficients of the Givens rotations used in decomposing `a`.
-   real(rk), intent(inout) :: b(n+1)
+   real(rk), intent(inout) :: b(n + 1)
       !! On entry, the right hand side vector. On return, the solution vector \(x\).
 
    integer :: iq, k, kb, kp1
