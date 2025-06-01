@@ -50,9 +50,9 @@ jobs:
       - name: Run examples
         run: |
           gfortran --version
-          fpm run --example "example_heat" --profile release
-          fpm run --example "example_heatilu" --profile release
-          fpm run --example "example_web" --profile release
+          fpm run --example "example_heat" --profile release --flag $FLAGS
+          fpm run --example "example_heatilu" --profile release --flag $FLAGS
+          fpm run --example "example_web" --profile release --flag $FLAGS
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
