@@ -22,7 +22,7 @@ jobs:
         uses: fortran-lang/setup-fortran@v1
         with:
           compiler: gcc
-          version: 12 # 13 fails during gcov 
+          version: 13 
         
       - name: Install OpenBLAS
         if: contains(matrix.os, 'ubuntu')
@@ -58,8 +58,7 @@ jobs:
           fpm run --example "example_heat" --profile release --flag "$FLAGS $FLAGSCOV"
           fpm run --example "example_heatilu" --profile release --flag "$FLAGS $FLAGSCOV"
           fpm run --example "example_web" --profile release --flag "$FLAGS $FLAGSCOV"
-          # gcov ./build/gfortran*/daskr/src*.gcda -r ./src/ -b -w
-          gcovr --filter src --cobertura-pretty --cobertura coverage.xml
+          gcovr --filter src --cobertura-pretty --output coverage.xml
                 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
