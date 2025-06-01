@@ -72,6 +72,76 @@ module daskr
       end subroutine psol_t
    end interface
 
+   ! `rwork` indices
+   integer, parameter :: rwloc_cj     = 1
+      !! `cj`: scalar used in forming the system Jacobian  
+   integer, parameter :: rwloc_cjold  = 2
+      !! `cjold`: scalar used in forming the system Jacobian on last step
+   integer, parameter :: rwloc_h      = 3
+      !! `h`: step size for next step  
+   integer, parameter :: rwloc_tn     = 4
+      !! `tn`: current independent variable value  
+   integer, parameter :: rwloc_hold   = 7
+      !! `hold`: step size used on last step  
+
+   ! `iwork` indices
+   integer, parameter :: iwloc_ml     = 1
+      !! `ml`: lower bandwidth  
+   integer, parameter :: iwloc_mu     = 2
+      !! `mu`: upper bandwidth  
+   integer, parameter :: iwloc_mtype  = 4
+      !! `mtype`: method type   
+   integer, parameter :: iwloc_k      = 7
+      !! `k`: order of method for next step  
+   integer, parameter :: iwloc_kold   = 8
+      !! `kold`: order used on last step  
+   integer, parameter :: iwloc_nst    = 11
+      !! `nst`: number of steps taken  
+   integer, parameter :: iwloc_nre    = 12
+      !! `nre`: number of `res` calls  
+   integer, parameter :: iwloc_nje    = 13
+      !! `nje`: number of `jac` calls  
+   integer, parameter :: iwloc_netf   = 14
+      !! `netf`: number of error test failures  
+   integer, parameter :: iwloc_ncfn   = 15
+      !! `ncfn`: number of nonlinear convergence failures  
+   integer, parameter :: iwloc_ncfl   = 16
+      !! `ncfl`: number of linear iteration convergence failures  
+   integer, parameter :: iwloc_leniw  = 17
+      !! `leniw`: actual `iwork` length used  
+   integer, parameter :: iwloc_lenrw  = 18
+      !! `lenrw`: actual `rwork` length used  
+   integer, parameter :: iwloc_nni    = 19
+      !! `nni`: number of nonlinear iterations  
+   integer, parameter :: iwloc_nli    = 20
+      !! `nli`: number of linear (Krylov) iterations  
+   integer, parameter :: iwloc_nps    = 21
+      !! `nps`: number of `psol` calls
+   integer, parameter :: iwloc_npd    = 22
+      !! `npd`: length of partial derivatives vector returned by `jac`
+   integer, parameter :: iwloc_miter  = 23
+      !! `miter`: ??
+   integer, parameter :: iwloc_maxl   = 24
+      !! `maxl`: ??
+   integer, parameter :: iwloc_kmp    = 25
+      !! `kmp`: ??
+   integer, parameter :: iwloc_nrmax  = 26
+      !! `nrmax`: ??           
+   integer, parameter :: iwloc_lrwp   = 29
+      !! `lrwp`: location of start of `rwp` in `rwork`.   
+   integer, parameter :: iwloc_liwp   = 30
+      !! `liwp`: location of start of `iwp` in `iwork`.      
+   integer, parameter :: iwloc_kprint = 31
+      !! `kprint`: flag to turn on print
+   integer, parameter :: iwloc_mxnit  = 32
+      !! `mxnit`: maximum number of Newton iterations
+   integer, parameter :: iwloc_mxnj   = 33
+      !! `mxnj`: maximum number of Jacobian evaluations ?   
+   integer, parameter :: iwloc_lsoff  = 35
+      !! `lsoff`: flag to turn off linesearch 
+   integer, parameter :: iwloc_nrtfn  = 36
+      !! `nrtfn`: number of `rt` calls  
+
 end module daskr
 
 subroutine dnsid( &
@@ -86,7 +156,7 @@ subroutine dnsid( &
 !! used is a modified Newton scheme.
 
    use daskr_kinds, only: rk, zero, one
-   use daskr, only: res_t
+   use daskr
    implicit none
 
    real(rk), intent(in) :: t
@@ -147,14 +217,12 @@ subroutine dnsid( &
       !!  `3`: other recoverable error (`ires = -1` or linesearch failed).
       !! `-1`: unrecoverable error inside Newton iteration.
 
-   integer, parameter :: lnni = 19, llsoff = 35
-
    integer :: ires, iret, lsoff, m
    real(rk) :: deltanorm, fnorm, oldfnorm, rate, rlx
    real(rk), external :: ddwnrm
 
    ! Initializations.
-   lsoff = iwm(llsoff)
+   lsoff = iwm(iwloc_lsoff)
    rate = one
    rlx = 0.4_rk
    iernew = 0
@@ -172,7 +240,7 @@ subroutine dnsid( &
    m = 0
    do
 
-      iwm(lnni) = iwm(lnni) + 1
+      iwm(iwloc_nni) = iwm(iwloc_nni) + 1
 
       ! Call linesearch routine for global strategy and set RATE
       oldfnorm = fnorm
@@ -234,8 +302,9 @@ subroutine dlinsd( &
 !! where the norm is the weighted root mean square vector norm, \(G\) is the DAE system
 !! residual function, and \(J\) is the system iteration matrix (Jacobian).
 
-   use daskr_kinds, only: rk, one
-   use daskr, only: res_t, psol_t
+   use daskr_kinds, only: rk, zero, one
+   use daskr
+   implicit none
    external :: xerrwd
 
    integer, intent(in) :: neq
@@ -301,13 +370,12 @@ subroutine dlinsd( &
    integer, intent(inout) :: ipar(*)
       !! User integer workspace.
 
-   integer, parameter :: lnres = 12, lkprint = 31
    real(rk), parameter :: alpha = 1e-4_rk
    integer :: ivar, kprint
    real(rk) :: f1norm, f1normp, fnormp, ratio, ratio1, rl, rlmin, slpi, tau
    character(len=80) :: msg
 
-   kprint = iwm(lkprint)
+   kprint = iwm(iwloc_kprint)
    f1norm = (fnorm**2)/2
    ratio = one
 
@@ -354,7 +422,7 @@ subroutine dlinsd( &
       call dyypnw(neq, y, ydot, cj, rl, p, icopt, idy, ynew, ydotnew)
       call dfnrmd(neq, ynew, t, ydotnew, r, cj, tscale, wt, res, ires, &
                   fnormp, rwm, iwm, rpar, ipar)
-      iwm(lnres) = iwm(lnres) + 1
+      iwm(iwloc_nre) = iwm(iwloc_nre) + 1
       if (ires .ne. 0) then
          iret = 2
          return
@@ -412,7 +480,7 @@ subroutine dfnrmd( &
 !! where \(J\) is the Jacobian matrix and \(G\) is the DAE equation vector.
 
    use daskr_kinds, only: rk, zero
-   use daskr, only: res_t, psol_t
+   use daskr
    implicit none
 
    integer, intent(in) :: neq
@@ -477,7 +545,7 @@ subroutine dnedd( &
 !! this routine.
    
    use daskr_kinds, only: rk, zero, one
-   use daskr, only: res_t, jac_t, psol_t
+   use daskr
    implicit none
 
    real(rk), intent(in) :: t
@@ -567,7 +635,7 @@ subroutine dnedd( &
       !!  `1`: recoverable error inside non-linear solver.
       !! `-1`: unrecoverable error inside non-linear solver.
 
-   integer, parameter :: lnre = 12, lnje = 13, muldel = 1, maxit = 4
+   integer, parameter :: muldel = 1, maxit = 4
    real(rk), parameter :: xrate = 0.25_rk
    integer :: idum, ierj, iernew, iertyp, ires, j
    real(rk) :: delnorm, pnorm, temp1, temp2, tolnew
@@ -615,7 +683,7 @@ subroutine dnedd( &
    tolnew = 100*uround*pnorm
 
    ! Call RES to initialize DELTA.
-   iwm(lnre) = iwm(lnre) + 1
+   iwm(iwloc_nre) = iwm(iwloc_nre) + 1
    call res(t, y, ydot, cj, delta, ires, rpar, ipar)
    if (ires .lt. 0) goto 380
 
@@ -623,7 +691,7 @@ subroutine dnedd( &
    ! J = dG/dY + CJ*dG/dYPRIME (where G(X,Y,YPRIME)=0).
    ! Set JCALC to 0 as an indicator that this has been done.
    if (jcalc .eq. -1) then
-      iwm(lnje) = iwm(lnje) + 1
+      iwm(iwloc_nje) = iwm(iwloc_nje) + 1
       jcalc = 0
       call dmatd(neq, t, y, ydot, delta, cj, h, ierj, wt, e, rwm, iwm, res, ires, uround, jac, rpar, ipar)
       cjold = cj
@@ -690,7 +758,7 @@ subroutine dnsd( &
 !! this routine.
 
    use daskr_kinds, only: rk, zero, one
-   use daskr, only: res_t, psol_t
+   use daskr
    implicit none
 
    real(rk), intent(in) :: t
@@ -755,9 +823,8 @@ subroutine dnsd( &
       !!  `1`: recoverable error inside Newton iteration.
       !! `-1`: unrecoverable error inside Newton iteration.
 
-   integer, parameter :: lnre = 12, lnni = 19
    integer :: m
-   real(rk) :: delnorm, oldnorm, rate
+   real(rk) :: deltanorm, oldnorm, rate
    real(rk), external :: ddwnrm ! @todo: remove this once inside module
    logical :: converged
 
@@ -769,7 +836,7 @@ subroutine dnsd( &
    converged = .false.
    do
 
-      iwm(lnni) = iwm(lnni) + 1
+      iwm(iwloc_nni) = iwm(iwloc_nni) + 1
 
       ! If necessary, multiply residual by convergence factor.
       if (muldel .eq. 1) then
@@ -786,19 +853,19 @@ subroutine dnsd( &
       ydot = ydot - cj*delta
 
       ! Test for convergence of the iteration.
-      delnorm = ddwnrm(neq, delta, wt, rpar, ipar)
+      deltanorm = ddwnrm(neq, delta, wt, rpar, ipar)
       if (m .eq. 0) then
-         oldnorm = delnorm
-         if (delnorm .le. tolnew) then
+         oldnorm = deltanorm
+         if (deltanorm .le. tolnew) then
             converged = .true.
             exit
          end if
       else
-         rate = (delnorm/oldnorm)**(one/m)
+         rate = (deltanorm/oldnorm)**(one/m)
          if (rate .gt. 0.9_rk) exit
          s = rate/(1 - rate)
       end if
-      if (s*delnorm .le. epscon) then
+      if (s*deltanorm .le. epscon) then
          converged = .true.
          exit
       end if
@@ -809,7 +876,7 @@ subroutine dnsd( &
       if (m .ge. maxit) exit
 
       ! Evaluate the residual, and go back to do another iteration.
-      iwm(lnre) = iwm(lnre) + 1
+      iwm(iwloc_nre) = iwm(iwloc_nre) + 1
       call res(t, y, ydot, cj, delta, ires, rpar, ipar)
       if (ires .lt. 0) exit
 
@@ -838,7 +905,7 @@ subroutine dmatd( &
 !! by numerical difference quotients if `mtype` is 2 or 5.
 
    use daskr_kinds, only: rk, zero
-   use daskr, only: res_t, jac_t
+   use daskr
    use dlinpack, only: dgefa, dgbfa
    implicit none
 
@@ -882,21 +949,20 @@ subroutine dmatd( &
    integer, intent(inout) :: ipar(*)
       !! User integer workspace.
 
-   integer, parameter :: lml = 1, lmu = 2, lmtype = 4, lnre = 12, lnpd = 22, llciwp = 30
    integer :: i, i1, i2, ii, ipsave, isave, j, k, l, lenpd, lipvt, mba, mband, meb1, &
               meband, msave, mtype, n, nrow
    real(rk) :: del, delinv, squr, ypsave, ysave
    logical :: isdense
 
-   lipvt = iwm(llciwp)
-   mtype = iwm(lmtype)
+   lipvt = iwm(iwloc_liwp)
+   mtype = iwm(iwloc_mtype)
    ierr = 0
 
    select case (mtype)
    case (1)
       ! Dense user-supplied matrix.
       isdense = .true.
-      lenpd = iwm(lnpd)
+      lenpd = iwm(iwloc_npd)
       rwm(1:lenpd) = zero
       call jac(t, y, ydot, rwm, cj, rpar, ipar)
 
@@ -914,7 +980,7 @@ subroutine dmatd( &
          ypsave = ydot(i)
          y(i) = y(i) + del
          ydot(i) = ydot(i) + cj*del
-         iwm(lnre) = iwm(lnre) + 1
+         iwm(iwloc_nre) = iwm(iwloc_nre) + 1
          call res(t, y, ydot, cj, e, ires, rpar, ipar)
          if (ires .lt. 0) return
          delinv = 1/del
@@ -933,20 +999,20 @@ subroutine dmatd( &
    case (4)
       ! Banded user-supplied matrix.
       isdense = .false.
-      lenpd = iwm(lnpd)
+      lenpd = iwm(iwloc_npd)
       rwm(1:lenpd) = zero
       call jac(t, y, ydot, rwm, cj, rpar, ipar)
-      meband = 2*iwm(lml) + iwm(lmu) + 1
+      meband = 2*iwm(iwloc_ml) + iwm(iwloc_mu) + 1
 
    case (5)
       ! Banded finite-difference-generated matrix.
       isdense = .false.
-      mband = iwm(lml) + iwm(lmu) + 1
+      mband = iwm(iwloc_ml) + iwm(iwloc_mu) + 1
       mba = min(mband, neq)
-      meband = mband + iwm(lml)
+      meband = mband + iwm(iwloc_ml)
       meb1 = meband - 1
       msave = (neq/mband) + 1
-      isave = iwm(lnpd)
+      isave = iwm(iwloc_npd)
       ipsave = isave + msave
       ires = 0
       squr = sqrt(uround)
@@ -961,7 +1027,7 @@ subroutine dmatd( &
             y(n) = y(n) + del
             ydot(n) = ydot(n) + cj*del
          end do
-         iwm(lnre) = iwm(lnre) + 1
+         iwm(iwloc_nre) = iwm(iwloc_nre) + 1
          call res(t, y, ydot, cj, e, ires, rpar, ipar)
          if (ires .lt. 0) return
          do n = j, neq, mband
@@ -972,9 +1038,9 @@ subroutine dmatd( &
             del = sign(del, h*ydot(n))
             del = (y(n) + del) - y(n)
             delinv = 1/del
-            i1 = max(1, (n - iwm(lmu)))
-            i2 = min(neq, (n + iwm(lml)))
-            ii = n*meb1 - iwm(lml)
+            i1 = max(1, (n - iwm(iwloc_mu)))
+            i2 = min(neq, (n + iwm(iwloc_ml)))
+            ii = n*meb1 - iwm(iwloc_ml)
             do i = i1, i2
                rwm(ii + i) = (e(i) - delta(i))*delinv
             end do
@@ -989,7 +1055,7 @@ subroutine dmatd( &
    if (isdense) then
       call dgefa(rwm, neq, neq, iwm(lipvt), ierr)
    else
-      call dgbfa(rwm, meband, neq, iwm(lml), iwm(lmu), iwm(lipvt), ierr)
+      call dgbfa(rwm, meband, neq, iwm(iwloc_ml), iwm(iwloc_mu), iwm(lipvt), ierr)
    end if
 
 end
@@ -1001,7 +1067,8 @@ subroutine dslvd(neq, delta, rwm, iwm)
 !! For a dense matrix, the LINPACK routine [[dgesl]] is called. For a banded matrix, the
 !! LINPACK routine [[dgbsl]] is called.
 
-   use daskr, only: rk
+   use daskr_kinds, only: rk
+   use daskr
    use dlinpack, only: dgesl, dgbsl
    implicit none
 
@@ -1015,11 +1082,10 @@ subroutine dslvd(neq, delta, rwm, iwm)
    integer, intent(inout) :: iwm(*)
       !! Integer workspace for the linear system solver.
 
-   integer, parameter :: lml = 1, lmu = 2, lmtype = 4, llciwp = 30
    integer :: lipvt, meband, mtype
 
-   lipvt = iwm(llciwp)
-   mtype = iwm(lmtype)
+   lipvt = iwm(iwloc_liwp)
+   mtype = iwm(iwloc_mtype)
 
    select case (mtype)
    case (1, 2)
@@ -1030,8 +1096,8 @@ subroutine dslvd(neq, delta, rwm, iwm)
       error stop "error: mtype=3 not implemented"
    case (4, 5)
       ! banded matrix.
-      meband = 2*iwm(lml) + iwm(lmu) + 1
-      call dgbsl(rwm, meband, neq, iwm(lml), iwm(lmu), iwm(lipvt), delta, 0)
+      meband = 2*iwm(iwloc_ml) + iwm(iwloc_mu) + 1
+      call dgbsl(rwm, meband, neq, iwm(iwloc_ml), iwm(iwloc_mu), iwm(lipvt), delta, 0)
    case default
       error stop "error: unexpected value for mtype"
    end select
@@ -1051,7 +1117,7 @@ subroutine ddasik( &
 !! Newton scheme with Krylov iteration and a linesearch algorithm.
 
    use daskr_kinds, only: rk, zero, one
-   use daskr, only: res_t, jack_t, psol_t
+   use daskr
    implicit none
 
    real(rk), intent(in) :: t
@@ -1135,23 +1201,20 @@ subroutine ddasik( &
       !! `2`: retry with original (y,y').
       !! `-1`: unrecoverable error in nonlinear solver.
 
-   integer, parameter :: lnre = 12, lnje = 13, llcrwp = 29, llciwp = 30, &
-                         lmxnit = 32, lmxnj = 33
-
    integer :: iernew, ierpj, ires, liwp, lrwp, maxnit, maxnj, nj
    real(rk) :: eplin
 
    ! Perform initializations.
-   lrwp = iwm(llcrwp)
-   liwp = iwm(llciwp)
-   maxnit = iwm(lmxnit)
-   maxnj = iwm(lmxnj)
+   lrwp = iwm(iwloc_lrwp)
+   liwp = iwm(iwloc_liwp)
+   maxnit = iwm(iwloc_mxnit)
+   maxnj = iwm(iwloc_mxnj)
    nj = 0
    eplin = epli*epscon
 
    ! Call RES to initialize DELTA.
    ires = 0
-   iwm(lnre) = iwm(lnre) + 1
+   iwm(iwloc_nre) = iwm(iwloc_nre) + 1
    call res(t, y, ydot, cj, delta, ires, rpar, ipar)
 
    if (ires .lt. 0) then
@@ -1172,7 +1235,7 @@ subroutine ddasik( &
       ! If a Jacobian routine was supplied, call it.
       if ((jflg .eq. 1) .and. (jskip .eq. 0)) then
          nj = nj + 1
-         iwm(lnje) = iwm(lnje) + 1
+         iwm(iwloc_nje) = iwm(iwloc_nje) + 1
          call jack(res, ires, neq, t, y, ydot, wt, delta, r, h, cj, &
                    rwm(lrwp), iwm(liwp), ierpj, rpar, ipar)
 
@@ -1222,7 +1285,7 @@ subroutine dnsik( &
 !! linear system methods.
 
    use daskr_kinds, only: rk, zero, one
-   use daskr, only: res_t, psol_t
+   use daskr
    implicit none
 
    real(rk), intent(in) :: t
@@ -1295,17 +1358,15 @@ subroutine dnsik( &
       !!  `3`: other recoverable error.
       !! `-1`: unrecoverable error inside Newton iteration.
 
-   integer, parameter :: lnni = 19, lnpsol = 21, llcrwp = 29, llciwp = 30, llsoff = 35, &
-                         lstol = 14
    integer :: ierr, iersl, ires, iret, liwp, lsoff, lrwp, m
-   real(rk) :: delnorm, fnorm, fnorm0, oldfnorm, rate, rhok, rlx
+   real(rk) :: deltanorm, fnorm, fnorm0, oldfnorm, rate, rhok, rlx
    logical :: iserror, ismaxit
    real(rk), external :: ddwnrm
 
    ! Initializations.
-   lsoff = iwm(llsoff)
-   lrwp = iwm(llcrwp)
-   liwp = iwm(llciwp)
+   lsoff = iwm(iwloc_lsoff)
+   lrwp = iwm(iwloc_lrwp)
+   liwp = iwm(iwloc_liwp)
    rate = one
    rlx = 0.4_rk
    iernew = 0
@@ -1317,7 +1378,7 @@ subroutine dnsik( &
    call dfnrmk(neq, y, t, ydot, savr, r, cj, tscale, wt, &
                sqrtn, rsqrtn, res, ires, psol, 1, ierr, fnorm, epslin, &
                rwm(lrwp), iwm(liwp), pwk, rpar, ipar)
-   iwm(lnpsol) = iwm(lnpsol) + 1
+   iwm(iwloc_nps) = iwm(iwloc_nps) + 1
    if (ierr .ne. 0) then
       iernew = 3
       return
@@ -1333,7 +1394,7 @@ subroutine dnsik( &
    m = 0
    do
 
-      iwm(lnni) = iwm(lnni) + 1
+      iwm(iwloc_nni) = iwm(iwloc_nni) + 1
 
       ! Compute a new step vector DELTA.
       call dslvk(neq, y, t, ydot, savr, delta, wt, rwm, iwm, &
@@ -1345,12 +1406,12 @@ subroutine dnsik( &
       end if
 
       ! Get norm of DELTA. Return now if DELTA is zero.
-      delnorm = ddwnrm(neq, delta, wt, rpar, ipar)
-      if (delnorm .eq. zero) exit
+      deltanorm = ddwnrm(neq, delta, wt, rpar, ipar)
+      if (deltanorm .eq. zero) exit
 
       ! Call linesearch routine for global strategy and set RATE.
       oldfnorm = fnorm
-      call dlinsk(neq, y, t, ydot, savr, cj, tscale, delta, delnorm, &
+      call dlinsk(neq, y, t, ydot, savr, cj, tscale, delta, deltanorm, &
                   wt, sqrtn, rsqrtn, lsoff, stptol, iret, res, ires, psol, &
                   rwm, iwm, rhok, fnorm, icopt, idy, rwm(lrwp), iwm(liwp), r, epslin, &
                   yic, ydotic, pwk, icnflg, icnstr, rlx, rpar, ipar)
@@ -1418,8 +1479,9 @@ subroutine dlinsk( &
 !! where the norm is the weighted root mean square vector norm, \(G\) is the DAE system
 !! residual function, and \(P\) is the preconditioner used in the Krylov iteration.
 
-   use daskr_kinds, only: rk, one
-   use daskr, only: res_t, psol_t
+   use daskr_kinds, only: rk, zero, one
+   use daskr
+   implicit none
    external :: xerrwd
 
    integer, intent(in) :: neq
@@ -1503,13 +1565,12 @@ subroutine dlinsk( &
    integer, intent(inout) :: ipar(*)
       !! User integer workspace.
 
-   integer, parameter :: lnres = 12, lnpsol = 21, lkprint = 31
    real(rk), parameter :: alpha = 1e-4_rk
    integer :: ierr, ivar, kprint
    real(rk) :: f1norm, f1normp, fnormp, ratio, ratio1, rl, rlmin, slpi, tau
    character(len=80) :: msg
 
-   kprint = iwm(lkprint)
+   kprint = iwm(iwloc_kprint)
    f1norm = (fnorm**2)/2
    ratio = one
 
@@ -1558,8 +1619,8 @@ subroutine dlinsk( &
       call dfnrmk(neq, ynew, t, ydotnew, savr, r, cj, tscale, wght, &
                   sqrtn, rsqrtn, res, ires, psol, 0, ierr, fnormp, epslin, &
                   rwp, iwp, pwk, rpar, ipar)
-      iwm(lnres) = iwm(lnres) + 1
-      if (ires >= 0) iwm(lnpsol) = iwm(lnpsol) + 1
+      iwm(iwloc_nre) = iwm(iwloc_nre) + 1
+      if (ires >= 0) iwm(iwloc_nps) = iwm(iwloc_nps) + 1
       if (ires /= 0 .or. ierr /= 0) then
          iret = 2
          return
@@ -1617,7 +1678,7 @@ subroutine dfnrmk( &
 !! where \(P\) is the preconditioner matrix and \(G\) is the DAE equation vector.
 
    use daskr_kinds, only: rk, zero
-   use daskr, only: res_t, psol_t
+   use daskr
    implicit none
 
    integer, intent(in) :: neq
@@ -1705,7 +1766,7 @@ subroutine dnedk( &
 !! for the unknown \(y\). The method used is a matrix-free Newton scheme.
 
    use daskr_kinds, only: rk, zero, one
-   use daskr, only: res_t, jack_t, psol_t
+   use daskr
    implicit none
 
    real(rk), intent(in) :: t
@@ -1795,12 +1856,11 @@ subroutine dnedk( &
       !!  `1`: recoverable error inside non-linear solver.
       !! `-1`: unrecoverable error inside non-linear solver.
 
-   integer, parameter :: lnre = 12, lnje = 13, llocwp = 29, llciwp = 30, &
-                         muldel = 0, maxit = 4
+   integer, parameter :: muldel = 0, maxit = 4
    real(rk), parameter :: xrate = 0.25_rk
 
-   integer :: iernew, ierpj, iersl, iertyp, ires, j, liwp, lwp
-   real(rk) :: delnrm, epslin, temp1, temp2, tolnew
+   integer :: iernew, ierpj, iersl, iertyp, ires, j, liwp, lrwp
+   real(rk) :: deltanorm, epslin, temp1, temp2, tolnew
    real(rk), external :: ddwnrm ! @todo: remove this once inside module
 
    ! Verify that this is the correct subroutine.
@@ -1819,8 +1879,8 @@ subroutine dnedk( &
 
    ! Perform all other initializations.
    iernls = 0
-   lwp = iwm(llocwp)
-   liwp = iwm(llciwp)
+   lrwp = iwm(iwloc_lrwp)
+   liwp = iwm(iwloc_liwp)
 
    ! Decide whether to update the preconditioner.
    if (jflag /= 0) then
@@ -1854,16 +1914,16 @@ subroutine dnedk( &
    tolnew = epslin
 
    ! Call RES to initialize DELTA.
-   iwm(lnre) = iwm(lnre) + 1
    call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+   iwm(iwloc_nre) = iwm(iwloc_nre) + 1
    if (ires < 0) goto 380
 
    ! If indicated, update the preconditioner.
    ! Set JCALC to 0 as an indicator that this has been done.
    if (jcalc == -1) then
-      iwm(lnje) = iwm(lnje) + 1
       jcalc = 0
-      call jack(res, ires, neq, t, y, ydot, wt, delta, e, h, cj, rwm(lwp), iwm(liwp), ierpj, rpar, ipar)
+      call jack(res, ires, neq, t, y, ydot, wt, delta, e, h, cj, rwm(lrwp), iwm(liwp), ierpj, rpar, ipar)
+      iwm(iwloc_nje) = iwm(iwloc_nje) + 1
       cjold = cj
       s = 1e2_rk
       if (ires < 0) goto 380
@@ -1889,8 +1949,8 @@ subroutine dnedk( &
    ! change is too large, then consider the corrector iteration to have failed.
    if (nonneg == 0) goto 390
    delta = min(y, zero)
-   delnrm = ddwnrm(neq, delta, wt, rpar, ipar)
-   if (delnrm > epscon) goto 380
+   deltanorm = ddwnrm(neq, delta, wt, rpar, ipar)
+   if (deltanorm > epscon) goto 380
    e = e - delta
    goto 390
 
@@ -1926,7 +1986,7 @@ subroutine dnsk( &
 !! for the unknown \(y\). The method used is a modified Newton scheme.
 
    use daskr_kinds, only: rk, zero, one
-   use daskr, only: res_t, psol_t
+   use daskr
    implicit none
 
    real(rk), intent(in) :: t
@@ -1993,9 +2053,8 @@ subroutine dnsk( &
       !!  `1`: recoverable error inside Newton iteration.
       !! `-1`: unrecoverable error inside Newton iteration.
 
-   integer, parameter :: lnni = 19, lnre = 12
    integer :: m
-   real(rk) :: delnorm, oldnorm, rate, rhok
+   real(rk) :: deltanorm, oldnorm, rate, rhok
    real(rk), external :: ddwnrm ! @todo: remove this once inside module
    logical :: converged
 
@@ -2006,7 +2065,7 @@ subroutine dnsk( &
    ! Corrector loop.
    converged = .false.
    do
-      iwm(lnni) = iwm(lnni) + 1
+      iwm(iwloc_nni) = iwm(iwloc_nni) + 1
 
       ! If necessary, multiply residual by convergence factor.
       if (muldel == 1) then
@@ -2028,20 +2087,20 @@ subroutine dnsk( &
       ydot = ydot - cj*delta
 
       ! Test for convergence of the iteration.
-      delnorm = ddwnrm(neq, delta, wt, rpar, ipar)
+      deltanorm = ddwnrm(neq, delta, wt, rpar, ipar)
       if (m == 0) then
-         oldnorm = delnorm
-         if (delnorm <= tolnew) then
+         oldnorm = deltanorm
+         if (deltanorm <= tolnew) then
             converged = .true.
             exit
          end if
       else
-         rate = (delnorm/oldnorm)**(one/m)
+         rate = (deltanorm/oldnorm)**(one/m)
          if (rate > 0.9_rk) exit
          s = rate/(one - rate)
       end if
 
-      if (s*delnorm <= epscon) then
+      if (s*deltanorm <= epscon) then
          converged = .true.
          exit
       end if
@@ -2052,8 +2111,8 @@ subroutine dnsk( &
       if (m >= maxit) exit
 
       ! Evaluate the residual, and go back to do another iteration.
-      iwm(lnre) = iwm(lnre) + 1
       call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+      iwm(iwloc_nre) = iwm(iwloc_nre) + 1
       if (ires < 0) exit
 
    end do
@@ -2077,7 +2136,7 @@ subroutine dslvk( &
 !! the linear system arising from a Newton iteration.
 
    use daskr_kinds, only: rk, zero
-   use daskr, only: res_t, psol_t
+   use daskr
    use blas_interfaces, only: dscal, dcopy
    implicit none
 
@@ -2127,24 +2186,20 @@ subroutine dslvk( &
    integer, intent(inout) :: ipar(*)
       !! User integer workspace.
 
-   integer, parameter :: lnre = 12, lncfl = 16, lnli = 20, lnps = 21, &
-                         llocwp = 29, llciwp = 30, &
-                         lmiter = 23, lmaxl = 24, lkmp = 25, lnrmax = 26
-
-   integer, save :: irst = 1
-   integer :: i, iflag, kmp, ldl, lhes, lgmr, liwp, lq, lr, lv, lwk, lwp, lz, &
+   integer, save :: irst = 1 ! @todo: move this to iwork, to get rid of save
+   integer :: i, iflag, kmp, ldl, lhes, lgmr, liwp, lq, lr, lv, lwk, lrwp, lz, &
               maxl, maxlp1, miter, ncfl, nli, nps, npsol, nre, nres, nrmax, nrsts
 
-   liwp = iwm(llciwp)
-   nli = iwm(lnli)
-   nps = iwm(lnps)
-   ncfl = iwm(lncfl)
-   nre = iwm(lnre)
-   lwp = iwm(llocwp)
-   maxl = iwm(lmaxl)
-   kmp = iwm(lkmp)
-   nrmax = iwm(lnrmax)
-   miter = iwm(lmiter)
+   liwp = iwm(iwloc_liwp)
+   nli = iwm(iwloc_nli)
+   nps = iwm(iwloc_nps)
+   ncfl = iwm(iwloc_ncfl)
+   nre = iwm(iwloc_nre)
+   lrwp = iwm(iwloc_lrwp)
+   maxl = iwm(iwloc_maxl)
+   kmp = iwm(iwloc_kmp)
+   nrmax = iwm(iwloc_nrmax)
+   miter = iwm(iwloc_miter)
    iersl = 0
    ires = 0
 
@@ -2176,7 +2231,7 @@ subroutine dslvk( &
       if (nrsts > 0) call dcopy(neq, rwm(ldl), 1, rwm(lr), 1)
       call dspigm(neq, t, y, ydot, savr, rwm(lr), ewt, maxl, &
                   kmp, epslin, cj, res, ires, nres, psol, npsol, rwm(lz), rwm(lv), &
-                  rwm(lhes), rwm(lq), lgmr, rwm(lwp), iwm(liwp), rwm(lwk), &
+                  rwm(lhes), rwm(lq), lgmr, rwm(lrwp), iwm(liwp), rwm(lwk), &
                   rwm(ldl), rhok, iflag, irst, nrsts, rpar, ipar)
       nli = nli + lgmr
       nps = nps + npsol
@@ -2197,10 +2252,10 @@ subroutine dslvk( &
    end if
 
    ! Update IWM with counters, rescale EWT, and return.
-   iwm(lnli) = nli
-   iwm(lnps) = nps
-   iwm(lncfl) = ncfl
-   iwm(lnre) = nre
+   iwm(iwloc_nli) = nli
+   iwm(iwloc_nps) = nps
+   iwm(iwloc_ncfl) = ncfl
+   iwm(iwloc_nre) = nre
    call dscal(neq, sqrtn, ewt, 1)
 
 end subroutine dslvk
@@ -2214,8 +2269,8 @@ subroutine dspigm( &
 !! of the generalized minimum residual method. An initial guess of \(z=0\) is assumed.
 
    use daskr_kinds, only: rk, zero, one
-   use daskr, only: res_t, psol_t
-   use blas_interfaces, only: dnrm2, dcopy, dscal, daxpy
+   use daskr
+   use blas_interfaces, only: daxpy, dcopy, dnrm2, dscal
    implicit none
 
    integer, intent(in) :: neq
@@ -2482,7 +2537,7 @@ subroutine datv( &
 !! means of a difference quotient, a call to `res`, and one call to `psol`.
 
    use daskr_kinds, only: rk
-   use daskr, only: res_t, psol_t
+   use daskr
 
    integer, intent(in) :: neq
       !! Problem size.
