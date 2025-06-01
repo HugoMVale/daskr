@@ -39,21 +39,24 @@ jobs:
         run: |
           gfortran --version
           fpm test --profile release --flag $FLAGS --verbose
-      
-      - name: Generate coverage report
-        run: |
-          gfortran --version
-          rm -rf ./build/gfortran*
-          fpm test --profile release --flag "$FLAGS --coverage"
-          gcov ./build/gfortran*/daskr/src*.gcda -r ./src/ -b -w
-          
+
       - name: Run examples
         run: |
           gfortran --version
           fpm run --example "example_heat" --profile release --flag $FLAGS
           fpm run --example "example_heatilu" --profile release --flag $FLAGS
           fpm run --example "example_web" --profile release --flag $FLAGS
-      
+
+      - name: Generate coverage report
+        run: |
+          gfortran --version
+          rm -rf ./build/gfortran*
+          fpm test --profile release --flag "$FLAGS --coverage"
+          fpm run --example "example_heat" --profile release --flag "$FLAGS --coverage"
+          fpm run --example "example_heatilu" --profile release --flag "$FLAGS --coverage"
+          fpm run --example "example_web" --profile release --flag "$FLAGS --coverage"
+          gcov ./build/gfortran*/daskr/src*.gcda -r ./src/ -b -w
+                
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
