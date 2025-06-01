@@ -74,6 +74,149 @@ module daskr
 
 end module daskr
 
+subroutine dnsid( &
+   t, y, ydot, neq, icopt, idy, res, wt, rpar, ipar, &
+   delta, r, y0, ydot0, rwm, iwm, cj, tscale, &
+   epscon, ratemax, maxit, stptol, icnflg, icnstr, iernew)
+!! This routine solves a nonlinear system of algebraic equations of the form:
+!!
+!! $$ G(t, y, \dot{y}) = 0 $$
+!!
+!! for the unknown parts of \(y\) and \(\dot{y}\) in the initial conditions. The method
+!! used is a modified Newton scheme.
+
+   use daskr_kinds, only: rk, zero, one
+   use daskr, only: res_t
+   implicit none
+
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(inout) :: ydot(neq)
+      !! Derivative of solution vector.
+   integer, intent(in) :: neq
+      !! Problem size.
+   integer, intent(in) :: icopt
+      !! Initial condition flag.
+   integer, intent(in) :: idy(neq)
+      !! Array indicating which variables are differential and which are algebraic.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   real(rk), intent(inout) :: wt(neq)
+      !! Weights for error criterion.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+   real(rk), intent(inout) :: delta(neq)
+      !! Residual vector on entry, and real workspace.
+   real(rk), intent(out) :: r(neq)
+      !! Real work array.
+   real(rk), intent(out) :: y0(neq)
+      !! Real work array.
+   real(rk), intent(out) :: ydot0(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: tscale ! @todo: what is "t"?
+      !! Scale factor in `t`; used for stopping tests if nonzero.
+   real(rk), intent(in) :: epscon
+      !! Tolerance for convergence of the Newton iteration.
+   real(rk), intent(in) :: ratemax
+      !! Maximum convergence rate for which Newton iteration is considered converging.
+   integer, intent(in) :: maxit
+      !! Maximum number of Newton iterations allowed.
+   real(rk), intent(in) :: stptol
+      !! Tolerance used in calculating the minimum lambda (`rl`) value allowed.
+   integer, intent(in) :: icnflg
+      !! Constraint flag. If nonzero, then constraint violations in the proposed new
+      !! approximate solution will be checked for, and the maximum step length will be
+      !! adjusted accordingly.
+   integer, intent(out) :: icnstr(neq)
+      !! Flags for checking constraints.
+   integer, intent(out) :: iernew
+      !! Error flag for the Newton iteration.
+      !!  `0`: the Newton iteration converged.
+      !!  `1`: failed to converge, but `rate < ratemax`.
+      !!  `2`: failed to converge, but `rate > ratemax`.
+      !!  `3`: other recoverable error (`ires = -1` or linesearch failed).
+      !! `-1`: unrecoverable error inside Newton iteration.
+
+   integer, parameter :: lnni = 19, llsoff = 35
+
+   integer :: ires, iret, lsoff, m
+   real(rk) :: deltanorm, fnorm, oldfnorm, rate, rlx
+   real(rk), external :: ddwnrm
+
+   ! Initializations.
+   lsoff = iwm(llsoff)
+   rate = one
+   rlx = 0.4_rk
+   iernew = 0
+
+   ! Compute a new step vector DELTA by back-substitution.
+   call dslvd(neq, delta, rwm, iwm)
+
+   ! Get norm of DELTA. Return now if norm(DELTA) .le. EPCON.
+   deltanorm = ddwnrm(neq, delta, wt, rpar, ipar)
+   fnorm = deltanorm
+   if (tscale .gt. zero) fnorm = fnorm*tscale*abs(cj)
+   if (fnorm .le. epscon) return
+
+   ! Newton iteration loop.
+   m = 0
+   do
+
+      iwm(lnni) = iwm(lnni) + 1
+
+      ! Call linesearch routine for global strategy and set RATE
+      oldfnorm = fnorm
+      call dlinsd(neq, y, t, ydot, cj, tscale, delta, deltanorm, wt, &
+                  lsoff, stptol, iret, res, ires, rwm, iwm, fnorm, icopt, &
+                  idy, r, y0, ydot0, icnflg, icnstr, rlx, rpar, ipar)
+      rate = fnorm/oldfnorm
+
+      ! Check for error condition from linesearch.
+      if (iret .ne. 0) goto 390
+
+      ! Test for convergence of the iteration, and return or loop.
+      if (fnorm .le. epscon) return
+
+      ! The iteration has not yet converged. Update M.
+      ! Test whether the maximum number of iterations have been tried.
+      m = m + 1
+      if (m .ge. maxit) goto 380
+
+      ! Copy the residual to DELTA and its norm to DELNRM, and loop for another iteration.
+      delta = r
+      deltanorm = fnorm
+
+   end do
+
+   ! The maximum number of iterations was done. Set IERNEW and return.
+380 continue
+   if (rate .le. ratemax) then
+      iernew = 1
+   else
+      iernew = 2
+   end if
+   return
+
+   ! Errors
+390 continue
+   if (ires .le. -2) then
+      iernew = -1
+   else
+      iernew = 3
+   end if
+
+end subroutine dnsid
+
 subroutine dlinsd( &
    neq, y, t, ydot, cj, tscale, p, pnorm, wt, &
    lsoff, stptol, iret, res, ires, rwm, iwm, &
@@ -897,8 +1040,8 @@ end subroutine dslvd
 
 subroutine ddasik( &
    t, y, ydot, neq, icopt, idy, res, jack, psol, h, tscale, &
-   wt, jskip, rpar, ipar, savr, delta, r, yic, ydotic, pwk, rwm, iwm, cj, uround, &
-   epli, sqrtn, rsqrtn, epscon, ratemx, stptol, jflg, icnflg, icnstr, iernls)
+   wt, jskip, rpar, ipar, savr, delta, r, y0, ydot0, pwk, rwm, iwm, cj, uround, &
+   epli, sqrtn, rsqrtn, epscon, ratemax, stptol, jflg, icnflg, icnstr, iernls)
 !! This routine solves a nonlinear system of algebraic equations of the form:
 !!
 !!  $$ G(t, y, \dot{y}) = 0 $$
@@ -949,9 +1092,9 @@ subroutine ddasik( &
       !! Real work array.
    real(rk), intent(out) :: r(neq)
       !! Real work array.
-   real(rk), intent(out) :: yic(neq)
+   real(rk), intent(out) :: y0(neq)
       !! Real work array.
-   real(rk), intent(out) :: ydotic(neq)
+   real(rk), intent(out) :: ydot0(neq)
       !! Real work array.
    real(rk), intent(inout) :: pwk(neq)
       !! Real work array.
@@ -972,7 +1115,7 @@ subroutine ddasik( &
       !! Reciprocal of square root of `neq`.
    real(rk), intent(in) :: epscon
       !! Tolerance for convergence of the Newton iteration.
-   real(rk), intent(in) :: ratemx
+   real(rk), intent(in) :: ratemax
       !! Maximum convergence rate for which Newton iteration is considered converging.
    real(rk), intent(in) :: stptol
       !! Tolerance used in calculating the minimum lambda (`rl`) value allowed.
@@ -995,14 +1138,14 @@ subroutine ddasik( &
    integer, parameter :: lnre = 12, lnje = 13, llcrwp = 29, llciwp = 30, &
                          lmxnit = 32, lmxnj = 33
 
-   integer :: iernew, ierpj, ires, liwp, lrwp, mxnit, mxnj, nj
+   integer :: iernew, ierpj, ires, liwp, lrwp, maxnit, maxnj, nj
    real(rk) :: eplin
 
    ! Perform initializations.
    lrwp = iwm(llcrwp)
    liwp = iwm(llciwp)
-   mxnit = iwm(lmxnit)
-   mxnj = iwm(lmxnj)
+   maxnit = iwm(lmxnit)
+   maxnj = iwm(lmxnj)
    nj = 0
    eplin = epli*epscon
 
@@ -1044,10 +1187,10 @@ subroutine ddasik( &
 
       ! Call the nonlinear Newton solver
       call dnsik(t, y, ydot, neq, icopt, idy, res, psol, wt, rpar, ipar, &
-                 savr, delta, r, yic, ydotic, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, &
-                 eplin, epscon, ratemx, mxnit, stptol, icnflg, icnstr, iernew)
+                 savr, delta, r, y0, ydot0, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, &
+                 eplin, epscon, ratemax, maxnit, stptol, icnflg, icnstr, iernew)
 
-      if ((iernew .eq. 1) .and. (nj .lt. mxnj) .and. (jflg .eq. 1)) then
+      if ((iernew .eq. 1) .and. (nj .lt. maxnj) .and. (jflg .eq. 1)) then
          ! Up to MXNIT iterations were done, the convergence rate is < 1,
          ! a Jacobian routine is supplied, and the number of JACK calls is less than MXNJ.
          ! Copy the residual SAVR to DELTA, call JACK, and try again.
@@ -1069,7 +1212,7 @@ end subroutine ddasik
 subroutine dnsik( &
    t, y, ydot, neq, icopt, idy, res, psol, wt, rpar, ipar, &
    savr, delta, r, yic, ydotic, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, epslin, &
-   epscon, ratemx, maxit, stptol, icnflg, icnstr, iernew)
+   epscon, ratemax, maxit, stptol, icnflg, icnstr, iernew)
 !! This routine solves a nonlinear system of algebraic equations of the form:
 !!
 !!  $$ G(t, y, \dot{y}) = 0 $$
@@ -1132,7 +1275,7 @@ subroutine dnsik( &
       !! Tolerance for linear system.
    real(rk), intent(in) :: epscon
       !! Tolerance for convergence of the Newton iteration.
-   real(rk), intent(in) :: ratemx
+   real(rk), intent(in) :: ratemax
       !! Maximum convergence rate for which Newton iteration is considered converging.
    integer, intent(in) :: maxit
       !! Maximum number of Newton iterations allowed.
@@ -1237,7 +1380,7 @@ subroutine dnsik( &
 
    ! The maximum number of iterations was done. Set IERNEW and return.
    if (ismaxit) then
-      if ((rate .le. ratemx) .or. (fnorm .le. fnorm0/10)) then
+      if ((rate .le. ratemax) .or. (fnorm .le. fnorm0/10)) then
          iernew = 1
       else
          iernew = 2
