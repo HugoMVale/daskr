@@ -16,7 +16,10 @@ coloured_edges: true
 print_creation_date: true
 creation_date: %Y-%m-%d %H:%M %z
 project_github: https://github.com/HugoMVale/daskr
-author: HugoMVale
+author: H. M. Vale, 
+        P. N. Brown,
+        A. C. Hindmarsh,
+        L. R. Petzold
 github: https://github.com/HugoMVale/
 email: 57530119+HugoMVale@users.noreply.github.com
 dbg: true
