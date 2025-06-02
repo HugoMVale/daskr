@@ -72,7 +72,7 @@ contains
    !! of [[daskr]]. Afterwards, this matrix is LU factorized by [[dgbfa]] from LINPACK and the
    !! factors are stored in the work arrays `rwp` and `iwp`.
 
-      use dlinpack, only: dgbfa
+      use linpack, only: dgbfa
 
       procedure(res_t) :: res
         !! User-defined residuals routine.
@@ -180,13 +180,13 @@ contains
 
    end subroutine jac_banpre
 
-   subroutine psol_banpre( &
+   pure subroutine psol_banpre( &
       neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This routine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
    !! given a vector \(b\), using the LU decomposition produced by [[jac_banpre]]. The solution
    !! is carried out by [[dgbsl]] from LINPACK.
 
-      use dlinpack, only: dgbsl
+      use linpack, only: dgbsl
 
       integer, intent(in) :: neq
         !! Problem size.
