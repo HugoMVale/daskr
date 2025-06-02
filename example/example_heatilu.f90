@@ -176,7 +176,7 @@ program example_heatilu
 
    real(rk), parameter :: permtol = 0.01_rk, tolilut = 0.001_rk
 
-   integer :: idid, ierr, iout, lout, liwork, liwp, liwp_min, lrwork, lrwp, lrwp_min, mband, &
+   integer :: idid, ierr, iout, lout, liwork, liwp, liwp_min, lrwork, lrwp, lrwp_min, &
               ml, mu, ncfl, ncfn, nli, nni, nout, npe, nps, nqu, nre, nrte, nst
    integer :: info(20), ipar(lipar), jroot(nrt)
    integer, allocatable :: iwork(:)
@@ -342,7 +342,7 @@ program example_heatilu
    ! Krylov linear iterative method.
    nst = iwork(11)
    npe = iwork(13)
-   nre = iwork(12) + npe*mband
+   nre = iwork(12) + npe*(ml + mu + 1)
    liwork = iwork(17)
    lrwork = iwork(18)
    nni = iwork(19)
