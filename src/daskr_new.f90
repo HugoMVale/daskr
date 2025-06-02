@@ -1116,7 +1116,7 @@ subroutine ddasik( &
 !! value for \(y\) and initial guess for \(\dot{y}\) are input. The method used is a
 !! Newton scheme with Krylov iteration and a linesearch algorithm.
 
-   use daskr_kinds, only: rk, zero, one
+   use daskr_kinds, only: rk
    use daskr
    implicit none
 
@@ -1678,6 +1678,7 @@ subroutine dfnrmk( &
 !! where \(P\) is the preconditioner matrix and \(G\) is the DAE equation vector.
 
    use daskr_kinds, only: rk, zero
+   use blas_interfaces, only: dcopy, dscal
    use daskr
    implicit none
 
