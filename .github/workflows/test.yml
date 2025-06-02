@@ -39,6 +39,8 @@ jobs:
       - name: Build and test
         run: |
           gfortran --version
+          fpm clean --all
+          fpm test --profile debug --flag $FLAGS --verbose
           fpm test --profile release --flag $FLAGS --verbose
 
       - name: Run examples
@@ -54,10 +56,10 @@ jobs:
           gcov --version
           pip install gcovr
           rm -rf ./build/gfortran*
-          fpm test --profile release --flag "$FLAGS $FLAGSCOV"
-          fpm run --example "example_heat" --profile release --flag "$FLAGS $FLAGSCOV"
-          fpm run --example "example_heatilu" --profile release --flag "$FLAGS $FLAGSCOV"
-          fpm run --example "example_web" --profile release --flag "$FLAGS $FLAGSCOV"
+          fpm test --profile debug --flag "$FLAGS $FLAGSCOV"
+          fpm run --example "example_heat" --profile debug --flag "$FLAGS $FLAGSCOV"
+          fpm run --example "example_heatilu" --profile debug --flag "$FLAGS $FLAGSCOV"
+          fpm run --example "example_web" --profile debug --flag "$FLAGS $FLAGSCOV"
           gcovr --filter src --cobertura-pretty --output coverage.xml
                 
       - name: Upload coverage to Codecov
