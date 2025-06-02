@@ -42,7 +42,7 @@ daskr_source = files(
   'src/daux.f',
   'src/daskr.f',
   'src/daskr_new.f90',
-  'src/dlinpack.f',
+  'src/linpack.f90',
   'src/dsparskit.f',
   'src/blas_interfaces.f90',
 )
