@@ -906,7 +906,7 @@ subroutine dmatd( &
 
    use daskr_kinds, only: rk, zero
    use daskr
-   use dlinpack, only: dgefa, dgbfa
+   use linpack, only: dgefa, dgbfa
    implicit none
 
    integer, intent(in) :: neq
@@ -1069,7 +1069,7 @@ subroutine dslvd(neq, delta, rwm, iwm)
 
    use daskr_kinds, only: rk
    use daskr
-   use dlinpack, only: dgesl, dgbsl
+   use linpack, only: dgesl, dgbsl
    implicit none
 
    integer, intent(in) :: neq
@@ -2270,7 +2270,8 @@ subroutine dspigm( &
 
    use daskr_kinds, only: rk, zero, one
    use daskr
-   use blas_interfaces, only: daxpy, dcopy, dnrm2, dscal
+   use blas_interfaces, only: daxpy,dcopy, dnrm2, dscal
+
    implicit none
 
    integer, intent(in) :: neq
