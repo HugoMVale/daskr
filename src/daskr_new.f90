@@ -683,8 +683,8 @@ subroutine dnedd( &
    tolnew = 100*uround*pnorm
 
    ! Call RES to initialize DELTA.
-   iwm(iwloc_nre) = iwm(iwloc_nre) + 1
    call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+   iwm(iwloc_nre) = iwm(iwloc_nre) + 1
    if (ires .lt. 0) goto 380
 
    ! If indicated, reevaluate the iteration matrix
@@ -876,8 +876,9 @@ subroutine dnsd( &
       if (m .ge. maxit) exit
 
       ! Evaluate the residual, and go back to do another iteration.
-      iwm(iwloc_nre) = iwm(iwloc_nre) + 1
+      ires = 0
       call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+      iwm(iwloc_nre) = iwm(iwloc_nre) + 1
       if (ires .lt. 0) exit
 
    end do
@@ -980,8 +981,8 @@ subroutine dmatd( &
          ypsave = ydot(i)
          y(i) = y(i) + del
          ydot(i) = ydot(i) + cj*del
-         iwm(iwloc_nre) = iwm(iwloc_nre) + 1
          call res(t, y, ydot, cj, e, ires, rpar, ipar)
+         iwm(iwloc_nre) = iwm(iwloc_nre) + 1
          if (ires .lt. 0) return
          delinv = 1/del
          do l = 1, neq
@@ -1027,8 +1028,8 @@ subroutine dmatd( &
             y(n) = y(n) + del
             ydot(n) = ydot(n) + cj*del
          end do
-         iwm(iwloc_nre) = iwm(iwloc_nre) + 1
          call res(t, y, ydot, cj, e, ires, rpar, ipar)
+         iwm(iwloc_nre) = iwm(iwloc_nre) + 1
          if (ires .lt. 0) return
          do n = j, neq, mband
             k = (n - j)/mband + 1
@@ -1202,7 +1203,8 @@ subroutine ddasik( &
       !! `-1`: unrecoverable error in nonlinear solver.
 
    integer :: iernew, ierpj, ires, liwp, lrwp, maxnit, maxnj, nj
-   real(rk) :: eplin
+   real(rk) :: epslin
+   logical :: failed
 
    ! Perform initializations.
    lrwp = iwm(iwloc_lrwp)
@@ -1210,21 +1212,17 @@ subroutine ddasik( &
    maxnit = iwm(iwloc_mxnit)
    maxnj = iwm(iwloc_mxnj)
    nj = 0
-   eplin = epli*epscon
+   epslin = epli*epscon
+   failed = .false.
 
    ! Call RES to initialize DELTA.
    ires = 0
-   iwm(iwloc_nre) = iwm(iwloc_nre) + 1
    call res(t, y, ydot, cj, delta, ires, rpar, ipar)
-
-   if (ires .lt. 0) then
-      iernls = 2
-      if (ires .le. -2) iernls = -1
-      return
-   end if
+   iwm(iwloc_nre) = iwm(iwloc_nre) + 1
+   if (ires .lt. 0) failed = .true.
 
    ! Preconditioner update loop
-   do
+   if (.not. failed) then; do
 
       ! Set all error flags to zero.
       iernls = 0
@@ -1237,21 +1235,20 @@ subroutine ddasik( &
          nj = nj + 1
          iwm(iwloc_nje) = iwm(iwloc_nje) + 1
          call jack(res, ires, neq, t, y, ydot, wt, delta, r, h, cj, &
-                   rwm(lrwp), iwm(liwp), ierpj, rpar, ipar)
+                  rwm(lrwp), iwm(liwp), ierpj, rpar, ipar)
 
          if ((ires .lt. 0) .or. (ierpj .ne. 0)) then
-            iernls = 2
-            if (ires .le. -2) iernls = -1
-            return
+            failed = .true.
+            exit
          end if
       end if
 
       jskip = 0
 
-      ! Call the nonlinear Newton solver
+      ! Call the nonlinear Newton solver.
       call dnsik(t, y, ydot, neq, icopt, idy, res, psol, wt, rpar, ipar, &
-                 savr, delta, r, y0, ydot0, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, &
-                 eplin, epscon, ratemax, maxnit, stptol, icnflg, icnstr, iernew)
+               savr, delta, r, y0, ydot0, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, &
+               epslin, epscon, ratemax, maxnit, stptol, icnflg, icnstr, iernew)
 
       if ((iernew .eq. 1) .and. (nj .lt. maxnj) .and. (jflg .eq. 1)) then
          ! Up to MXNIT iterations were done, the convergence rate is < 1,
@@ -1260,14 +1257,19 @@ subroutine ddasik( &
          delta = savr
          cycle
       else
-         exit ! Either success or unrecoverable failure
+         exit ! Either success or convergence failure
       end if
 
-   end do
+   end do; end if     
+
+   if (failed) then
+      iernls = 2
+      if (ires .le. -2) iernls = -1
+      return
+   end if
 
    if (iernew .ne. 0) then
       iernls = min(iernew, 2)
-      return
    end if
 
 end subroutine ddasik
@@ -1737,6 +1739,7 @@ subroutine dfnrmk( &
    if (irin == 0) then
       ires = 0
       call res(t, y, ydot, cj, savr, ires, rpar, ipar)
+      ! @todo: count missing here, or is it counted in the caller?
       if (ires < 0) return
    end if
 
@@ -1746,6 +1749,7 @@ subroutine dfnrmk( &
    call dscal(neq, rsqrtn, wght, 1)
    ierr = 0
    call psol(neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, r, epslin, ierr, rpar, ipar)
+   ! @todo: count missing here, or is it counted in the caller?
    call dscal(neq, sqrtn, wght, 1)
    if (ierr /= 0) return
 
@@ -2112,6 +2116,7 @@ subroutine dnsk( &
       if (m >= maxit) exit
 
       ! Evaluate the residual, and go back to do another iteration.
+      ires = 0
       call res(t, y, ydot, cj, delta, ires, rpar, ipar)
       iwm(iwloc_nre) = iwm(iwloc_nre) + 1
       if (ires < 0) exit
@@ -2382,7 +2387,7 @@ subroutine dspigm( &
 
    ! Calculate norm of scaled vector V(:,1) and normalize it
    ! If, however, the norm of V(:,1) (i.e. the norm of the preconditioned
-   ! residual) is <= EPLIN, then return with Z=0.
+   ! residual) is <= EPSLIN, then return with Z=0.
    rnorm = dnrm2(neq, v, 1)
    if (rnorm <= epslin) then
       rhok = rnorm
@@ -2586,9 +2591,6 @@ subroutine datv( &
    integer, intent(inout) :: ipar(*)
       !! User integer workspace.
 
-   ires = 0
-   ierr = 0
-
    ! Set VTEMP = D * V.
    vtemp = v/wght
 
@@ -2599,6 +2601,7 @@ subroutine datv( &
 
    ! Call RES with incremented Y, YDOT arguments
    ! stored in Z, YDOTTEMP. VTEMP is overwritten with new residual.
+   ires = 0
    call res(t, z, ydottemp, cj, vtemp, ires, rpar, ipar)
    nres = nres + 1
    if (ires < 0) return
@@ -2608,6 +2611,7 @@ subroutine datv( &
    z = vtemp - savr
 
    ! Apply inverse of left preconditioner to Z.
+   ierr = 0
    call psol(neq, t, y, ydot, savr, ydottemp, cj, wght, rwp, iwp, z, epslin, ierr, rpar, ipar)
    npsol = npsol + 1
    if (ierr /= 0) return
