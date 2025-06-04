@@ -73,76 +73,250 @@ module daskr
    end interface
 
    ! `rwork` indices
-   integer, parameter :: rwloc_cj     = 1
-      !! `cj`: scalar used in forming the system Jacobian  
-   integer, parameter :: rwloc_cjold  = 2
+   integer, parameter :: rwloc_cj = 1
+      !! `cj`: scalar used in forming the system Jacobian
+   integer, parameter :: rwloc_cjold = 2
       !! `cjold`: scalar used in forming the system Jacobian on last step
-   integer, parameter :: rwloc_h      = 3
-      !! `h`: step size for next step  
-   integer, parameter :: rwloc_tn     = 4
-      !! `tn`: current independent variable value  
-   integer, parameter :: rwloc_hold   = 7
-      !! `hold`: step size used on last step  
+   integer, parameter :: rwloc_h = 3
+      !! `h`: step size for next step
+   integer, parameter :: rwloc_tn = 4
+      !! `tn`: current independent variable value
+   integer, parameter :: rwloc_hold = 7
+      !! `hold`: step size used on last step
 
    ! `iwork` indices
-   integer, parameter :: iwloc_ml     = 1
-      !! `ml`: lower bandwidth  
-   integer, parameter :: iwloc_mu     = 2
-      !! `mu`: upper bandwidth  
-   integer, parameter :: iwloc_mtype  = 4
-      !! `mtype`: method type   
-   integer, parameter :: iwloc_k      = 7
-      !! `k`: order of method for next step  
-   integer, parameter :: iwloc_kold   = 8
-      !! `kold`: order used on last step  
-   integer, parameter :: iwloc_nst    = 11
-      !! `nst`: number of steps taken  
-   integer, parameter :: iwloc_nre    = 12
-      !! `nre`: number of `res` calls  
-   integer, parameter :: iwloc_nje    = 13
-      !! `nje`: number of `jac` calls  
-   integer, parameter :: iwloc_netf   = 14
-      !! `netf`: number of error test failures  
-   integer, parameter :: iwloc_ncfn   = 15
-      !! `ncfn`: number of nonlinear convergence failures  
-   integer, parameter :: iwloc_ncfl   = 16
-      !! `ncfl`: number of linear iteration convergence failures  
-   integer, parameter :: iwloc_leniw  = 17
-      !! `leniw`: actual `iwork` length used  
-   integer, parameter :: iwloc_lenrw  = 18
-      !! `lenrw`: actual `rwork` length used  
-   integer, parameter :: iwloc_nni    = 19
-      !! `nni`: number of nonlinear iterations  
-   integer, parameter :: iwloc_nli    = 20
-      !! `nli`: number of linear (Krylov) iterations  
-   integer, parameter :: iwloc_nps    = 21
+   integer, parameter :: iwloc_ml = 1
+      !! `ml`: lower bandwidth
+   integer, parameter :: iwloc_mu = 2
+      !! `mu`: upper bandwidth
+   integer, parameter :: iwloc_mtype = 4
+      !! `mtype`: method type
+   integer, parameter :: iwloc_k = 7
+      !! `k`: order of method for next step
+   integer, parameter :: iwloc_kold = 8
+      !! `kold`: order used on last step
+   integer, parameter :: iwloc_nst = 11
+      !! `nst`: number of steps taken
+   integer, parameter :: iwloc_nre = 12
+      !! `nre`: number of `res` calls
+   integer, parameter :: iwloc_nje = 13
+      !! `nje`: number of `jac` calls
+   integer, parameter :: iwloc_netf = 14
+      !! `netf`: number of error test failures
+   integer, parameter :: iwloc_ncfn = 15
+      !! `ncfn`: number of nonlinear convergence failures
+   integer, parameter :: iwloc_ncfl = 16
+      !! `ncfl`: number of linear iteration convergence failures
+   integer, parameter :: iwloc_leniw = 17
+      !! `leniw`: actual `iwork` length used
+   integer, parameter :: iwloc_lenrw = 18
+      !! `lenrw`: actual `rwork` length used
+   integer, parameter :: iwloc_nni = 19
+      !! `nni`: number of nonlinear iterations
+   integer, parameter :: iwloc_nli = 20
+      !! `nli`: number of linear (Krylov) iterations
+   integer, parameter :: iwloc_nps = 21
       !! `nps`: number of `psol` calls
-   integer, parameter :: iwloc_npd    = 22
+   integer, parameter :: iwloc_npd = 22
       !! `npd`: length of partial derivatives vector returned by `jac`
-   integer, parameter :: iwloc_miter  = 23
+   integer, parameter :: iwloc_miter = 23
       !! `miter`: ??
-   integer, parameter :: iwloc_maxl   = 24
+   integer, parameter :: iwloc_maxl = 24
       !! `maxl`: ??
-   integer, parameter :: iwloc_kmp    = 25
+   integer, parameter :: iwloc_kmp = 25
       !! `kmp`: ??
-   integer, parameter :: iwloc_nrmax  = 26
-      !! `nrmax`: ??           
-   integer, parameter :: iwloc_lrwp   = 29
-      !! `lrwp`: location of start of `rwp` in `rwork`.   
-   integer, parameter :: iwloc_liwp   = 30
-      !! `liwp`: location of start of `iwp` in `iwork`.      
+   integer, parameter :: iwloc_nrmax = 26
+      !! `nrmax`: ??
+   integer, parameter :: iwloc_lrwp = 29
+      !! `lrwp`: location of start of `rwp` in `rwork`.
+   integer, parameter :: iwloc_liwp = 30
+      !! `liwp`: location of start of `iwp` in `iwork`.
    integer, parameter :: iwloc_kprint = 31
       !! `kprint`: flag to turn on print
-   integer, parameter :: iwloc_mxnit  = 32
+   integer, parameter :: iwloc_mxnit = 32
       !! `mxnit`: maximum number of Newton iterations
-   integer, parameter :: iwloc_mxnj   = 33
-      !! `mxnj`: maximum number of Jacobian evaluations ?   
-   integer, parameter :: iwloc_lsoff  = 35
-      !! `lsoff`: flag to turn off linesearch 
-   integer, parameter :: iwloc_nrtfn  = 36
-      !! `nrtfn`: number of `rt` calls  
+   integer, parameter :: iwloc_mxnj = 33
+      !! `mxnj`: maximum number of Jacobian evaluations ?
+   integer, parameter :: iwloc_lsoff = 35
+      !! `lsoff`: flag to turn off linesearch
+   integer, parameter :: iwloc_nrtfn = 36
+      !! `nrtfn`: number of `rt` calls
 
 end module daskr
+
+subroutine ddasid( &
+   t, y, ydot, neq, icopt, idy, res, jac, dum1, h, tscale, &
+   wt, dum2, rpar, ipar, dum3, delta, r, y0, ydot0, dum4, rwm, iwm, cj, uround, &
+   dum5, dum6, dum7, epscon, ratemax, stptol, dum8, icnflg, icnstr, iernls)
+!! This routine solves a nonlinear system of algebraic equations of the form:
+!!
+!!  $$ G(t, y, \dot{y}) = 0 $$
+!!
+!! for the unknown parts of \(y\) and \(\dot{y}\) in the initial conditions. The method
+!! used is a modified Newton scheme.
+!!
+!! All arguments with "dum" in their names are dummy arguments which are not used in
+!! this routine.
+
+   use daskr_kinds, only: rk
+   use daskr
+   implicit none
+
+   real(rk), intent(in) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(inout) :: ydot(neq)
+      !! Derivative of solution vector.
+   integer, intent(in) :: neq
+      !! Problem size.
+   integer, intent(in) :: icopt
+      !! Initial condition flag.
+   integer, intent(in) :: idy(neq)
+      !! Array indicating which variables are differential and which are algebraic.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   procedure(jac_t) :: jac
+      !! User-defined Jacobian routine.
+   procedure(psol_t) :: dum1
+      !! Dummy argument.
+   real(rk), intent(in) :: h
+      !! Scaling factor for this initial condition calculation.
+   real(rk), intent(in) :: tscale ! @todo: what is "t"?
+      !! Scale factor in `t`; used for stopping tests if nonzero.
+   real(rk), intent(inout) :: wt(neq)
+      !! Weights for error criterion.
+   integer, intent(inout) :: dum2
+      !! Dummy argument.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+   real(rk), intent(out) :: dum3(neq)
+      !! Dummy argument.
+   real(rk), intent(inout) :: delta(neq)
+      !! Real work array.
+   real(rk), intent(out) :: r(neq)
+      !! Real work array.
+   real(rk), intent(out) :: y0(neq)
+      !! Real work array.
+   real(rk), intent(out) :: ydot0(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: dum4(neq)
+      !! Dummy argument.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(in) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(in) :: uround ! @todo: used?
+      !! Unit roundoff.
+   real(rk), intent(in) :: dum5
+      !! Dummy argument.
+   real(rk), intent(in) :: dum6
+      !! Dummy argument.
+   real(rk), intent(in) :: dum7
+      !! Dummy argument.
+   real(rk), intent(in) :: epscon
+      !! Tolerance for convergence of the Newton iteration.
+   real(rk), intent(in) :: ratemax
+      !! Maximum convergence rate for which Newton iteration is considered converging.
+   real(rk), intent(in) :: stptol
+      !! Tolerance used in calculating the minimum lambda (`rl`) value allowed.
+   integer, intent(in) :: dum8
+      !! Dummy argument.
+   integer, intent(in) :: icnflg
+      !! Constraint flag. If nonzero, then constraint violations in the proposed new
+      !! approximate solution will be checked for, and the maximum step length will be
+      !! adjusted accordingly.
+   integer, intent(out) :: icnstr(neq)
+      !! Flags for checking constraints.
+   integer, intent(out) :: iernls
+      !! Error flag for nonlinear solver.
+      !! `0`: nonlinear solver converged.
+      !! `1`, `2`: recoverable error inside nonlinear solver.
+      !! `1`: retry with current (y,y').
+      !! `2`: retry with original (y,y').
+      !! `-1`: unrecoverable error in nonlinear solver.
+
+   integer :: ierj, iernew, ires, mxnit, mxnj, nj
+   logical :: failed
+
+   ! Perform initializations.
+   mxnit = iwm(iwloc_mxnit)
+   mxnj = iwm(iwloc_mxnj)
+   iernls = 0
+   nj = 0
+   failed = .false.
+
+   ! Call RES to initialize DELTA.
+   ires = 0
+   call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+   iwm(iwloc_nre) = iwm(iwloc_nre) + 1
+
+   if (ires .lt. 0) then
+      failed = .true.
+   end if
+
+   ! Looping point for updating the Jacobian.
+
+   if (.not. failed) then
+      do
+
+         ! Set all error flags to zero.
+         ierj = 0
+         ires = 0
+         iernew = 0
+
+         ! Reevaluate the iteration matrix, J = dG/dY + CJ*dG/dYDOT.
+         call dmatd(neq, t, y, ydot, delta, cj, h, ierj, wt, r, rwm, iwm, res, ires, &
+                    uround, jac, rpar, ipar)
+         nj = nj + 1
+         iwm(iwloc_nje) = iwm(iwloc_nje) + 1
+
+         if ((ires .lt. 0) .or. (ierj .ne. 0)) then
+            failed = .true.
+            exit
+         end if
+
+         ! Call the nonlinear Newton solver.
+         call dnsid(t, y, ydot, neq, icopt, idy, res, wt, rpar, ipar, delta, r, &
+                    y0, ydot0, rwm, iwm, cj, tscale, epscon, ratemax, mxnit, stptol, &
+                    icnflg, icnstr, iernew)
+
+         if ((iernew .eq. 1) .and. (nj .lt. mxnj)) then
+            ! MXNIT iterations were done, the convergence rate is < 1,
+            ! and the number of Jacobian evaluations is less than MXNJ.
+            ! Call RES, reevaluate the Jacobian, and try again.
+            ires = 0
+            call res(t, y, ydot, cj, delta, ires, rpar, ipar)
+            iwm(iwloc_nre) = iwm(iwloc_nre) + 1
+            if (ires .lt. 0) then
+               failed = .true.
+               exit
+            end if
+            cycle
+         else
+            exit ! ! Either success or convergence failure
+         end if
+
+      end do
+   end if
+
+   ! Unsuccessful exits from nonlinear solver.
+   ! Compute IERNLS accordingly.
+   if (failed) then
+      iernls = 2
+      if (ires .le. -2) iernls = -1
+      return
+   end if
+
+   if (iernew .ne. 0) then
+      iernls = min(iernew, 2)
+   end if
+
+end subroutine ddasid
 
 subroutine dnsid( &
    t, y, ydot, neq, icopt, idy, res, wt, rpar, ipar, &
@@ -543,7 +717,7 @@ subroutine dnedd( &
 !!
 !! All arguments with "dum" in their names are dummy arguments which are not used in
 !! this routine.
-   
+
    use daskr_kinds, only: rk, zero, one
    use daskr
    implicit none
@@ -1222,45 +1396,47 @@ subroutine ddasik( &
    if (ires .lt. 0) failed = .true.
 
    ! Preconditioner update loop
-   if (.not. failed) then; do
+   if (.not. failed) then
+      do
 
-      ! Set all error flags to zero.
-      iernls = 0
-      ierpj = 0
-      ires = 0
-      iernew = 0
+         ! Set all error flags to zero.
+         iernls = 0
+         ierpj = 0
+         ires = 0
+         iernew = 0
 
-      ! If a Jacobian routine was supplied, call it.
-      if ((jflg .eq. 1) .and. (jskip .eq. 0)) then
-         nj = nj + 1
-         iwm(iwloc_nje) = iwm(iwloc_nje) + 1
-         call jack(res, ires, neq, t, y, ydot, wt, delta, r, h, cj, &
-                  rwm(lrwp), iwm(liwp), ierpj, rpar, ipar)
+         ! If a Jacobian routine was supplied, call it.
+         if ((jflg .eq. 1) .and. (jskip .eq. 0)) then
+            nj = nj + 1
+            iwm(iwloc_nje) = iwm(iwloc_nje) + 1
+            call jack(res, ires, neq, t, y, ydot, wt, delta, r, h, cj, &
+                      rwm(lrwp), iwm(liwp), ierpj, rpar, ipar)
 
-         if ((ires .lt. 0) .or. (ierpj .ne. 0)) then
-            failed = .true.
-            exit
+            if ((ires .lt. 0) .or. (ierpj .ne. 0)) then
+               failed = .true.
+               exit
+            end if
          end if
-      end if
 
-      jskip = 0
+         jskip = 0
 
-      ! Call the nonlinear Newton solver.
-      call dnsik(t, y, ydot, neq, icopt, idy, res, psol, wt, rpar, ipar, &
-               savr, delta, r, y0, ydot0, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, &
-               epslin, epscon, ratemax, maxnit, stptol, icnflg, icnstr, iernew)
+         ! Call the nonlinear Newton solver.
+         call dnsik(t, y, ydot, neq, icopt, idy, res, psol, wt, rpar, ipar, &
+                    savr, delta, r, y0, ydot0, pwk, rwm, iwm, cj, tscale, sqrtn, rsqrtn, &
+                    epslin, epscon, ratemax, maxnit, stptol, icnflg, icnstr, iernew)
 
-      if ((iernew .eq. 1) .and. (nj .lt. maxnj) .and. (jflg .eq. 1)) then
-         ! Up to MXNIT iterations were done, the convergence rate is < 1,
-         ! a Jacobian routine is supplied, and the number of JACK calls is less than MXNJ.
-         ! Copy the residual SAVR to DELTA, call JACK, and try again.
-         delta = savr
-         cycle
-      else
-         exit ! Either success or convergence failure
-      end if
+         if ((iernew .eq. 1) .and. (nj .lt. maxnj) .and. (jflg .eq. 1)) then
+            ! Up to MXNIT iterations were done, the convergence rate is < 1,
+            ! a Jacobian routine is supplied, and the number of JACK calls is less than MXNJ.
+            ! Copy the residual SAVR to DELTA, call JACK, and try again.
+            delta = savr
+            cycle
+         else
+            exit ! Either success or convergence failure
+         end if
 
-   end do; end if     
+      end do
+   end if
 
    if (failed) then
       iernls = 2
@@ -2276,7 +2452,7 @@ subroutine dspigm( &
 
    use daskr_kinds, only: rk, zero, one
    use daskr
-   use blas_interfaces, only: daxpy,dcopy, dnrm2, dscal
+   use blas_interfaces, only: daxpy, dcopy, dnrm2, dscal
 
    implicit none
 
