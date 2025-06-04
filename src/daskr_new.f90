@@ -144,6 +144,48 @@ module daskr
 
 end module daskr
 
+real(rk) function ddwnrm(neq, v, rwt, rpar, ipar)
+!! This function computes the weighted root-mean-square norm of the vector `v` with
+!! reciprocal weights `rwt`:
+!!
+!! $$ \sqrt{ \frac{1}{N} \sum_{i=1}^N \left( v_i \cdot w_i \right)^2 } $$
+
+   use daskr_kinds, only: rk, zero
+   implicit none
+
+   integer, intent(in) :: neq
+      !! Vector length.
+   real(rk), intent(in) :: v(neq)
+      !! Vector.
+   real(rk), intent(in) :: rwt(neq)
+      !! Reciprocal weights.
+   real(rk), intent(in) :: rpar(*)
+      !! User real workspace.
+   integer, intent(in) :: ipar(*)
+      !! User integer workspace.
+
+   integer :: i
+   real(rk) :: accum, vmax
+
+   ddwnrm = zero
+   vmax = zero
+   do i = 1, neq
+      if (abs(v(i)*rwt(i)) .gt. vmax) then
+         vmax = abs(v(i)*rwt(i))
+      end if
+   end do
+
+   if (vmax .le. zero) return
+
+   accum = zero
+   do i = 1, neq
+      accum = accum + ((v(i)*rwt(i))/vmax)**2
+   end do
+
+   ddwnrm = vmax*sqrt(accum/neq)
+
+end function ddwnrm
+
 subroutine ddasid( &
    t, y, ydot, neq, icopt, idy, res, jac, dum1, h, tscale, &
    wt, dum2, rpar, ipar, dum3, delta, r, y0, ydot0, dum4, rwm, iwm, cj, uround, &
