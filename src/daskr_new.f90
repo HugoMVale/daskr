@@ -144,6 +144,52 @@ module daskr
 
 end module daskr
 
+subroutine ddatrp(t, tout, yout, ydotout, neq, kold, phi, psi)
+!! The methods in subroutine [[ddstp]] use polynomials to approximate the solution.
+!! This routine approximates the solution and its derivative at `tout` by evaluating
+!! one of these polynomials, and its derivative, there. Information defining the
+!! polynomial is passed from the caller.
+
+   use daskr_kinds, only: rk, zero, one
+   implicit none
+
+   real(rk), intent(in) :: t
+      !! Current value of the independent variable.
+   real(rk), intent(in) :: tout
+      !! Value of the independent variable at which the solution is desired.
+   real(rk), intent(out) :: yout(neq)
+      !! Interpolated approximation to `y` at `tout`.
+   real(rk), intent(out) :: ydotout(neq)
+      !! Interpolated approximation to `ydot` at `tout`.
+   integer, intent(in) :: neq
+      !! Problem size.
+   integer, intent(in) :: kold
+      !! Order used on last successful step.
+   real(rk), intent(in) :: phi(neq, kold + 1)
+      !! Array of scaled divided differences of `y`.
+   real(rk), intent(in) :: psi(kold + 1)
+      !! Array of past stepsize history.
+
+   integer :: j
+   real(rk) :: c, d, gama, dt
+
+   dt = tout - t
+   yout = phi(:, 1)
+   ydotout = zero
+   c = one
+   d = zero
+   gama = dt/psi(1)
+
+   do j = 2, kold + 1
+      d = d*gama + c/psi(j - 1)
+      c = c*gama
+      gama = (dt + psi(j - 1))/psi(j)
+      yout = yout + c*phi(:, j)
+      ydotout = ydotout + d*phi(:, j)
+   end do
+
+end subroutine ddatrp
+
 real(rk) function ddwnrm(neq, v, rwt, rpar, ipar)
 !! This function computes the weighted root-mean-square norm of the vector `v` with
 !! reciprocal weights `rwt`:
@@ -302,7 +348,6 @@ subroutine ddasid( &
    end if
 
    ! Looping point for updating the Jacobian.
-
    if (.not. failed) then
       do
 
@@ -340,7 +385,7 @@ subroutine ddasid( &
             end if
             cycle
          else
-            exit ! ! Either success or convergence failure
+            exit ! Either success or convergence failure
          end if
 
       end do
