@@ -144,6 +144,57 @@ module daskr
 
 end module daskr
 
+subroutine dcnst0(neq, y, icnstr, iret)
+!! This routine checks for constraint violations in the initial approximate solution `y`.
+
+   use daskr_kinds, only: rk, zero
+   implicit none
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(in) :: y(neq)
+      !! Initial approximate solution.
+   integer, intent(in) :: icnstr(neq)
+      !! Array indicating which variables are constrained and how.
+      !! `icnstr(i) = 2` means `y(i) > 0`.
+      !! `icnstr(i) = 1` means `y(i) >= 0`.
+      !! `icnstr(i) =-1` means `y(i) <= 0`.
+      !! `icnstr(i) =-2` means `y(i) < 0`.
+      !! `icnstr(i) = 0` means `y(i)` is unconstrained.
+   integer, intent(out) :: iret
+      !! Output flag.
+      !!     `0`: All constraints satisfied.
+      !! `i > 0`: Constraint `i` violated.
+
+   integer :: i
+
+   iret = 0
+   do i = 1, neq
+      if (icnstr(i) .eq. 2) then
+         if (y(i) .le. zero) then
+            iret = i
+            exit
+         end if
+      elseif (icnstr(i) .eq. 1) then
+         if (y(i) .lt. zero) then
+            iret = i
+            exit
+         end if
+      elseif (icnstr(i) .eq. -1) then
+         if (y(i) .gt. zero) then
+            iret = i
+            exit
+         end if
+      elseif (icnstr(i) .eq. -2) then
+         if (y(i) .ge. zero) then
+            iret = i
+            exit
+         end if
+      end if
+   end do
+
+end subroutine dcnst0
+
 pure subroutine ddawts(neq, iwt, rtol, atol, y, wt, rpar, ipar)
 !! This subroutine sets the error weight vector, `wt`, according to:
 !!```
