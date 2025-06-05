@@ -144,7 +144,43 @@ module daskr
 
 end module daskr
 
-subroutine dinvwt(neq, wt, ierr)
+pure subroutine ddawts(neq, iwt, rtol, atol, y, wt, rpar, ipar)
+!! This subroutine sets the error weight vector, `wt`, according to:
+!!```
+!!     wt(i) = rtol(i) * abs(y(i)) + atol(i)
+!!```
+!! where `rtol` and `atol` are scalars if `iwt = 0`, and vectors if `iwt = 1`.
+
+   use daskr_kinds, only: rk
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   integer, intent(in) :: iwt
+      !! Flag indicating whether `rtol` and `atol` are scalars or vectors.
+      !! If `iwt = 0`, then `rtol` and `atol` are scalars.
+      !! If `iwt = 1`, then `rtol` and `atol` are vectors.
+   real(rk), intent(in) :: rtol(*)
+      !! Relative error tolerance.
+   real(rk), intent(in) :: atol(*)
+      !! Absolute error tolerance.
+   real(rk), intent(in) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(out) :: wt(neq)
+      !! Error weight vector.
+   real(rk), intent(in) :: rpar(*)
+      !! User real workspace.
+   integer, intent(in) :: ipar(*)
+      !! User integer workspace.
+
+   if (iwt == 0) then
+      wt = rtol(1)*abs(y) + atol(1)
+   else
+      wt = rtol(1:neq)*abs(y) + atol(1:neq)
+   end if
+
+end subroutine ddawts
+
+pure subroutine dinvwt(neq, wt, ierr)
 !! This subroutine checks the error weight vector `wt` for components that are less
 !! or equal to 0, and if none are found, it inverts `wt` in place. This replaces
 !! division operations with multiplications in all norm evaluations.
@@ -175,7 +211,7 @@ subroutine dinvwt(neq, wt, ierr)
 
 end subroutine dinvwt
 
-subroutine ddatrp(t, tout, yout, ydotout, neq, kold, phi, psi)
+pure subroutine ddatrp(t, tout, yout, ydotout, neq, kold, phi, psi)
 !! The methods in subroutine [[ddstp]] use polynomials to approximate the solution.
 !! This routine approximates the solution and its derivative at `tout` by evaluating
 !! one of these polynomials, and its derivative, there. Information defining the
@@ -221,7 +257,7 @@ subroutine ddatrp(t, tout, yout, ydotout, neq, kold, phi, psi)
 
 end subroutine ddatrp
 
-real(rk) function ddwnrm(neq, v, rwt, rpar, ipar)
+real(rk) pure function ddwnrm(neq, v, rwt, rpar, ipar)
 !! This function computes the weighted root-mean-square norm of the vector `v` with
 !! reciprocal weights `rwt`:
 !!

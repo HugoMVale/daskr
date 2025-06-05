@@ -3781,34 +3781,4 @@ C-----------------------------------------------------------------------
       RETURN
 C----------------------- END OF SUBROUTINE DCNST0 ----------------------
       END
-      SUBROUTINE DDAWTS(NEQ,IWT,RTOL,ATOL,Y,WT,RPAR,IPAR)
-C
-C***BEGIN PROLOGUE  DDAWTS
-C***REFER TO  DDASPK
-C***ROUTINES CALLED  (NONE)
-C***DATE WRITTEN   890101   (YYMMDD)
-C***REVISION DATE  900926   (YYMMDD)
-C***END PROLOGUE  DDAWTS
-C-----------------------------------------------------------------------
-C     This subroutine sets the error weight vector,
-C     WT, according to WT(I)=RTOL(I)*ABS(Y(I))+ATOL(I),
-C     I = 1 to NEQ.
-C     RTOL and ATOL are scalars if IWT = 0,
-C     and vectors if IWT = 1.
-C-----------------------------------------------------------------------
-C
-      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
-      DIMENSION RTOL(*),ATOL(*),Y(*),WT(*)
-      DIMENSION RPAR(*),IPAR(*)
-      RTOLI=RTOL(1)
-      ATOLI=ATOL(1)
-      DO 20 I=1,NEQ
-         IF (IWT .EQ.0) GO TO 10
-           RTOLI=RTOL(I)
-           ATOLI=ATOL(I)
-10         WT(I)=RTOLI*ABS(Y(I))+ATOLI
-20         CONTINUE
-      RETURN
-C
-C------END OF SUBROUTINE DDAWTS-----------------------------------------
-      END
+
