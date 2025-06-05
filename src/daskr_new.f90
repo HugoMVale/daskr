@@ -144,6 +144,37 @@ module daskr
 
 end module daskr
 
+subroutine dinvwt(neq, wt, ierr)
+!! This subroutine checks the error weight vector `wt` for components that are less
+!! or equal to 0, and if none are found, it inverts `wt` in place. This replaces
+!! division operations with multiplications in all norm evaluations.
+
+   use daskr_kinds, only: rk, zero
+   implicit none
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(inout) :: wt(neq)
+      !! Weights for error control.
+   integer, intent(out) :: ierr
+      !! Completion flag.
+      !! `0`: all elements were found positive.
+      !! `i > 0`: `w(i)` is the first non positive weight.
+
+   integer :: i
+
+   do i = 1, neq
+      if (wt(i) .le. zero) then
+         ierr = i
+         return
+      end if
+   end do
+
+   wt = 1/wt
+   ierr = 0
+
+end subroutine dinvwt
+
 subroutine ddatrp(t, tout, yout, ydotout, neq, kold, phi, psi)
 !! The methods in subroutine [[ddstp]] use polynomials to approximate the solution.
 !! This routine approximates the solution and its derivative at `tout` by evaluating
