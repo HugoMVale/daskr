@@ -144,6 +144,100 @@ module daskr
 
 end module daskr
 
+subroutine dcnstr(neq, y, ynew, icnstr, tau, rlx, iret, ivar)
+!! This subroutine checks for constraint violations in the proposed new approximate solution
+!! `ynew`. If a constraint violation occurs, then a new step length, `tau`, is calculated,
+!! and this value is given to the linesearch routine to calculate a new approximate
+!! solution `ynew`.
+
+   use daskr_kinds, only: rk, zero
+   implicit none
+
+   integer, intent(in) :: neq
+      !! Problem size.
+   real(rk), intent(in) :: y(neq)
+      !! Current approximate solution vector.
+   real(rk), intent(in) :: ynew(neq)
+      !! New approximate solution vector.
+   integer, intent(in) :: icnstr(neq)
+      !! Flags for checking constraints. See [[dcnst0]] for details.
+   real(rk), intent(in) :: rlx
+      !! Factor for restricting the update size for `icnstr = 2` or `icnstr = -2`.
+   real(rk), intent(inout) :: tau
+      !! On entry, the current step length for the linesearch. On return, the
+      !! adjusted step length if a constraint violation occurred.
+   integer, intent(out) :: iret
+      !! Output flag.
+      !! `0`: `ynew` satisfied all constraints.
+      !! `1`: `ynew` did not satisfy all the constraints, requiring a new linesearch.
+   integer, intent(out) :: ivar
+      !! Index of variable causing the constraint to be violated.
+
+   real(rk), parameter :: fac = 0.6_rk, fac2 = 0.9_rk
+
+   real(rk) :: rdy, rdymx
+   integer :: i
+
+   ! Check constraints for proposed new step YNEW.  If a constraint has been violated,
+   ! then calculate a new step length, TAU, to be used in the linesearch routine.
+   iret = 0
+   rdymx = zero
+   ivar = 0
+
+   do i = 1, neq
+
+      if (icnstr(i) .eq. 2) then
+         rdy = abs((ynew(i) - y(i))/y(i))
+         if (rdy .gt. rdymx) then
+            rdymx = rdy
+            ivar = i
+         end if
+         if (ynew(i) .le. zero) then
+            tau = fac*tau
+            ivar = i
+            iret = 1
+            return
+         end if
+
+      elseif (icnstr(i) .eq. 1) then
+         if (ynew(i) .lt. zero) then
+            tau = fac*tau
+            ivar = i
+            iret = 1
+            return
+         end if
+
+      elseif (icnstr(i) .eq. -1) then
+         if (ynew(i) .gt. zero) then
+            tau = fac*tau
+            ivar = i
+            iret = 1
+            return
+         end if
+
+      elseif (icnstr(i) .eq. -2) then
+         rdy = abs((ynew(i) - y(i))/y(i))
+         if (rdy .gt. rdymx) then
+            rdymx = rdy
+            ivar = i
+         end if
+         if (ynew(i) .ge. zero) then
+            tau = fac*tau
+            ivar = i
+            iret = 1
+            return
+         end if
+
+      end if
+   end do
+
+   if (rdymx .ge. rlx) then
+      tau = fac2*tau*rlx/rdymx
+      iret = 1
+   end if
+
+end subroutine dcnstr
+
 subroutine dcnst0(neq, y, icnstr, iret)
 !! This routine checks for constraint violations in the initial approximate solution `y`.
 
@@ -155,12 +249,13 @@ subroutine dcnst0(neq, y, icnstr, iret)
    real(rk), intent(in) :: y(neq)
       !! Initial approximate solution.
    integer, intent(in) :: icnstr(neq)
-      !! Array indicating which variables are constrained and how.
-      !! `icnstr(i) = 2` means `y(i) > 0`.
-      !! `icnstr(i) = 1` means `y(i) >= 0`.
-      !! `icnstr(i) =-1` means `y(i) <= 0`.
-      !! `icnstr(i) =-2` means `y(i) < 0`.
-      !! `icnstr(i) = 0` means `y(i)` is unconstrained.
+      !! Array indicating which variables are constrained and how. For any element of
+      !! `icnstr`, the meaning is as follows. 
+      !!  `2`: `y(i) > 0`.
+      !!  `1`: `y(i) >= 0`.
+      !! `-1`: `y(i) <= 0`.
+      !! `-2`: `y(i) < 0`.
+      !!  `0`: `y(i)` is unconstrained.
    integer, intent(out) :: iret
       !! Output flag.
       !!     `0`: All constraints satisfied.
