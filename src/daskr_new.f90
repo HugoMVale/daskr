@@ -146,6 +146,426 @@ module daskr
 
 end module daskr
 
+subroutine ddstp( &
+   t, y, ydot, neq, res, jac, psol, h, wt, vt, &
+   jstart, idid, rpar, ipar, phi, savr, delta, e, rwm, iwm, &
+   alpha, beta, gama, psi, sigma, cj, cjold, hold, s, hmin, uround, &
+   epli, sqrtn, rsqrtn, epscon, iphase, jcalc, jflg, k, kold, ns, nonneg, ntype, nls)
+
+!! This routine solves a system of differential/algebraic equations of the form:
+!!
+!! $$ G(t,y,\dot{y}) = 0 $$
+!!
+!! for one step (normally from \(t\) to \(t+h\)). The methods used are modified divided
+!! difference, fixed leading coefficient forms of backward differentiation formulas.
+!! The code adjusts the stepsize and order to control the local error per step.
+
+   use daskr_kinds, only: rk, zero, one, two
+   use daskr
+   implicit none
+
+   real(rk), intent(inout) :: t
+      !! Independent variable.
+   real(rk), intent(inout) :: y(neq)
+      !! Solution vector.
+   real(rk), intent(inout) :: ydot(neq)
+      !! Derivative of solution vector after successful step.
+   integer, intent(in) :: neq
+      !! Problem size.
+   procedure(res_t) :: res
+      !! User-defined residuals routine.
+   procedure(jack_t) :: jac
+      !! User-defined Jacobian routine.
+   procedure(psol_t) :: psol
+      !! User-defined preconditioner routine.
+   real(rk), intent(inout) :: h
+      !! Step size.
+   real(rk), intent(inout) :: wt(neq)
+      !! Weights for error control.
+   real(rk), intent(inout) :: vt(neq)
+      !! Masked weights for error control.
+   integer, intent(inout) :: jstart ! @todo: ? convert to logical
+      !! Flag indicating whether this is the first call to this routine.
+      !! If `jstart = 0`, then this is the first call, otherwise it is not.
+   integer, intent(out) :: idid
+      !! Completion flag.
+   real(rk), intent(inout) :: rpar(*)
+      !! User real workspace.
+   integer, intent(inout) :: ipar(*)
+      !! User integer workspace.
+   real(rk), intent(inout) :: phi(neq, *)
+      !! Array of divided differences used by the Newton iteration.
+   real(rk), intent(out) :: savr(neq)
+      !! Real work array.
+   real(rk), intent(inout) :: delta(neq)
+      !! Real work array.
+   real(rk), intent(out) :: e(neq)
+      !! Error accumulation vector.
+   real(rk), intent(inout) :: rwm(*)
+      !! Real workspace for the linear system solver.
+   integer, intent(inout) :: iwm(*)
+      !! Integer workspace for the linear system solver.
+   real(rk), intent(out) :: alpha(*)
+      !! ??
+   real(rk), intent(out) :: beta(*)
+      !! ??
+   real(rk), intent(out) :: gama(*)
+      !! ??
+   real(rk), intent(inout) :: psi(*)
+      !! ??
+   real(rk), intent(out) :: sigma(*)
+      !! ??
+   real(rk), intent(inout) :: cj
+      !! Scalar used in forming the system Jacobian.
+   real(rk), intent(out) :: cjold
+      !! Value of `cj` as of the last call to [[ditmd]]. Accounts for changes in `cj`
+      !! needed to decide whether to call [[ditmd]].
+   real(rk), intent(out) :: hold
+      !! ??
+   real(rk), intent(out) :: s
+      !! Convergence factor for the Newton iteration.
+   real(rk), intent(in) :: hmin
+      !! ??
+   real(rk), intent(in) :: uround
+      !! Unit roundoff.
+   real(rk), intent(in) :: epli ! @note: not the same as 'epslin'!
+      !! Convergence test constant for the iterative solution of linear systems. See
+      !! [[daskr]] for details.
+   real(rk), intent(in) :: sqrtn
+      !! Square root of `neq`.
+   real(rk), intent(in) :: rsqrtn
+      !! Reciprocal of square root of `neq`.
+   real(rk), intent(in) :: epscon
+      !! Tolerance for convergence of the Newton iteration.
+   integer, intent(inout) :: iphase
+      !! ??
+   integer, intent(out) :: jcalc
+      !! Flag indicating whether the Jacobian matrix needs to be updated.
+   integer, intent(in) :: jflg
+      !! Flag indicating whether a `jac` routine is supplied by the user.
+   integer, intent(inout) :: k
+      !! ??
+   integer, intent(inout) :: kold
+      !! ??
+   integer, intent(inout) :: ns
+      !! ??
+   integer, intent(in) :: nonneg
+      !! Flag indicating whether nonnegativity constraints are imposed on the solution.
+   integer, intent(in) :: ntype
+      !! Type of the nonlinear solver.
+   procedure() :: nls
+      !! ??
+
+   integer :: i, iernls, j, j1, kdiff, km1, knew, kp1, kp2, ncf, nef, nsp1
+   real(rk) :: alpha0, alphas, cjlast, ck, enorm, erk, erkm1, erkm2, erkp1, err, est, hnew, &
+               r, temp1, temp2, terk, terkm1, terkm2, terkp1, told
+   real(rk), external :: ddwnrm ! @todo: remove this once inside module
+
+   ! BLOCK 1.
+   ! Initialize. On the first call, set the order to 1 and initialize other variables.
+
+   ! Initializations for all calls
+   told = t
+   ncf = 0
+   nef = 0
+
+   ! If this is the first step, perform other initializations
+   if (jstart == 0) then
+      k = 1
+      kold = 0
+      hold = zero
+      psi(1) = h
+      cj = 1/h
+      iphase = 0
+      ns = 0
+   end if
+
+   ! BLOCK 2
+   ! Compute coefficients of formulas for this step.
+   do
+
+      kp1 = k + 1
+      kp2 = k + 2
+      km1 = k - 1
+      if ((h /= hold) .or. (k /= kold)) ns = 0
+      ns = min(ns + 1, kold + 2)
+      nsp1 = ns + 1
+
+      if (kp1 >= ns) then
+
+         beta(1) = one
+         alpha(1) = one
+         temp1 = h
+         gama(1) = zero
+         sigma(1) = one
+
+         do i = 2, kp1
+            temp2 = psi(i - 1)
+            psi(i - 1) = temp1
+            beta(i) = beta(i - 1)*psi(i - 1)/temp2
+            temp1 = temp2 + h
+            alpha(i) = h/temp1
+            sigma(i) = (i - 1)*sigma(i - 1)*alpha(i)
+            gama(i) = gama(i - 1) + alpha(i - 1)/h
+         end do
+
+         psi(kp1) = temp1
+
+      end if
+
+      ! Compute ALPHAS, ALPHA0
+      alphas = zero
+      alpha0 = zero
+      do i = 1, k
+         alphas = alphas - one/i
+         alpha0 = alpha0 - alpha(i)
+      end do
+
+      ! Compute leading coefficient CJ
+      cjlast = cj
+      cj = -alphas/h
+
+      ! Compute variable stepsize error coefficient CK
+      ck = abs(alpha(kp1) + alphas - alpha0)
+      ck = max(ck, alpha(kp1))
+
+      ! Change PHI to PHI STAR
+      if (kp1 >= nsp1) then
+         do j = nsp1, kp1
+            phi(:, j) = beta(j)*phi(:, j)
+         end do
+      end if
+
+      ! Update time
+      t = t + h
+
+      ! Initialize IDID to 1
+      idid = 1
+
+      ! BLOCK 3
+      ! Call the nonlinear system solver to obtain the solution and derivative.
+      call nls(t, y, ydot, neq, &
+               res, jac, psol, h, wt, jstart, idid, rpar, ipar, phi, gama, &
+               savr, delta, e, rwm, iwm, cj, cjold, cjlast, s, &
+               uround, epli, sqrtn, rsqrtn, epscon, jcalc, jflg, kp1, &
+               nonneg, ntype, iernls)
+
+      if (iernls /= 0) goto 600
+
+      ! BLOCK 4
+      ! Estimate the errors at orders K,K-1,K-2 as if constant stepsize was used.
+      ! Estimate the local error at order K and test whether the current step is successful.
+
+      ! Estimate errors at orders K,K-1,K-2
+      enorm = ddwnrm(neq, e, vt, rpar, ipar)
+      erk = sigma(k + 1)*enorm
+      terk = (k + 1)*erk
+      est = erk
+      knew = k
+
+      if (k == 1) goto 430
+      delta = phi(:, kp1) + e
+      erkm1 = sigma(k)*ddwnrm(neq, delta, vt, rpar, ipar)
+      terkm1 = k*erkm1
+      if (k > 2) goto 410
+      if (terkm1 <= terk/2) goto 420
+      goto 430
+
+410   continue
+      delta = delta + phi(:, k)
+      erkm2 = sigma(k - 1)*ddwnrm(neq, delta, vt, rpar, ipar)
+      terkm2 = (k - 1)*erkm2
+      if (max(terkm1, terkm2) > terk) goto 430
+
+      ! Lower the order
+420   continue
+      knew = k - 1
+      est = erkm1
+
+      ! Calculate the local error for the current step to see if the step was successful
+430   continue
+      err = ck*enorm
+      if (err > one) goto 600
+
+      ! BLOCK 5
+      ! The step is successful. Determine the best order and stepsize for
+      ! the next step. Update the differences for the next step.
+      idid = 1
+      iwm(iwloc_nst) = iwm(iwloc_nst) + 1
+      kdiff = k - kold
+      kold = k
+      hold = h
+
+      ! Estimate the error at order K+1 unless already decided to lower order,
+      ! or already using maximum order,
+      ! or stepsize not constant,
+      ! or order raised in previous step
+      if (knew == km1 .or. k == iwm(iwloc_mxord)) iphase = 1
+      if (iphase == 0) goto 545
+      if (knew == km1) goto 540
+      if (k == iwm(iwloc_mxord)) goto 550
+      if (kp1 >= ns .or. kdiff == 1) goto 550
+
+      delta = e - phi(:, kp2)
+      erkp1 = ddwnrm(neq, delta, vt, rpar, ipar)/(k + 2)
+      terkp1 = (k + 2)*erkp1
+      if (k > 1) goto 520
+      if (terkp1 >= terk/2) goto 550
+      goto 530
+
+520   continue
+      if (terkm1 <= min(terk, terkp1)) goto 540
+      if (terkp1 >= terk .or. k == iwm(iwloc_mxord)) goto 550
+
+      ! Raise order
+530   continue
+      k = kp1
+      est = erkp1
+      goto 550
+
+      ! Lower order
+540   continue
+      k = km1
+      est = erkm1
+      goto 550
+
+      ! If IPHASE = 0, increase order by one and multiply stepsize by factor two
+545   continue
+      k = kp1
+      hnew = 2*h
+      h = hnew
+      goto 575
+
+      ! Determine the appropriate stepsize for the next step.
+550   continue
+      hnew = h
+      temp2 = real(k + 1, rk)
+      r = (2*est + 1e-4_rk)**(-1/temp2)
+      if (r < two) goto 555
+      hnew = 2*h
+      goto 560
+
+555   continue
+      if (r > one) goto 560
+      r = max(0.5_rk, min(0.9_rk, r))
+      hnew = h*r
+
+560   continue
+      h = hnew
+
+      ! Update differences for next step
+575   continue
+      if (kold == iwm(iwloc_mxord)) goto 585
+      phi(:, kp2) = e
+
+585   continue
+      phi(:, kp1) = phi(:, kp1) + e
+      do j1 = 2, kp1
+         j = kp1 - j1 + 1
+         phi(:, j) = phi(:, j) + phi(:, j + 1)
+      end do
+      jstart = 1
+      return
+
+      ! BLOCK 6
+      ! The step is unsuccessful. Restore X, PSI, PHI
+      ! Determine appropriate stepsize for continuing the integration,
+      ! or exit with an error flag if there have been many failures.
+600   continue
+      iphase = 1
+
+      ! Restore X, PHI, PSI
+      t = told
+      if (kp1 >= nsp1) then
+         do j = nsp1, kp1
+            temp1 = 1/beta(j)
+            phi(:, j) = temp1*phi(:, j)
+         end do
+      end if
+
+630   continue
+      psi(1:kp1-1) = psi(2:kp1) - h
+
+      ! Test whether failure is due to nonlinear solver or error test
+      if (iernls == 0) goto 660
+      iwm(iwloc_ncfn) = iwm(iwloc_ncfn) + 1
+
+      ! The nonlinear solver failed to converge.
+      ! Determine the cause of the failure and take appropriate action.
+      ! If IERNLS < 0, then return.  Otherwise, reduce the stepsize
+      ! and try again, unless too many failures have occurred.
+      if (iernls < 0) goto 675
+      ncf = ncf + 1
+      r = 0.25_rk
+      h = h*r
+      if (ncf < 10 .and. abs(h) >= hmin) goto 690
+      if (idid == 1) idid = -7
+      if (nef >= 3) idid = -9
+      goto 675
+
+      ! The nonlinear solver converged, and the cause of the failure was the error estimate
+      ! exceeding the tolerance.
+660   continue
+      nef = nef + 1
+      iwm(iwloc_netf) = iwm(iwloc_netf) + 1
+      if (nef > 1) goto 665
+
+      ! On first error test failure, keep current order or lower order by one.
+      ! Compute new stepsize based on differences of the solution.
+      k = knew
+      temp2 = real(k + 1, rk)
+      r = 0.9_rk*(2*est + 1e-4_rk)**(-1/temp2)
+      r = max(0.25_rk, min(0.9_rk, r))
+      h = h*r
+      if (abs(h) >= hmin) goto 690
+      idid = -6
+      goto 675
+
+      ! On second error test failure, use the current order or decrease order by one.
+      ! Reduce the stepsize by a factor of one quarter.
+665   continue
+      if (nef > 2) goto 670
+      k = knew
+      r = 0.25_rk
+      h = r*h
+      if (abs(h) >= hmin) goto 690
+      idid = -6
+      goto 675
+
+      ! On third and subsequent error test failures, set the order to one,
+      ! and reduce the stepsize by a factor of one quarter.
+670   continue
+      k = 1
+      r = 0.25_rk
+      h = r*h
+      if (abs(h) >= hmin) goto 690
+      idid = -6
+      goto 675
+
+      ! For all crashes, restore Y to its last value,
+      ! interpolate to find YPRIME at last X, and return.
+
+      ! Before returning, verify that the user has not set IDID to a nonnegative value.
+      ! If the user has set IDID to a nonnegative value, then reset IDID to be -7,
+      ! indicating a failure in the nonlinear system solver.
+675   continue
+      call ddatrp(t, t, y, ydot, neq, k, phi, psi)
+      jstart = 1
+      if (idid >= 0) idid = -7
+      return
+
+      ! Go back and try this step again.
+      ! If this is the first step, reset PSI(1) and rescale PHI(*,2).
+690   continue
+      if (kold == 0) then
+         psi(1) = h
+         phi(:, 2) = r*phi(:, 2)
+      end if
+
+   end do
+
+end subroutine ddstp
+
 subroutine dcnstr(neq, y, ynew, icnstr, tau, rlx, iret, ivar)
 !! This subroutine checks for constraint violations in the proposed new approximate solution
 !! `ynew`. If a constraint violation occurs, then a new step length, `tau`, is calculated,
