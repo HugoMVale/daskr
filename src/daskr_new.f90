@@ -89,6 +89,8 @@ module daskr
       !! `ml`: lower bandwidth
    integer, parameter :: iwloc_mu = 2
       !! `mu`: upper bandwidth
+   integer, parameter :: iwloc_mxord = 3
+      !! `mxord`: method order
    integer, parameter :: iwloc_mtype = 4
       !! `mtype`: method type
    integer, parameter :: iwloc_k = 7
@@ -2266,7 +2268,7 @@ subroutine dnedk( &
       !! User-defined preconditioner routine.
    real(rk), intent(in) :: h
       !! Step size.
-   real(rk), intent(inout) :: wt(neq) ! @todo: confusing notation: wt ?= ewt ?= whgt
+   real(rk), intent(inout) :: wt(neq)
       !! Weights for error control.
    integer, intent(in) :: jstart ! @todo: ? convert to logical
       !! Flag indicating whether this is the first call to this routine.
@@ -3206,6 +3208,7 @@ pure subroutine dheqr(a, lda, n, q, info, ijob)
       ! QR decomposition without pivoting.
       info = 0
       do k = 1, n
+        
          km1 = k - 1
          kp1 = k + 1
 
