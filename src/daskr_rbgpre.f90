@@ -1,47 +1,49 @@
-!----------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 ! Adapted from original Fortran code in `original/preconds/drbgpre.f`
-!----------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
 module daskr_rbgpre
 !! # Preconditioner Tools for Reaction-Transport Problems. Part II: Block-Grouping in Block-Diagonal Reaction-Based Factor
 !!
-!! This module is provided to assist in the generation and solution of preconditioner matrices
-!! for problems arising from reaction-transport systems. More specifically, the routines
-!! [[jac_rbgpre]], and [[psol_rbgpre]] are intended as *auxiliary* routines for the user-supplied
-!! routines `jac` and `psol` called by [[daskr]] when the Krylov method is selected.
-!! 
-!! These routines are meant for a DAE system obtained from a system of reaction-transport PDEs,
-!! in which some of the PDE variables obey differential equations, and the rest obey algebraic
-!! equations [2, section 4]. It is assumed that the right-hand sides of all the equations have
-!! the form of a sum of a reaction term \(R\) and a transport term \(S\), that the transport
-!! term is discretized by finite differences, and that in the spatial discretization the PDE
-!! variables at each spatial point are kept together. Thus, the DAE system function, in terms
-!! of a dependent variable vector \(u\), has the form:
-!!   
+!! This module is provided to assist in the generation and solution of preconditioner
+!! matrices for problems arising from reaction-transport systems. More specifically, the
+!! routines [[pjac_rbgpre]], and [[psol_rbgpre]] are intended as *auxiliary* routines for
+!! the user-supplied routines `pjac` and `psol` called by [[daskr]] when the Krylov method
+!! is selected.
+!!
+!! These routines are meant for a DAE system obtained from a system of reaction-transport
+!! PDEs, in which some of the PDE variables obey differential equations, and the rest obey
+!! algebraic equations [2, section 4]. It is assumed that the right-hand sides of all the
+!! equations have the form of a sum of a reaction term \(R\) and a transport term \(S\),
+!! that the transport term is discretized by finite differences, and that in the spatial
+!! discretization the PDE variables at each spatial point are kept together. Thus, the DAE
+!! system function, in terms of a dependent variable vector \(u\), has the form:
+!!
 !!   $$  G(t,u,\dot{u}) = I_d \dot{u} - R(t,u) - S(t,u) $$
 !!
 !! where \(I_d\) is the identity matrix with zeros in the positions corresponding to the
-!! algebraic components and ones in those for the differential components, \(R(t,u)\) denotes
-!! the reaction terms (spatial coupling absent), and \(S(t,u)\) denotes the spatial transport
-!! terms.     
-!! 
+!! algebraic components and ones in those for the differential components, \(R(t,u)\)
+!! denotes the reaction terms (spatial coupling absent), and \(S(t,u)\) denotes the spatial
+!! transport terms.
+!!
 !! As shown in Brown et al. [2], two possible preconditioners for such a system are:
-!!   
+!!
 !! * \(P_R = c_J I_d - \partial R/ \partial u\), based on the reaction term \(R\) alone.
-!! * \(P_{SR} = (I - c_J^{-1} \partial S/\partial u) (c_J I_d - \partial R / \partial u)\), the
-!!   product of two factors (in either order), one being \(P_R\) and the other being based on
-!!   the spatial term \(S\) alone.
+!! * \(P_{SR} = (I - c_J^{-1} \partial S/\partial u) (c_J I_d - \partial R / \partial u)\),
+!!   the product of two factors (in either order), one being \(P_R\) and the other being
+!!   based on the spatial term \(S\) alone.
 !!
 !! The routines given here can be used to compute the reaction-based factor \(P_R\). More
-!! precisely, they provide an approximation \(A_R\) to \(P_R\). The matrix \(P_R\) is block-diagonal,
-!! with each block corresponding to one spatial point. In \(A_R\), we compute each block by
-!! difference quotient approximations, by way of calls to a user-supplied subroutine `rblock`,
-!! that evaluates the reaction terms at a single spatial point. In addition, rather than evaluating
-!! a block at every spatial point in the mesh, we use a block-grouping scheme, described in
-!! Brown et al. [1]. In this scheme, the mesh points are grouped, as in domain decomposition,
-!! and only one block of \(\partial R / \partial u)\) is computed for each group; then in solving
-!! \(A_R x = b\), the inverse of the representative block is applied to all the blocks of unknowns
-!! in the group. Block-grouping greatly reduces the storage required for the preconditioner.
+!! precisely, they provide an approximation \(A_R\) to \(P_R\). The matrix \(P_R\) is
+!! block-diagonal, with each block corresponding to one spatial point. In \(A_R\), we
+!! compute each block by difference quotient approximations, by way of calls to a
+!! user-supplied subroutine `rblock`, that evaluates the reaction terms at a single spatial
+!! point. In addition, rather than evaluating a block at every spatial point in the mesh,
+!! we use a block-grouping scheme, described in Brown et al. [1]. In this scheme, the mesh
+!! points are grouped, as in domain decomposition, and only one block of \(\partial R / \partial u)\)
+!! is computed for each group; then in solving \(A_R x = b\), the inverse of the representative
+!! block is applied to all the blocks of unknowns in the group. Block-grouping greatly
+!! reduces the storage required for the preconditioner.
 !!
 !! The routines given here are specialized to the case of a 2D problem on a rectangular mesh in
 !! the x-y plane, and for a block-grouping arrangement that is rectangular (i.e. the Cartesian
@@ -52,35 +54,35 @@ module daskr_rbgpre
 !! ## Usage
 !!
 !! @warning
-!! This module uses module variables to share the mesh and block-group parameters among routines
-!! and is, thus, **thread unsafe**.  
-!!   
-!! To use these routines in conjunction with [[daskr]], the user's calling program should include
-!! the following, in addition to setting the other [[daskr]] input parameters:
+!! This module uses module variables to share the mesh and block-group parameters among
+!! routines and is, thus, **thread unsafe**.
+!!
+!! To use these routines in conjunction with [[daskr]], the following steps are needed:
 !!
 !! * Set `info(12) = 1` to select the Krylov iterative method and `info(15) = 1` to indicate
-!!   that a `jac` routine exists.
-!!         
+!!   that a `pjac` routine exists.
+!!
 !! * Call [[setup_rbgpre]] to set mesh-related and block-grouping inputs.
-!!   
-!! * A `jac` routine, as prescribed by the [[daskr]] instructions, which calls [[jac_rbgpre]],
-!!   and does any other Jacobian-related preprocessing needed for preconditioning. The latter
-!!   routine takes as argument `r0` the current value of the reaction vector \(R\). This can be
-!!   done, for example, by taking `r0` to be `rpar`, and loading `rpar` with the vector \(R\)
-!!   in the last call to the `res` routine; in that case, the calling program must declare `rpar`
-!!   to have length at least `neq`. Alternatively, insert a call to `rblock` within the loop 
-!!   over mesh points inside [[jac_rbgpre]].
-!!   
-!! * A `psol` routine, as prescribed by the [[daskr]] instructions, which calls [[psol_rbgpre]]
-!!   for the solution of systems \(A_R x = b\), and does any other linear system solving required
-!!   by the preconditioner.
+!!
+!! * Include a `pjac` routine, as prescribed by the [[daskr]] instructions, which calls
+!!   [[pjac_rbgpre]], and does any other Jacobian-related preprocessing needed for
+!!   preconditioning. The latter routine takes as argument `r0` the current value of the
+!!   reaction vector \(R\). This can be done, for example, by taking `r0` to be `rpar`,
+!!   and loading `rpar` with the vector \(R\) in the last call to the `res` routine; in
+!!   that case, the calling program must declare `rpar` to have length at least `neq`.
+!!   Alternatively, insert a call to `rblock` within the loop over mesh points inside
+!!   [[pjac_rbgpre]].
+!!
+!! * Include a `psol` routine, as prescribed by the [[daskr]] instructions, which calls
+!!   [[psol_rbgpre]] for the solution of systems \(A_R x = b\), and does any other linear
+!!   system solving required by the preconditioner.
 !!
 !! ## Example
 !!
 !! The program [[example_web]] demonstrates the use of this preconditioner.
-!!   
+!!
 !! ## References
-!!   
+!!
 !! 1. Peter N. Brown and Alan C. Hindmarsh,
 !!    Reduced Storage Matrix Methods in Stiff ODE Systems,
 !!    J. Appl. Math. & Comp., 31 (1989), pp. 40-91.
@@ -89,7 +91,7 @@ module daskr_rbgpre
 !!    SIAM J. Sci. Comput., 15 (1994), pp. 1467-1488.
 !! 3. Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold,
 !!    Consistent Initial Condition Calculation for Differential-Algebraic Systems,
-!!    SIAM Journal on Scientific Computing 19.5 (1998): 1495-1512.   
+!!    SIAM Journal on Scientific Computing 19.5 (1998): 1495-1512.
 
    use daskr_kinds, only: rk, one, half
    implicit none
@@ -100,36 +102,37 @@ module daskr_rbgpre
    integer, allocatable :: jgx(:), jgy(:), jigx(:), jigy(:), jxr(:), jyr(:)
    real(rk) :: srur
 
-   public :: setup_rbgpre, jac_rbgpre, psol_rbgpre
+   public :: setup_rbgpre, pjac_rbgpre, psol_rbgpre
 
 contains
 
    subroutine setup_rbgpre(mx, my, ns, nsd, nxg, nyg, lid, iwork)
    !! This routine sets the mesh and block-grouping parameters needed to use the routines
-   !! [[jac_rbgpre]] and [[psol_rbgpre]], assuming a 2D rectangular problem with uniform
-   !! rectangular block-grouping. Additionally, it loads the lengths `lrwp` and `liwp` in array
-   !! `iwork`.
+   !! [[pjac_rbgpre]] and [[psol_rbgpre]], assuming a 2D rectangular problem with uniform
+   !! rectangular block-grouping. Additionally, it loads the lengths `lrwp` and `liwp` in
+   !! array `iwork`.
 
       integer, intent(in) :: mx
          !! Number of mesh points in x-direction.
       integer, intent(in) :: my
          !! Number of mesh points in y-direction.
       integer, intent(in) :: ns
-         !! Number of PDE variables, the size of each block in the block-diagonal preconditioner
-         !! matrix \(P_R\).
+         !! Number of PDE variables, the size of each block in the block-diagonal
+         !! preconditioner matrix \(P_R\).
       integer, intent(in) :: nsd
-         !! Number of differential PDE variables. In the DAE system, the first `nsd` variables
-         !! at each spatial point have time derivatives, and the remaining `(ns - nsd)` do not.
+         !! Number of differential PDE variables. In the DAE system, the first `nsd`
+         !! variables at each spatial point have time derivatives, and the remaining
+         !! `(ns - nsd)` do not.
       integer, intent(in) :: nxg
          !! Number of groups in x-direction.
       integer, intent(in) :: nyg
          !! Number of groups in y-direction.
       integer, intent(in) :: lid
-         !! Flag indicating whether to load the ID array in `iwork`. If `lid > 0`, set the ID
-         !! array in `iwork`, indicating which components are differential and which are algebraic.
-         !! This value is required if either `info(11) = 1` or `info(16) = 1`, in which case
-         !! set `lid = 40` or `lid = 40 + neq`, depending on the value of the constraint option
-         !! `info(10)`. Otherwise, set `lid = 0`.
+         !! Flag indicating whether to load the ID array in `iwork`. If `lid > 0`, set the
+         !! ID array in `iwork`, indicating which components are differential and which are
+         !! algebraic. This value is required if either `info(11) = 1` or `info(16) = 1`,
+         !! in which case set `lid = 40` or `lid = 40 + neq`, depending on the value of
+         !! the constraint option `info(10)`. Otherwise, set `lid = 0`.
       integer, intent(inout) :: iwork(*)
          !! Integer work array.
 
@@ -148,8 +151,8 @@ contains
       ngrp = ngx*ngy
 
       maxm = max(meshx, meshy)
-      allocate(jgx(maxm + 1), jgy(maxm + 1), jigx(maxm), jigy(maxm), jxr(maxm), jyr(maxm))
-   
+      allocate (jgx(maxm + 1), jgy(maxm + 1), jigx(maxm), jigy(maxm), jxr(maxm), jyr(maxm))
+
       ! Call set_grouping for each mesh direction to load grouping arrays.
       call set_grouping(meshx, ngx, jgx, jigx, jxr)
       call set_grouping(meshy, ngy, jgy, jigy, jyr)
@@ -176,8 +179,8 @@ contains
    end subroutine setup_rbgpre
 
    pure subroutine set_grouping(m, ng, jg, jig, jr)
-   !! This routine sets arrays `jg`, `jig`, and `jr` describing a uniform (or nearly uniform)
-   !! partition of (1, 2,...,`m`) into `ng` groups.
+   !! This routine sets arrays `jg`, `jig`, and `jr` describing a uniform,  or nearly
+   !! uniform, partition of (1, 2,...,`m`) into `ng` groups.
 
       integer, intent(in) :: m
          !! Number of mesh points in the direction being grouped.
@@ -222,16 +225,17 @@ contains
       jr(ng) = int(half*(1 + ngm1*mper + m))
 
    end subroutine set_grouping
- 
-   subroutine jac_rbgpre(t, u, r0, rblock, r1, rewt, cj, bd, ipbd, ierr)
-   !! This routine generates and preprocesses a block-diagonal preconditioner matrix, based on
-   !! the part of the Jacobian corresponding to the reaction terms \(R\) of the problem, using
-   !! block-grouping. It generates a matrix of the form \(c_J I_d - \partial R/ \partial u\).
-   !! It calls [[dgefa]] from LINPACK to do the LU decomposition of each diagonal block. The
-   !! computation of the diagonal blocks uses the mesh information in the module variables. One
-   !! block per group is computed. The Jacobian elements are generated by difference quotients. 
-   !! This routine calls a user routine `rblock` to compute the block `(jx,jy)` of \(R\).
-      
+
+   subroutine pjac_rbgpre(t, u, r0, rblock, r1, rewt, cj, bd, ipbd, ierr)
+   !! This routine generates and preprocesses a block-diagonal preconditioner matrix, based
+   !! on the part of the Jacobian corresponding to the reaction terms \(R\) of the problem,
+   !! using block-grouping. It generates a matrix of the form \(c_J I_d - \partial R/ \partial u\).
+   !! It calls [[dgefa]] from LINPACK to do the LU decomposition of each diagonal block.
+   !! The computation of the diagonal blocks uses the mesh information in the module
+   !! variables. One block per group is computed. The Jacobian elements are generated by
+   !! difference quotients. This routine calls a user routine `rblock` to compute the block
+   !! `(jx,jy)` of \(R\).
+
       use linpack, only: dgefa
 
       real(rk), intent(in) :: t
@@ -318,21 +322,23 @@ contains
          iip = iip + mp
       end do
 
-   end subroutine jac_rbgpre
+   end subroutine pjac_rbgpre
 
    subroutine psol_rbgpre(b, bd, ipbd)
-   !! This routine solves a linear system \(A_R x = b\), using the LU factors of the diagonal 
-   !! blocks computed in [[jac_rbgpre]] and mesh parameters passed as module variables. The
-   !! solution is carried out by [[dgesl]] from LINPACK.
-      
+   !! This routine solves a linear system \(A_R x = b\), using the LU factors of the
+   !! diagonal blocks computed in [[pjac_rbgpre]] and mesh parameters passed as module
+   !! variables. The solution is carried out by [[dgesl]] from LINPACK.
+
       use linpack, only: dgesl
 
       real(rk), intent(inout) :: b(*)
          !! Right-hand side vector on entry and solution vector on return.
       real(rk), intent(in) :: bd(*)
-         !! LU factors of the diagonal blocks. `bd` corresponds to the segment `rwp` of `rwork`.
+         !! LU factors of the diagonal blocks. `bd` corresponds to the segment `rwp` of
+         !! `rwork`.
       integer, intent(in) :: ipbd(*)
-         !! Pivots for the LU factorizations. `ipbd` corresponds to the segment `iwp` of `iwork`.
+         !! Pivots for the LU factorizations. `ipbd` corresponds to the segment `iwp` of
+         !! `iwork`.
 
       integer :: ib, ibd, ig0, igm1, igx, igy, iip, jx, jy
 
