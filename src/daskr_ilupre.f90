@@ -1,45 +1,45 @@
-!----------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 ! Adapted from original Fortran code in `original/preconds/dilupre.f`
-!----------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
 module daskr_ilupre
 !! # Preconditioner Routines for Sparse Problems
 !!
-!! This module provides a general-purpose sparse incomplete LU (ILU) preconditioner for use with 
-!! the [[daskr]] solver, with the Krylov linear system method. 
+!! This module provides a general-purpose sparse incomplete LU (ILU) preconditioner for use
+!! with the [[daskr]] solver, with the Krylov linear system method.
 !!
 !! When using [[daskr]] to solve a problem \(G(t,y,\dot{y}) = 0\), whose Jacobian
 !! \( J = \partial G/ \partial y + c_J \partial G/ \partial \dot{y} \), where \(c_J\) is a
-!! scalar, is a general sparse matrix, the routines [[jac_ilupre]] and [[psol_ilupre]] can be
-!! used to generate an approximation to \(J\) as the preconditioner and to solve the resulting
-!! sparse linear system, in conjunction with the Krylov method option.
+!! scalar, is a general sparse matrix, the routines [[pjac_ilupre]] and [[psol_ilupre]] can
+!! be used to generate an approximation to \(J\) as the preconditioner and to solve the
+!! resulting sparse linear system, in conjunction with the Krylov method option.
 !!
 !! Internally, the incomplete LU factorization is achieved via one of two routines — [[ilut]]
 !! or [[ilutp]] — from the SPARSKIT library. The routine [[ilut]] performs an ILU factorization
 !! of a sparse matrix using a dual thresholding technique based on a drop tolerance (`tolilut`)
-!! and a level of fill-in parameter (`lfililut`). The parameter `lfililut` controls the amount
-!! of fill-in allowed in the factorization (limited to a maximum of `2*lfililut*neq`, but normally
-!! much less). Increasing `lfililut` will generally make the ILU factorization more accurate.
-!! The parameter `tolilut` also controls the accuracy of the ILU factorization via a drop tolerance
-!! based on element size. Decreasing `tolilut` will increase the amount of fill-in and make for
-!! a more accurate factorization. The routine [[ilutp]] is a variant of [[ilut]] that in addition
-!! performs pivoting based on a tolerance ratio `permtol`.
+!! and a level of fill-in parameter (`lfililut`). The parameter `lfililut` controls the
+!! amount of fill-in allowed in the factorization (limited to a maximum of `2*lfililut*neq`,
+!! but normally much less). Increasing `lfililut` will generally make the ILU factorization
+!! more accurate. The parameter `tolilut` also controls the accuracy of the ILU factorization
+!! via a drop tolerance based on element size. Decreasing `tolilut` will increase the amount
+!! of fill-in and make for a more accurate factorization. The routine [[ilutp]] is a variant
+!! of [[ilut]] that in addition performs pivoting based on a tolerance ratio `permtol`.
 !!
-!! An important aspect of using incomplete factorization techniques is that of reordering the
-!! rows and columns in the Jacobian matrix \(J\) before performing the ILU. In this package,
-!! this is accomplished via the parameter `ireorder`, which when equal to 1 performs a reverse
-!! Cuthill-McKee (RCM) reordering before performing the ILU factorization. Based on the limited
-!! amount of testing done so far, RCM seems the best overall choice. It is possible to include
-!! a different reordering technique if desired.
+!! An important aspect of using incomplete factorization techniques is that of reordering
+!! the rows and columns in the Jacobian matrix \(J\) before performing the ILU. In this
+!! package, this is accomplished via the parameter `ireorder`, which when equal to 1 performs
+!! a reverse Cuthill-McKee (RCM) reordering before performing the ILU factorization. Based
+!! on the limited amount of testing done so far, RCM seems the best overall choice. It is
+!! possible to include a different reordering technique if desired.
 !!
 !! ## Usage
-!!  
-!! To use these routines in conjunction with [[daskr]], the user's calling program should include
-!! the following, in addition to setting the other [[daskr]] input parameters:
+!!
+!! To use these routines in conjunction with [[daskr]], the user's calling program should
+!! include the following, in addition to setting the other [[daskr]] input parameters:
 !
 !! * Dimension the array `ipar` to have length at least 30, and load the following parameters
 !!   into `ipar` as:
-!!   
+!!
 !!    | Index  | Name         | Description                                                      |
 !!    |--------|--------------|------------------------------------------------------------------|
 !!    | 1      | `ml`         | The lower bandwidth used in calculating \(J\).                   |
@@ -55,36 +55,36 @@ module daskr_ilupre
 !!    | 11     | `jscalcol`   | Flag for scaling \(J\) columns by the inverses of elements in the `ewt` array. `=0` means no scaling. `=1` means perform scaling. |
 !!    | 21:28  | —            | Used to hold pointer information.                                |
 !!    | 29     | `jacout_unit`| Logical unit number for matrix output file. Used only if `jacout = 1`. |
-!!    | 30     | `rescalls`   | On return from [[daskr]], holds the number of calls to the `res` routine used in preconditioner evaluations. | 
+!!    | 30     | `rescalls`   | On return from [[daskr]], holds the number of calls to the `res` routine used in preconditioner evaluations. |
 !!
 !! * Dimension the array `rpar` to have length at least 2, and load the parameters shown in the
 !!   table below into `rpar`.
-!!  
+!!
 !!    | Index | Name      | Description                                                          |
 !!    |-------|-----------|----------------------------------------------------------------------|
 !!    | 1     | `tolilut` | Drop tolerance for use by [[ilut]] and [[ilutp]]. `tolilut >= 0`. Larger values cause less fill-in. Good values range from 0.001 to 0.01.                                   |
 !!    | 2     | `permtol` | Tolerance ratio used in determining column pivoting by ILUTP. `permtol >= 0`. Good values are from 0.1 to 0.01. Two columns are permuted only if `a(i,j)*permtol > a(i,i)`. |
-!!  
-!! * The two parameters `tolilut` and `lfililut` give the user a great deal of flexibility. One 
-!!   can use `tolilut = 0` to get a strategy based on keeping the largest elements in each row 
-!!   of \(L\) and \(U\). Taking `tolilut /= 0` but `lfililut = neq` will give the usual threshold
-!!   strategy (however, fill-in is then unpredictable).
+!!
+!! * The two parameters `tolilut` and `lfililut` give the user a great deal of flexibility.
+!!   One can use `tolilut = 0` to get a strategy based on keeping the largest elements in
+!!   each row of \(L\) and \(U\). Taking `tolilut /= 0` but `lfililut = neq` will give the
+!!   usual threshold strategy (however, fill-in is then unpredictable).
 !!
 !! * Set `info(12) = 1` to select the Krylov iterative method and `info(15) = 1` to indicate
-!!   that a `jac` routine exists. Then in the call to [[daskr]], pass the procedure names
-!!   `jac_ilupre` and `psol_ilupre` as the arguments `jac` and `psol`, respectively.
+!!   that a `pjac` routine exists. Then in the call to [[daskr]], pass the procedure names
+!!   `pjac_ilupre` and `psol_ilupre` as the arguments `pjac` and `psol`, respectively.
 !!
-!! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp` for use
-!!   by [[jac_ilupre]] and [[psol_ilupre]]. The lengths of these depend on the problem size, 
-!!   half-bandwidths, and other parameters as shown in the table below. Load these lengths in
-!!   `iwork` as `iwork(27) = lrwp` and `iwork(28) = liwp` and include these values in the declared
-!!   size of `rwork` and `iwork`, respectively.
+!! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp`
+!!   for use by [[pjac_ilupre]] and [[psol_ilupre]]. The lengths of these depend on the
+!!   problem size, half-bandwidths, and other parameters as shown in the table below. Load
+!!   these lengths in `iwork` as `iwork(27) = lrwp` and `iwork(28) = liwp` and include these
+!!   values in the declared size of `rwork` and `iwork`, respectively.
 !!
 !!    | Variable | Length                                                                              |
 !!    |----------|-------------------------------------------------------------------------------------|
 !!    | `lrwp`   | `2*lenpfac*neq + lenplufac*neq + isrnorm*neq + neq`                                 |
 !!    | `liwp`   | `3*neq + 1 + 3*lenpfac*neq + 2*lenplufac*neq + 2*ireorder*neq + 2*(ipremeth-1)*neq` |
-!!      
+!!
 !! ## Example
 !!
 !! The program [[example_heatilu]] demonstrates the use of this preconditioner.
@@ -94,13 +94,14 @@ module daskr_ilupre
    implicit none
    private
 
-   public :: setup_ilupre, jac_ilupre, psol_ilupre
+   public :: setup_ilupre, pjac_ilupre, psol_ilupre
 
 contains
 
    pure subroutine setup_ilupre(neq, lrwp, liwp, rpar, ipar, ierr, lrwp_min, liwp_min)
-   !! Setup routine for the incomplete LU preconditioner. This routine checks the user input
-   !! and calculates the minimum length needed for the preconditioner workspace arrays.
+   !! Setup routine for the incomplete LU preconditioner. This routine checks the user
+   !! input and calculates the minimum length needed for the preconditioner workspace
+   !! arrays.
 
       integer, intent(in) :: neq
          !! Problem size.
@@ -125,14 +126,13 @@ contains
       integer, intent(out) :: liwp_min
          !! Minimum `iwp` length needed.
 
-      integer :: lbw, ubw, lenplumx, ljac, ljaci, ljacj, lrownrms, lrwk1, liwk1, lenpfac, & 
-                 lenplufac, lfililut, ipremeth, neqp1, nnzmx, lplu, lju, ljlu, lperm, lqperm, &
-                 llevels, lmask
+      integer :: lbw, ubw, lenplumx, ljac, ljaci, ljacj, lrownrms, lrwk1, liwk1, &
+                 lenpfac, lenplufac, lfililut, ipremeth, neqp1, nnzmx, lplu, lju, ljlu, &
+                 lperm, lqperm, llevels, lmask
       integer :: isrnorm  ! =1 causes row normalization of JAC.
       integer :: normtype ! =0,1,2 for max-norm, 1-norm, or 2-norm row scaling
       integer :: ireorder ! =1 causes row and column reordering of JAC.
-      integer :: jacout   ! =1 causes the Jacobian matrix and SAVR to be written to a file and
-                          ! then exit with ierr = 1 to signal a stop to daskr.
+      integer :: jacout   ! =1 causes the Jacobian matrix and SAVR to be written to a file and then exit with ierr = 1 to signal a stop to daskr.
       integer :: jscalcol ! =1 causes the columns of the Jacobian matrix to be scaled by EWT-inverse
       real(rk)  :: tolilut, permtol
 
@@ -275,17 +275,17 @@ contains
 
    end subroutine setup_ilupre
 
-   subroutine jac_ilupre( &
-      res, ires, neq, t, y, ydot, rewt, savr, wk, h, cj, rwp, iwp, ierr, rpar, ipar)
-   !! This subroutine uses finite-differences to calculate the Jacobian matrix in sparse format,
-   !! and then performs an incomplete LU decomposition using either [[ilut]] or [[ilutp]] from
-   !! SPARSKIT.
+   subroutine pjac_ilupre( &
+      res, ierr_res, neq, t, y, ydot, rewt, savr, wk, h, cj, rwp, iwp, ierr_pjac, rpar, ipar)
+   !! This subroutine uses finite-differences to calculate the Jacobian matrix in sparse
+   !! format, and then performs an incomplete LU decomposition using either [[ilut]] or
+   !! [[ilutp]] from SPARSKIT.
 
       use dsparskit, only: amudia, dvperm, prtmt, roscal
 
       procedure(res_t) :: res
          !! User-defined residuals routine.
-      integer, intent(out) :: ires
+      integer, intent(out) :: ierr_res
          !! Error flag set by `res`.
       integer, intent(in) :: neq
          !! Problem size.
@@ -309,7 +309,7 @@ contains
          !! Matrix elements of ILU.
       integer, intent(inout) :: iwp(*)
          !! Array indices for elements of ILU.
-      integer, intent(inout) :: ierr
+      integer, intent(inout) :: ierr_pjac
          !! Error flag (0 means success, else failure).
       real(rk), intent(inout) :: rpar(*)
          !! Real array used for communication between the calling program and user routines.
@@ -320,14 +320,13 @@ contains
 
       character(len=8), parameter :: PMETH(4) = [character(len=8) :: 'ILUT', 'ILUTP', 'ILU0', 'MILU0']
       real(rk) :: tolilut, permtol, sqrtn
-      integer :: i, lbw, ubw, lenplumx, ljac, ljaci, ljacj, liperm, lrownrms, lrwk1, liwk1, &
-                 ifmt, lenpfac, lenplufac, lfililut, ipremeth, neqp1, nnzmx, lplu, lju, ljlu, &
-                 lperm, lqperm, llevels, lmask
+      integer :: i, lbw, ubw, lenplumx, ljac, ljaci, ljacj, liperm, lrownrms, lrwk1, &
+                 liwk1, ifmt, lenpfac, lenplufac, lfililut, ipremeth, neqp1, nnzmx, lplu, &
+                 lju, ljlu, lperm, lqperm, llevels, lmask
       integer :: isrnorm  ! =1 causes row normalization of JAC.
       integer :: normtype ! =0,1,2 for max-norm, 1-norm, or 2-norm row scaling
       integer :: ireorder ! =1 causes row and column reordering of JAC.
-      integer :: jacout   ! =1 causes the Jacobian matrix and SAVR to be written to a file and
-                          ! then exit with IRES = -2 to signal a stop to DDASPK.
+      integer :: jacout   ! =1 causes the Jacobian matrix and SAVR to be written to a file and then exit with IRES = -2 to signal a stop to DDASPK.
       integer :: iunit    ! logical unit number to use when JACOUT == 1
       integer :: jscalcol ! =1 causes the columns of the Jacobian matrix to be scaled by REWT-inverse
       integer :: nre      ! number of RES calls needed to evaluate Jacobian. NRE is returned in IPAR(30).
@@ -376,12 +375,12 @@ contains
       ljlu = lju + lenplumx
 
       ! Calculate Jacobian matrix.
-      ierr = 0
-      call jcalc(neq, t, y, ydot, savr, lbw, ubw, wk, rewt, res, h, cj, nnzmx, rwp(ljac), &
-                 iwp(ljacj), iwp(ljaci), rwp(lplu), iwp(ljlu), iwp(lju), ipar, rpar, ires, &
-                 nre, ierr)
-      if (ires < 0) return
-      if (ierr /= 0) return
+      ierr_pjac = 0
+      call jcalc(neq, t, y, ydot, savr, lbw, ubw, wk, rewt, res, h, cj, nnzmx, &
+                 rwp(ljac), iwp(ljacj), iwp(ljaci), rwp(lplu), iwp(ljlu), iwp(lju), &
+                 ipar, rpar, ierr_res, nre, ierr_pjac)
+      if (ierr_res < 0) return
+      if (ierr_pjac /= 0) return
 
       ! Save NRE value for user output.
       ipar(30) = ipar(30) + nre
@@ -415,14 +414,15 @@ contains
          do i = 1, neq
             wk(i) = sqrtn/rewt(i)
          end do
-         call amudia(neq, 0, rwp(ljac), iwp(ljacj), iwp(ljaci), wk, rwp(ljac), iwp(ljacj), iwp(ljaci))
+         call amudia(neq, 0, rwp(ljac), iwp(ljacj), iwp(ljaci), wk, rwp(ljac), &
+                     iwp(ljacj), iwp(ljaci))
       end if
 
       ! Normalize Jacobian rows, if desired.
       if (isrnorm == 1) then
          call roscal(neq, 0, normtype, rwp(ljac), iwp(ljacj), iwp(ljaci), &
-                     rwp(lrownrms), rwp(ljac), iwp(ljacj), iwp(ljaci), ierr)
-         if (ierr /= 0) return
+                     rwp(lrownrms), rwp(ljac), iwp(ljacj), iwp(ljaci), ierr_pjac)
+         if (ierr_pjac /= 0) return
       end if
 
       ! Reorder Jacobian rows and columns, if desired.
@@ -448,17 +448,17 @@ contains
                     'NN', title, 'SPARSKIT', 'RUA', ifmt, 3, iunit)
          msg = 'DJACILU -- Jacobian Matrix written to file.'
          call xerrwd(msg, 80, 0, 0, 0, 0, 0, 0, 0.0, 0.0)
-         ierr = 1
-         ires = -2
+         ierr_pjac = 1
+         ierr_res = -2
          return
       end if
 
       ! Compute ILU decomposition.
-      call jilu(neq, nnzmx, rwp(ljac), iwp(ljacj), iwp(ljaci), iwp(lju), rwp(lplu), iwp(ljlu), &
-                rwp(lrwk1), iwp(liwk1), lenplumx, tolilut, &
-                lfililut, permtol, premeth, iwp(liperm), ierr)
-      if ((ierr == -2) .or. (ierr == -3)) then
-         ires = -2 ! Stop since more storage needed.
+      call jilu(neq, nnzmx, rwp(ljac), iwp(ljacj), iwp(ljaci), iwp(lju), rwp(lplu), &
+                iwp(ljlu), rwp(lrwk1), iwp(liwk1), lenplumx, tolilut, lfililut, &
+                permtol, premeth, iwp(liperm), ierr_pjac)
+      if ((ierr_pjac == -2) .or. (ierr_pjac == -3)) then
+         ierr_res = -2 ! Stop since more storage needed.
       end if
 
       ! Save pointers for use in DPSOLILU into IPAR array.
@@ -469,13 +469,13 @@ contains
       ipar(25) = lperm
       ipar(26) = lqperm
 
-   end subroutine jac_ilupre
+   end subroutine pjac_ilupre
 
    subroutine psol_ilupre( &
       neq, t, y, ydot, r0, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
-   !! This subroutine solves the linear system \(P x = b\) for the sparse preconditioner \(P\),
-   !! given a vector \(b\), using the incomplete LU decomposition produced by [[jac_ilupre]].
-   !! The solution is carried out by [[lusol]] from SPARSKIT.
+   !! This subroutine solves the linear system \(P x = b\) for the sparse preconditioner
+   !! \(P\), given a vector \(b\), using the incomplete LU decomposition produced by
+   !! [[pjac_ilupre]]. The solution is carried out by [[lusol]] from SPARSKIT.
 
       use dsparskit, only: lusol, dvperm
 
@@ -511,8 +511,8 @@ contains
       integer, intent(inout) :: ipar(*)
          !! Integer array used for communication between the calling program and user routines.
 
-      integer :: i, lplu, lju, ljlu, lrownrms, lperm, lqperm, ireorder, isrnorm, ipremeth, &
-                 jscalcol
+      integer :: i, lplu, lju, ljlu, lrownrms, lperm, lqperm, ireorder, isrnorm, &
+                 ipremeth, jscalcol
 
       ! Load IPREMETH, IREORDER and ISRNORM values from IPAR.
       ipremeth = ipar(5)
@@ -535,9 +535,9 @@ contains
          end do
       end if
 
-      ! Solve P*x=b for a preconditioner stored as a sparse matrix in compressed sparse row
-      ! format. If rows and columns of P were reordered (permuted), permute b, then use inverse
-      ! permutation on x.
+      ! Solve P*x=b for a preconditioner stored as a sparse matrix in compressed sparse
+      ! row format. If rows and columns of P were reordered (permuted), permute b, then
+      ! use inverse permutation on x.
       if (ipremeth == 1 .or. ipremeth == 2) then
          if (ireorder == 1) call dvperm(neq, b, iwp(lperm))
          call lusol(neq, b, wk, rwp(lplu), iwp(ljlu), iwp(lju))
@@ -557,10 +557,10 @@ contains
 
    subroutine jcalc( &
       neq, t, y, ydot, r0, ml, mu, r1, rewt, res, h, cj, nnzmx, jac, ja, ia, rcoo, jcoo, &
-      icoo, ipar, rpar, ires, nre, ierr)
-   !! This subroutine calculates the Jacobian matrix by one-sided finite-differences. Lower and
-   !! upper bandwidths are used to select the elements to be computed. The Jacobian is stored
-   !! in compressed sparse row format.
+      icoo, ipar, rpar, ierr_res, nre, ierr_pjac)
+   !! This subroutine calculates the Jacobian matrix by one-sided finite-differences. Lower
+   !! and upper bandwidths are used to select the elements to be computed. The Jacobian is
+   !! stored in compressed sparse row format.
 
       use dsparskit, only: coocsr
 
@@ -606,17 +606,17 @@ contains
          !! User integer workspace.
       real(rk), intent(inout) :: rpar(*)
          !! User real workspace.
-      integer, intent(out) :: ires
+      integer, intent(out) :: ierr_res
          !! Error flag for `res` routine.
       integer, intent(inout) :: nre
          !! Number of calls to `res`.
-      integer, intent(out) :: ierr
+      integer, intent(out) :: ierr_pjac
          !! Error flag.
 
-      external :: xerrwd
+      external :: xerrwd ! @todo: replace by module
 
       integer :: nnz, i, i1, i2, j, jj, mba, meband, meb1, mband
-      real(rk) :: jacelem, squround, del, delinv
+      real(rk) :: jacelem, sqrt_uround, del, delinv
       character(len=80) :: msg
 
       ! Set band parameters.
@@ -626,13 +626,13 @@ contains
       meband = mband + ml
       meb1 = meband - 1
 
-      ! Set the machine unit roundoff UROUND and SQRT(UROUND), used to set increments in the
-      ! difference quotient procedure.
-      squround = sqrt(epsilon(one))
+      ! Set the machine unit roundoff UROUND and SQRT(UROUND), used to set increments in
+      ! the difference quotient procedure.
+      sqrt_uround = sqrt(epsilon(one))
 
       ! Initial error flags.
-      ierr = 0
-      ires = 0
+      ierr_pjac = 0
+      ierr_res = 0
 
       ! Make MBA calls to RES to approximate the Jacobian.
       ! Here, R0(1),...,R0(neq) contains the base RES value, and
@@ -642,24 +642,24 @@ contains
          do jj = j, neq, mband
             jac(jj) = y(jj)
             jac(jj + neq) = ydot(jj)
-            del = squround*max(abs(y(jj)), abs(h*ydot(jj)), abs(one/rewt(jj)))
+            del = sqrt_uround*max(abs(y(jj)), abs(h*ydot(jj)), abs(1/rewt(jj)))
             del = sign(del, h*ydot(jj))
             del = (y(jj) + del) - y(jj)
             y(jj) = y(jj) + del
             ydot(jj) = ydot(jj) + cj*del
          end do
 
-         call res(t, y, ydot, cj, r1, ires, rpar, ipar)
-         if (ires < 0) return
+         call res(t, y, ydot, cj, r1, ierr_res, rpar, ipar)
+         if (ierr_res < 0) return
 
          nre = nre + 1
          do jj = j, neq, mband
             y(jj) = jac(jj)
             ydot(jj) = jac(jj + neq)
-            del = squround*max(abs(y(jj)), abs(h*ydot(jj)), abs(one/rewt(jj)))
+            del = sqrt_uround*max(abs(y(jj)), abs(h*ydot(jj)), abs(1/rewt(jj)))
             del = sign(del, h*ydot(jj))
             del = (y(jj) + del) - y(jj)
-            delinv = one/del
+            delinv = 1/del
             i1 = max(1, (jj - mu))
             i2 = min(neq, (jj + ml))
             do i = i1, i2
@@ -674,8 +674,8 @@ contains
                      call xerrwd(msg, 80, 0, 0, 0, 0, 0, 0, 0.0, 0.0)
                      msg = 'DJCALC -- Storage exceeded at (I,J) = (I1,I2)'
                      call xerrwd(msg, 80, 0, 0, 2, i, jj, 0, 0.0, 0.0)
-                     ierr = 1
-                     ires = -2
+                     ierr_pjac = 1
+                     ierr_res = -2
                      return
                   end if
                   rcoo(nnz) = jacelem
@@ -694,13 +694,13 @@ contains
    end subroutine jcalc
 
    subroutine jilu( &
-      neq, nnzmx, jac, ja, ia, ju, plu, jlu, rwk1, iwk1, lenplumx, tolilut, &
-      lfililut, permtol, premeth, iperm, ierr)
-   !! This subroutine computes the incomplete LU decomposition of the Jacobian matrix and returns
-   !! it in any given storage format.
+      neq, nnzmx, jac, ja, ia, ju, plu, jlu, rwk1, iwk1, lenplumx, tolilut, lfililut, &
+      permtol, premeth, iperm, ierr)
+   !! This subroutine computes the incomplete LU decomposition of the Jacobian matrix and
+   !! returns it in any given storage format.
 
       use dsparskit, only: ilut, ilutp
-      
+
       integer, intent(in) :: neq
          !! Problem size.
       integer, intent(in) :: nnzmx
@@ -745,7 +745,8 @@ contains
 
       if (premeth == 'ILUT') then
          ! Use incomplete factorization routine ILUT from SparsKit.
-         call ilut(neq, jac, ja, ia, lfililut, tolilut, plu, jlu, ju, lenplumx, rwk1, iwk1, ierr)
+         call ilut(neq, jac, ja, ia, lfililut, tolilut, plu, jlu, ju, lenplumx, &
+                   rwk1, iwk1, ierr)
          if (ierr /= 0) then
             msg = 'DJILU -- Error return from ILUT: IERR = (I1)'
             call xerrwd(msg, 80, 0, 0, 1, ierr, 0, 0, 0.0, 0.0)
@@ -753,8 +754,8 @@ contains
          end if
       elseif (premeth == 'ILUTP') then
          ! Use incomplete factorization routine ILUTP from SparsKit.
-         call ilutp(neq, jac, ja, ia, lfililut, tolilut, permtol, neq, plu, jlu, ju, lenplumx, &
-                    rwk1, iwk1, iperm, ierr)
+         call ilutp(neq, jac, ja, ia, lfililut, tolilut, permtol, neq, plu, jlu, ju, &
+                    lenplumx, rwk1, iwk1, iperm, ierr)
          if (ierr /= 0) then
             msg = 'DJILU -- Error return from ILUTP: IERR = (I1)'
             call xerrwd(msg, 80, 0, 0, 1, ierr, 0, 0, 0.0, 0.0)
@@ -817,8 +818,8 @@ contains
       integer, intent(inout) :: iwk(neq + 1)
          !! Work array.
       integer, intent(inout) :: perm(neq)
-         !! Array containing the permutation used in reordering the rows and columns of the
-         !! Jacobian matrix.
+         !! Array containing the permutation used in reordering the rows and columns of
+         !! the Jacobian matrix.
       integer, intent(inout) :: qperm(neq)
          !! Integer array holding the inverse of the permutation in array `perm`.
       integer, intent(inout) :: levels(neq)
