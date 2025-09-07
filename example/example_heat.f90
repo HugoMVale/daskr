@@ -50,7 +50,7 @@ contains
 
    end subroutine uinit
 
-   pure subroutine res(t, u, udot, cj, delta, ires, rpar, ipar)
+   pure subroutine res(t, u, udot, cj, delta, ierr, rpar, ipar)
    !! User-defined residuals routine.
    !! It computes the residuals for the 2D discretized heat equation, with zero boundary
    !! values.
@@ -60,7 +60,7 @@ contains
       real(rk), intent(in) :: udot(*)
       real(rk), intent(in) :: cj
       real(rk), intent(out) :: delta(*)
-      integer, intent(inout) :: ires
+      integer, intent(inout) :: ierr
       real(rk), intent(inout) :: rpar(*)
       integer, intent(inout) :: ipar(*)
 
@@ -123,11 +123,11 @@ program example_heat
 !!
 !! posed on the 2D unit square \(0 \le x,y \le y\) with zero Dirichlet boundary conditions.
 !! An \((M+2)^2\) mesh is set on the square, with uniform spacing \(\Delta x = \Delta y = 1/(M+1)\).
-!! The spatial derivatives are represented by standard central finite difference approximations.
-!! At each interior point of the mesh, the discretized PDE becomes an ODE for the discrete
-!! value of \(u\). At each point on the boundary, we pose the equation \(u = 0\). The
-!! discrete values of \(u\) form a vector \(U\), ordered first by \(x\), then by \(y\).
-!! The result is a DAE system \(G(t,U,\dot{U}) = 0\) of size \(\mathrm{NEQ} = (M+2)^2\).
+!! The spatial deriviatives are represented by standard central finite difference
+!! approximations. At each interior point of the mesh, the discretized PDE becomes an ODE
+!! for the discrete value of \(u\). At each point on the boundary, we pose the equation
+!! \(u = 0\). The discrete values of \(u\) form a vector \(U\), ordered first by \(x\),
+!! then by \(y\). The result is a DAE system \(G(t,U,\dot{U}) = 0\) of size \(\mathrm{NEQ} = (M+2)^2\).
 !!
 !! The initial conditions are posed as:
 !!
@@ -145,9 +145,9 @@ program example_heat
 !! The Krylov linear system solution method, with preconditioning, is selected. The
 !! preconditioner is a band matrix with half-bandwidths equal to 1, i.e. a tridiagonal
 !! matrix. (The true half-bandwidths are equal to \(M+2\)). This corresponds to ignoring
-!! the y-direction coupling in the ODEs, for purposes of preconditioning. The extra iterations
-!! resulting from this approximation are offset by the lower storage and linear system
-!! solution costs for a tridiagonal matrix.
+!! the y-direction coupling in the ODEs, for purposes of preconditioning. The extra
+!! iterations resulting from this approximation are offset by the lower storage and linear
+!! system solution costs for a tridiagonal matrix.
 !!
 !! The routines that generate and solve the banded preconditioner are imported from the
 !! module [[daskr_banpre]].
@@ -218,7 +218,7 @@ program example_heat
 
    ! Set up the INFO array, which describes the various options in the way we want DASKR to
    ! solve the problem. In this case, we select the iterative preconditioned Krylov method,
-   ! and we supply the band preconditioner routines JAC_BANPRE/PSOL_BANPRE.
+   ! and we supply the band preconditioner routines PJAC_BANPRE/PSOL_BANPRE.
    !
    ! We first initialize the entire INFO array to zero, then set select entries to nonzero
    ! values for desired solution options.
@@ -226,7 +226,7 @@ program example_heat
    ! To select the Krylov iterative method for the linear systems, we set INFO(12) = 1.
    !
    ! Since we are using a preconditioner that involves approximate Jacobian elements requiring
-   ! preprocessing, we have a JAC routine, namely subroutine JAC_BANPRE, and we must set
+   ! preprocessing, we have a PJAC routine, namely subroutine PJAC_BANPRE, and we must set
    ! INFO(15) = 1 to indicate this to DASKR.
    !
    ! No other entries of INFO need to be changed for this example.
@@ -255,24 +255,24 @@ program example_heat
       'Tolerances are RTOL =', rtol, '   ATOL =', atol
    write (stdout, '("t", 12x, "UMAX", 9x, "NQ", 6x, "H", 8x, "STEPS", 5x, "NNI", 5x, "NLI")')
 
-   !-------------------------------------------------------------------------------------------
+   !--------------------------------------------------------------------------------------
    ! Solve the problem.
    !
    ! DASKR will be called to compute 11 intermediate solutions from tout=0.01 to tout=10.24
    ! by powers of 2.
    !
-   ! We pass to DASKR the names JAC_BANPRE and PSOL_BANPRE for the JAC and PSOL routines to do
-   ! the preconditioning.
+   ! We pass to DASKR the names JAC_BANPRE and PSOL_BANPRE for the JAC and PSOL routines
+   ! to do the preconditioning.
    !
-   ! At each output time, we compute and print the max-norm of the solution (which should decay
-   ! exponentially in t). We also print some relevant statistics -- the current method order
-   ! and step size, the number of time steps so far, and the numbers of nonlinear and
-   ! linear iterations so far.
+   ! At each output time, we compute and print the max-norm of the solution (which should
+   ! decay exponentially in t). We also print some relevant statistics -- the current
+   ! method order and step size, the number of time steps so far, and the numbers of
+   ! nonlinear and linear iterations so far.
    !
    ! If a root was found, we flag this, and return to the DASKR call.
    !
    ! If DASKR failed in any way (IDID < 0) we print a message and stop the integration.
-   !-------------------------------------------------------------------------------------------
+   !--------------------------------------------------------------------------------------
 
    t = zero
    tout = 0.01_rk
