@@ -1,6 +1,6 @@
-!----------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 ! Adapted from original Fortran code in `original/examples/dkrdem.f`
-!----------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
 module krdem2_m
 !! Procedures for [[test_krdem2]].
@@ -12,11 +12,11 @@ module krdem2_m
    integer, parameter :: neq = 2, nrt = 1, nrowpd = 2
 
    public :: neq, nrt, nrowpd
-   public :: res, jac, rt
+   public :: res, jac, root
 
 contains
 
-   pure subroutine res(t, y, ydot, cj, delta, ires, rpar, ipar)
+   pure subroutine res(t, y, ydot, cj, delta, ierr, rpar, ipar)
    !! Residuals routine.
 
       real(rk), intent(in):: t
@@ -24,7 +24,7 @@ contains
       real(rk), intent(in):: ydot(neq)
       real(rk), intent(in):: cj
       real(rk), intent(out):: delta(neq)
-      integer, intent(out) :: ires
+      integer, intent(out) :: ierr
       real(rk), intent(inout):: rpar
       integer, intent(inout) :: ipar
 
@@ -32,7 +32,7 @@ contains
       delta = ydot - delta
 
    end subroutine res
-   
+
    pure subroutine f(t, y, ydot)
    !! dy/dt routine.
 
@@ -72,9 +72,9 @@ contains
 
    end subroutine jac
 
-   pure subroutine rt(neq, t, y, ydot, nrt, rval, rpar, ipar)
+   pure subroutine root(neq, t, y, ydot, nrt, rval, rpar, ipar)
      !! Roots routine.
-   
+
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: y(neq)
@@ -86,7 +86,7 @@ contains
 
       rval(1) = y(1)
 
-   end subroutine rt
+   end subroutine root
 
 end module krdem2_m
 
@@ -99,9 +99,9 @@ program test_krdem2
 !! \dot{y}_1(t) &= y_2 \\
 !! \dot{y}_2(t) &= 100(1 - y_1^2)y_2 - y_1
 !! \end{aligned}$$
-!! 
+!!
 !! with initial conditions:
-!!      
+!!
 !! $$\begin{aligned}
 !! y_1(0)  &= 2, \quad y_2(0)  = 0, \quad 0 \le t \le 200 \\
 !! \dot{y}_1(0) &= 0, \quad \dot{y}_2'(0) = -2
@@ -114,22 +114,22 @@ program test_krdem2
 !! The analytical solution is not known, but the zeros of \(y_1\) are known to 15 figures.
 !!
 !! If the errors are too large, or other difficulty occurs, a warning message is printed.
-!! To run the demonstration problem with full printing, set `kprint = 3`.
+!! To run the demonstration problem with full printing, set `iprint = 3`.
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, zero, one, two
-   use krdem2_m, only: res, rt, jac, neq, nrt
+   use krdem2_m, only: res, root, jac, neq, nrt
    implicit none
 
-   integer, parameter :: lrwork = 100, liwork = 100 ! @note: to be replaced by formula or alloc
-   integer :: idid, iout, ipar, jtype, kprint, lout, nerr, nre, nrea, nrte, nje, nst, kroot
+   integer, parameter :: lrwork = 100, liwork = 100 ! @todo: replace by formula or alloc
+   integer :: idid, iout, ipar, jtype, iprint, lout, nerr, nre, nrea, nrte, nje, nst, kroot
    integer :: info(20), iwork(liwork), jroot(nrt)
    real(rk) :: errt, psdum, rpar, t, tout, tzero
    real(rk) :: atol(neq), rtol(neq), rwork(lrwork), y(neq), ydot(neq)
 
    ! Set report options
    lout = stdout
-   kprint = 3
+   iprint = 3
 
    ! Initialize variables and set tolerance parameters.
    ! Note that INFO(2) is set to 1, indicating that RTOL and ATOL are arrays. Each entry of
@@ -142,7 +142,7 @@ program test_krdem2
    atol(1) = 1e-6_rk
    atol(2) = 1e-4_rk
 
-   if (kprint >= 2) then
+   if (iprint >= 2) then
       write (lout, '(/, a, /)') "DKRDEM-2: Test Program for DASKR"
       write (lout, '(a)') "Van Der Pol oscillator"
       write (lout, '(a)') "Problem is dy1/dt = y2,  dy2/dt = 100*(1-y1**2)*y2 - y1"
@@ -170,7 +170,7 @@ program test_krdem2
       ydot(2) = -two
       tout = 20.0_rk
 
-      if (kprint > 2) then
+      if (iprint > 2) then
          write (lout, '(/, 70("."), /, a, i2, /)') 'Solution with JTYPE =', jtype
       end if
 
@@ -179,10 +179,10 @@ program test_krdem2
 
          do
             call daskr(res, neq, t, y, ydot, tout, info, rtol, atol, idid, &
-                       rwork, lrwork, iwork, liwork, rpar, ipar, jac, psdum, rt, nrt, jroot)
+                       rwork, lrwork, iwork, liwork, rpar, ipar, jac, psdum, root, nrt, jroot)
 
             ! Print Y1 and Y2.
-            if (kprint > 2) then
+            if (iprint > 2) then
                write (lout, '(a, e15.7, 5x, a, e15.7, 5x, a, e15.7)') &
                   'At t =', t, 'y1 =', y(1), 'y2 =', y(2)
             end if
@@ -197,7 +197,7 @@ program test_krdem2
                exit
             else
 
-               if (kprint > 2) then
+               if (iprint > 2) then
                   write (lout, '(/, a, e15.7, 2x, a, i3)') &
                      'Root found at t =', t, 'JROOT =', jroot(1)
                end if
@@ -205,13 +205,13 @@ program test_krdem2
                kroot = int(t/81.2_rk + 0.5_rk)
                tzero = 81.17237787055_rk + (kroot - 1)*81.41853556212_rk
                errt = t - tzero
-               if (kprint > 2) then
+               if (iprint > 2) then
                   write (lout, '(a, e12.4, /)') 'Error in t location of root is', errt
                end if
 
                if (errt >= one) then
                   nerr = nerr + 1
-                  if (kprint >= 2) then
+                  if (iprint >= 2) then
                      write (lout, '(/, a, /)') 'WARNING: Root error exceeds 1.0'
                   end if
                end if
@@ -233,7 +233,7 @@ program test_krdem2
       nrea = nre
       if (jtype == 2) nre = nre + neq*nje
 
-      if (kprint >= 2) then
+      if (iprint >= 2) then
          write (lout, '(/, a)') 'Final statistics for this run:'
          write (lout, '(a, i5)') 'number of steps =', nst
          write (lout, '(a, i5)') 'number of Gs    =', nre
@@ -244,7 +244,7 @@ program test_krdem2
 
    end do
 
-   if (kprint >= 1) then
+   if (iprint >= 1) then
       write (lout, '(/, a, i3)') 'Number of errors encountered =', nerr
    end if
 
