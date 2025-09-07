@@ -1,6 +1,6 @@
-!----------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 ! Adapted from original Fortran code in `original/examples/dheat.f`
-!----------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
 module heat_m
 !! Procedures for [[example_heat]].
@@ -12,7 +12,7 @@ module heat_m
    integer, parameter :: lipar = 4, lrpar = 2, nrt = 2
 
    public :: lipar, lrpar, nrt
-   public :: uinit, res, rt
+   public :: uinit, res, root
 
 contains
 
@@ -22,7 +22,7 @@ contains
    !!
    !! $$ u = 16 x (1-x) y (1-y) $$
    !!
-   !! The initial \(\dot{u}\) values are set to zero; ([[daskr]] corrects these during the  
+   !! The initial \(\dot{u}\) values are set to zero; ([[daskr]] corrects these during the
    !! first time step).
 
       real(rk), intent(out) :: u(:)
@@ -52,7 +52,8 @@ contains
 
    pure subroutine res(t, u, udot, cj, delta, ires, rpar, ipar)
    !! User-defined residuals routine.
-   !! It computes the residuals for the 2D discretized heat equation, with zero boundary values.
+   !! It computes the residuals for the 2D discretized heat equation, with zero boundary
+   !! values.
 
       real(rk), intent(in) :: t
       real(rk), intent(in) :: u(*)
@@ -88,9 +89,9 @@ contains
 
    end subroutine res
 
-   pure subroutine rt(neq, t, u, udot, nrt, rval, rpar, ipar)
+   pure subroutine root(neq, t, u, udot, nrt, rval, rpar, ipar)
    !! User-defined roots routine.
-   
+
       integer, intent(in) :: neq
       real(rk), intent(in) :: t
       real(rk), intent(in) :: u(neq)
@@ -106,74 +107,74 @@ contains
       rval(1) = umax - 0.1_rk
       rval(2) = umax - 0.01_rk
 
-   end subroutine rt
+   end subroutine root
 
 end module heat_m
 
 program example_heat
 !! Example program for [[daskr]]:
-!! DAE system derived from the discretized heat equation on a square; solution  using the 
+!! DAE system derived from the discretized heat equation on a square; solution  using the
 !! Krylov option with banded preconditioner.
 !!
 !! This program solves a DAE system that arises from the heat equation,
-!! 
-!! $$ \frac{\partial u}{\partial t} = 
+!!
+!! $$ \frac{\partial u}{\partial t} =
 !! \frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2} $$
-!!       
-!! posed on the 2D unit square \(0 \le x,y \le y\) with zero Dirichlet boundary conditions. 
+!!
+!! posed on the 2D unit square \(0 \le x,y \le y\) with zero Dirichlet boundary conditions.
 !! An \((M+2)^2\) mesh is set on the square, with uniform spacing \(\Delta x = \Delta y = 1/(M+1)\).
-!! The spatial deriviatives are represented by standard central finite difference approximations.
-!! At each interior point of the mesh, the discretized PDE becomes an ODE for the discrete value
-!! of \(u\). At each point on the boundary, we pose the equation \(u = 0\). The discrete values 
-!! of \(u\) form a vector \(U\), ordered first by \(x\), then by \(y\). The result is a DAE 
-!! system \(G(t,U,\dot{U}) = 0\) of size \(\mathrm{NEQ} = (M+2)^2\).
-!!   
+!! The spatial derivatives are represented by standard central finite difference approximations.
+!! At each interior point of the mesh, the discretized PDE becomes an ODE for the discrete
+!! value of \(u\). At each point on the boundary, we pose the equation \(u = 0\). The
+!! discrete values of \(u\) form a vector \(U\), ordered first by \(x\), then by \(y\).
+!! The result is a DAE system \(G(t,U,\dot{U}) = 0\) of size \(\mathrm{NEQ} = (M+2)^2\).
+!!
 !! The initial conditions are posed as:
 !!
 !! $$ u(x,y,0) = 16x(1-x)y(1-y) $$
-!!   
+!!
 !! The problem is solved by [[daskr]] on the time interval \(0 \le t \le 10.24\).
 !!
 !! The root functions are:
-!!   
+!!
 !! $$\begin{aligned}
 !! r_1(u) &= \max(u) - 0.1 \\
 !! r_2(u) &= \max(u) - 0.01
 !! \end{aligned}$$
 !!
-!! The Krylov linear system solution method, with preconditioning, is selected. The 
-!! preconditioner is a band matrix with half-bandwidths equal to 1, i.e. a tridiagonal matrix.
-!! (The true half-bandwidths are equal to \(M+2\)). This corresponds to ignoring the y-direction
-!! coupling in the ODEs, for purposes of preconditioning. The extra iterations resulting from
-!! this approximation are offset by the lower storage and linear system solution costs for a
-!! tridiagonal matrix.
+!! The Krylov linear system solution method, with preconditioning, is selected. The
+!! preconditioner is a band matrix with half-bandwidths equal to 1, i.e. a tridiagonal
+!! matrix. (The true half-bandwidths are equal to \(M+2\)). This corresponds to ignoring
+!! the y-direction coupling in the ODEs, for purposes of preconditioning. The extra iterations
+!! resulting from this approximation are offset by the lower storage and linear system
+!! solution costs for a tridiagonal matrix.
 !!
-!! The routines that generate and solve the banded preconditioner are imported from the module
-!! [[daskr_banpre]].
+!! The routines that generate and solve the banded preconditioner are imported from the
+!! module [[daskr_banpre]].
 !!
-!! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\) over
-!! the mesh and various performance statistics are printed.
+!! The output times are \(t = 0.01 \times 2^n, (n = 0,..., 10)\). The maximum of \(|u|\)
+!! over the mesh and various performance statistics are printed.
 !!
 !! For details and test results on this problem, see Brown et al. [1].
 !!
 !! **References**
-!!   
+!!
 !! 1. Peter N. Brown, Alan C. Hindmarsh, and Linda R. Petzold, "Using Krylov Methods in the
 !!    Solution of Large-Scale Differential-Algebraic Systems", SIAM J. Sci. Comput., 15 (1994),
 !!    pp. 1467-1488.
-!! 
+!!
 !! @note
 !! [[example_heatilu]] solves the same problem, but using sparse incomplete LU factorization.
 
    use iso_fortran_env, only: stdout => output_unit
    use daskr_kinds, only: rk, one, zero
-   use daskr_banpre, only: jac_banpre, psol_banpre
-   use heat_m, only: lipar, lrpar, nrt, res, rt, uinit
+   use daskr_banpre, only: pjac_banpre, psol_banpre
+   use heat_m, only: lipar, lrpar, nrt, res, root, uinit
    implicit none
 
    integer, parameter :: m = 10, neq = (m + 2)**2
-   integer :: idid, iout, liwork, liwp, lrwork, lrwp, ml, mu, ncfl, ncfn, nli, nni, nout, &
-              npe, nps, nqu, nre, nrte, nst
+   integer :: idid, iout, liwork, liwp, lrwork, lrwp, ml, mu, ncfl, ncfn, nli, nni, &
+              nout, npe, nps, nqu, nre, nrte, nst
    integer :: info(20), ipar(lipar), jroot(nrt)
    integer, allocatable :: iwork(:)
 
@@ -206,7 +207,7 @@ program example_heat
    liwork = 40
    lrwork = lrwork + lrwp
    liwork = liwork + liwp
-   allocate(rwork(lrwork), iwork(liwork))
+   allocate (rwork(lrwork), iwork(liwork))
 
    ! Load the lengths of the preconditioner work arrays RWP and IWP into IWORK
    iwork(27) = lrwp
@@ -225,7 +226,7 @@ program example_heat
    ! To select the Krylov iterative method for the linear systems, we set INFO(12) = 1.
    !
    ! Since we are using a preconditioner that involves approximate Jacobian elements requiring
-   ! preprocessing, we have a JAC routine, namely subroutine JAC_BANPRE, and we must set 
+   ! preprocessing, we have a JAC routine, namely subroutine JAC_BANPRE, and we must set
    ! INFO(15) = 1 to indicate this to DASKR.
    !
    ! No other entries of INFO need to be changed for this example.
@@ -272,7 +273,7 @@ program example_heat
    !
    ! If DASKR failed in any way (IDID < 0) we print a message and stop the integration.
    !-------------------------------------------------------------------------------------------
-   
+
    t = zero
    tout = 0.01_rk
    nout = 11
@@ -280,10 +281,10 @@ program example_heat
 
       do
          call daskr(res, neq, t, u, udot, tout, info, rtol, atol, idid, rwork, lrwork, &
-                    iwork, liwork, rpar, ipar, jac_banpre, psol_banpre, rt, nrt, jroot)
+                    iwork, liwork, rpar, ipar, pjac_banpre, psol_banpre, root, nrt, jroot)
 
          umax = maxval(abs(u))
-         
+
          hu = rwork(7)
          nqu = iwork(8)
          nst = iwork(11)
@@ -296,7 +297,7 @@ program example_heat
          else
             exit
          end if
-      
+
       end do
 
       if (idid < 0) then
@@ -309,8 +310,8 @@ program example_heat
    end do
 
    ! Display some final statistics for the problem.
-   ! The ratio NLI/NNI is the average dimension of the Krylov subspace involved in the Krylov 
-   ! linear iterative method.
+   ! The ratio NLI/NNI is the average dimension of the Krylov subspace involved in the
+   ! Krylov linear iterative method.
    nst = iwork(11)
    npe = iwork(13)
    nre = iwork(12) + npe*(ml + mu + 1)
