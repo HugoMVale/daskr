@@ -11,7 +11,7 @@ module daskr_banpre
 !! When using [[daskr]] to solve a problem \(G(t,y,\dot{y}) = 0\), whose Jacobian
 !! \( J = \partial G/ \partial y + c_J \partial G/ \partial \dot{y} \), where \(c_J\) is a
 !! scalar, is either banded or approximately equal to a banded matrix, the routines
-!! [[jac_banpre]] and [[psol_banpre]] can be used to generate a banded approximation to
+!! [[pjac_banpre]] and [[psol_banpre]] can be used to generate a banded approximation to
 !! \(J\) as the preconditioner and to solve the resulting banded linear system, in conjunction
 !! with the Krylov method option.
 !!
@@ -33,18 +33,19 @@ module daskr_banpre
 !!
 !! * Dimension the array `ipar` to have length at least 2, and load the half-bandwidths into
 !!   `ipar` as `ipar(1) = ml` and `ipar(2) = mu`. Array `ipar` is used to communicate these
-!!   parameters to [[jac_banpre]] and [[psol_banpre]]. If the user program also uses `ipar`
+!!   parameters to [[pjac_banpre]] and [[psol_banpre]]. If the user program also uses `ipar`
 !!   for communication with `res`, that data should be located beyond the first 2 positions.
 !!
 !! * Set `info(12) = 1` to select the Krylov iterative method and `info(15) = 1` to indicate
-!!   that a `jac` routine exists. Then in the call to [[daskr]], pass the procedure names
-!!   `jac_banpre` and `psol_banpre` as the arguments `jac` and `psol`, respectively.
+!!   that a `pjac` routine exists. Then in the call to [[daskr]], pass the procedure names
+!!   `pjac_banpre` and `psol_banpre` as the arguments `pjac` and `psol`, respectively.
 !!
-!! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp` for
-!!   use by  [[jac_banpre]] and [[psol_banpre]]. The lengths of these arrays depend on the
-!!   problem size and half-bandwidths, as as shown in the table below. Note the integer divide
-!!   in `lrwp`. Load these lengths in `iwork` as `iwork(27) = lrwp` and `iwork(28) = liwp`,
-!!   and include these values in the declared size of `rwork` and `iwork`, respectively.
+!! * The [[daskr]] work arrays `rwork` and `iwork` must include segments `rwp` and `iwp`
+!!   for use by  [[pjac_banpre]] and [[psol_banpre]]. The lengths of these arrays depend
+!!   on the problem size and half-bandwidths, as as shown in the table below. Note the
+!!   integer divide in `lrwp`. Load these lengths in `iwork` as `iwork(27) = lrwp` and
+!!   `iwork(28) = liwp`, and include these values in the declared size of `rwork` and
+!!   `iwork`, respectively.
 !!
 !!    | Variable | Length                                              |
 !!    |----------|-----------------------------------------------------|
@@ -60,12 +61,12 @@ module daskr_banpre
    implicit none
    private
 
-   public :: jac_banpre, psol_banpre
+   public :: pjac_banpre, psol_banpre
 
 contains
 
-   subroutine jac_banpre( &
-      res, ierr_res, neq, t, y, ydot, rewt, savr, wk, h, cj, rwp, iwp, ierr_jac, rpar, ipar)
+   subroutine pjac_banpre( &
+      res, ierr_res, neq, t, y, ydot, rewt, savr, wk, h, cj, rwp, iwp, ierr_pjac, rpar, ipar)
    !! This routine generates a banded preconditioner matrix \(P\) that approximates the
    !! Jacobian matrix \(J\). The banded matrix \(P\) has half-bandwidths \(\mathrm{ml}\)
    !! and \(\mathrm{mu}\), and is computed by making \(\mathrm{ml} + \mathrm{mu} + 1\) calls
@@ -102,7 +103,7 @@ contains
         !! the banded approximation \(P\).
       integer, intent(inout) :: iwp(*)
         !! Integer work space for matrix pivot information.
-      integer, intent(inout) :: ierr_jac
+      integer, intent(inout) :: ierr_pjac
         !! Error flag, `> 0` if \(P\) is singular, and `0` otherwise.
       real(rk), intent(inout) :: rpar(*)
         !! Real array used for communication between the calling program and external user
@@ -136,7 +137,7 @@ contains
       ipsave = isave + msave
 
       ! Initialize error flags.
-      ierr_jac = 0
+      ierr_pjac = 0
       ierr_res = 0
 
       ! Generate the banded approximate iteration matrix P using difference quotients on
@@ -177,14 +178,14 @@ contains
       end do
 
       ! Do LU decomposition of the band matrix P.
-      call dgbfa(rwp, meband, neq, ml, mu, iwp, ierr_jac)
+      call dgbfa(rwp, meband, neq, ml, mu, iwp, ierr_pjac)
 
-   end subroutine jac_banpre
+   end subroutine pjac_banpre
 
    pure subroutine psol_banpre( &
       neq, t, y, ydot, savr, wk, cj, wght, rwp, iwp, b, epslin, ierr, rpar, ipar)
    !! This routine solves the linear system \(P x = b\) for the banded preconditioner \(P\),
-   !! given a vector \(b\), using the LU decomposition produced by [[jac_banpre]]. The
+   !! given a vector \(b\), using the LU decomposition produced by [[pjac_banpre]]. The
    !! solution is carried out by [[dgbsl]] from LINPACK.
 
       use linpack, only: dgbsl
