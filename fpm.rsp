@@ -1,5 +1,8 @@
 @debug
-option build --profile debug --flag "-std=legacy"
+option build --profile debug --flag "-std=legacy -Wno-unused-dummy-argument"
 
 @release
-option build --profile release --flag "-std=legacy"
+option build --profile release --flag "-std=legacy -Wno-unused-dummy-argument"
+
+@test
+option test --profile debug --flag "-std=legacy -Wno-unused-dummy-argument"
