@@ -28,8 +28,7 @@ module daskr_banpre
 !!
 !! ## Usage
 !!
-!! To use these routines in conjunction with [[daskr]], the user's calling program should
-!! include the following, in addition to setting the other [[daskr]] input parameters:
+!! To use these routines in conjunction with [[daskr]], the following steps are needed:
 !!
 !! * Dimension the array `ipar` to have length at least 2, and load the half-bandwidths into
 !!   `ipar` as `ipar(1) = ml` and `ipar(2) = mu`. Array `ipar` is used to communicate these
